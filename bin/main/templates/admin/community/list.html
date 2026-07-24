@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>커뮤니티 관리 | 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-layout">
+  <aside th:replace="~{fragments/admin/sidebar :: sidebar('community')}"></aside>
+  <div class="admin-main">
+    <header th:replace="~{fragments/admin/header :: header('커뮤니티 관리')}"></header>
+    <main class="admin-content">
+      <div th:replace="~{fragments/admin/mock-notice :: notice}"></div>
+      <h1 class="admin-page-title">커뮤니티 관리</h1>
+
+      <form class="admin-toolbar" method="get" th:action="@{/admin/community}">
+        <input class="form-control" name="writer" aria-label="작성자 검색" placeholder="작성자 검색">
+        <input class="form-control" name="title" aria-label="제목 검색" placeholder="제목 검색">
+        <select class="form-control" name="category" aria-label="분류">
+          <option>분류 전체</option><option>후기</option><option>질문</option><option>자유</option><option>레시피</option>
+        </select>
+        <select class="form-control" name="status" aria-label="상태">
+          <option>상태 전체</option><option>정상</option><option>제재</option>
+        </select>
+        <button class="btn" type="submit">검색</button>
+      </form>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>번호</th><th>분류</th><th>제목</th><th>작성자</th><th>작성일</th><th>상태</th><th>관리</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>15</td><td>후기</td>
+              <td><a th:href="@{/community/15}">딸기 생크림 케이크 재구매 후기입니다</a></td>
+              <td>단골손님</td><td>2026.07.21</td>
+              <td><span class="badge badge--success" data-status-badge>정상</span></td>
+              <td><div class="cluster"><a class="btn" th:href="@{/admin/community/15}">상세보기</a>
+                  <button class="btn btn--danger" type="button" data-set-status="제재" data-status-class="badge badge--danger" data-confirm="게시글을 제재하시겠습니까?" data-alt-label="제재 해제" data-alt-set-status="정상" data-alt-status-class="badge badge--success" data-alt-confirm="제재를 해제하시겠습니까?" data-alt-class="btn">제재</button>
+                  <button class="btn btn--danger" type="button" data-confirm="게시글을 삭제하시겠습니까?">삭제</button></div></td>
+            </tr>
+            <tr>
+              <td>14</td><td>질문</td>
+              <td><a th:href="@{/community/14}">레터링 케이크 문구는 몇 자까지 가능한가요?</a></td>
+              <td>예비신부</td><td>2026.07.20</td>
+              <td><span class="badge badge--success" data-status-badge>정상</span></td>
+              <td><div class="cluster"><a class="btn" th:href="@{/admin/community/14}">상세보기</a>
+                  <button class="btn btn--danger" type="button" data-set-status="제재" data-status-class="badge badge--danger" data-confirm="게시글을 제재하시겠습니까?" data-alt-label="제재 해제" data-alt-set-status="정상" data-alt-status-class="badge badge--success" data-alt-confirm="제재를 해제하시겠습니까?" data-alt-class="btn">제재</button>
+                  <button class="btn btn--danger" type="button" data-confirm="게시글을 삭제하시겠습니까?">삭제</button></div></td>
+            </tr>
+            <tr>
+              <td>13</td><td>레시피</td>
+              <td><a th:href="@{/community/13}">집에서 따라 하는 기본 시트 만들기</a></td>
+              <td>홈베이킹러</td><td>2026.07.19</td>
+              <td><span class="badge badge--success" data-status-badge>정상</span></td>
+              <td><div class="cluster"><a class="btn" th:href="@{/admin/community/13}">상세보기</a>
+                  <button class="btn btn--danger" type="button" data-set-status="제재" data-status-class="badge badge--danger" data-confirm="게시글을 제재하시겠습니까?" data-alt-label="제재 해제" data-alt-set-status="정상" data-alt-status-class="badge badge--success" data-alt-confirm="제재를 해제하시겠습니까?" data-alt-class="btn">제재</button>
+                  <button class="btn btn--danger" type="button" data-confirm="게시글을 삭제하시겠습니까?">삭제</button></div></td>
+            </tr>
+            <tr style="opacity:.6">
+              <td>9</td><td>자유</td>
+              <td><span class="note">외부 링크 도배 게시글</span></td>
+              <td>탈퇴회원</td><td>2026.07.16</td>
+              <td><span class="badge badge--danger" data-status-badge>제재</span></td>
+              <td><div class="cluster"><a class="btn" th:href="@{/admin/community/9}">상세보기</a>
+                  <button class="btn" type="button" data-set-status="정상" data-status-class="badge badge--success" data-confirm="제재를 해제하시겠습니까?" data-alt-label="제재" data-alt-set-status="제재" data-alt-status-class="badge badge--danger" data-alt-confirm="게시글을 제재하시겠습니까?" data-alt-class="btn btn--danger">제재 해제</button>
+                  <button class="btn btn--danger" type="button" data-confirm="게시글을 삭제하시겠습니까?">삭제</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note">제재된 게시글은 고객 화면에서 열람이 차단됩니다.</p>
+    </main>
+  </div>
+</div>
+</body>
+</html>

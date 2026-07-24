@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시글 상세 | 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-layout">
+  <aside th:replace="~{fragments/admin/sidebar :: sidebar('community')}"></aside>
+  <div class="admin-main">
+    <header th:replace="~{fragments/admin/header :: header('게시글 상세')}"></header>
+    <main class="admin-content">
+      <div th:replace="~{fragments/common/alert :: alert}"></div>
+
+      <div class="cluster cluster--between section">
+        <h1 class="admin-page-title" th:text="|게시글 상세 - No.${post.id}|">게시글 상세</h1>
+        <a class="btn" th:href="@{/admin/community}">목록으로</a>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="stack">
+          <section class="section">
+            <h2 class="section-title">게시글 정보</h2>
+            <div class="panel">
+              <div class="data-row"><span class="data-row__label">번호</span><span th:text="${post.id}">1</span></div>
+              <div class="data-row"><span class="data-row__label">분류</span><span><span class="badge" th:text="${post.categoryName}">후기</span></span></div>
+              <div class="data-row"><span class="data-row__label">제목</span><span th:text="${post.title}">제목</span></div>
+              <div class="data-row"><span class="data-row__label">작성자</span><span th:text="${post.nickname}">작성자</span></div>
+              <div class="data-row"><span class="data-row__label">작성일</span><span th:text="${post.createdDateTime}">2026.07.24 14:32</span></div>
+              <div class="data-row"><span class="data-row__label">조회 / 좋아요</span><span th:text="|${post.viewCount} / ${post.likeCount}|">0 / 0</span></div>
+              <div class="data-row"><span class="data-row__label">상태</span>
+                <span class="badge"
+                      th:classappend="${post.status == 'ACTIVE'} ? 'badge--success' : (${post.status == 'BLOCKED'} ? 'badge--danger' : '')"
+                      th:text="${post.statusLabel}">정상</span></div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">본문</h2>
+            <div class="panel stack">
+              <p style="white-space:pre-line" th:text="${post.content}">본문</p>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title" th:text="|댓글 ${#lists.size(post.comments)}|">댓글</h2>
+            <div class="stack">
+              <article class="panel" th:each="comment : ${post.comments}"
+                       th:styleappend="${comment.reply} ? 'margin-left:2rem'">
+                <div class="cluster cluster--between">
+                  <span class="cluster">
+                    <strong th:text="${comment.reply} ? |↳ ${comment.nickname}| : ${comment.nickname}">작성자</strong>
+                    <span class="badge badge--danger" th:if="${comment.deleted}">삭제됨</span>
+                  </span>
+                  <span class="cluster">
+                    <span class="text-muted" th:text="${comment.createdDate}">날짜</span>
+                    <form th:unless="${comment.deleted}"
+                          th:action="@{|/admin/community/${post.id}/comments/${comment.id}/delete|}"
+                          method="post" style="display:inline"
+                          onsubmit="return confirm('댓글을 삭제하시겠습니까?')">
+                      <button class="btn btn--danger" type="submit">삭제</button>
+                    </form>
+                  </span>
+                </div>
+                <!-- 관리자는 삭제 댓글도 원문을 확인할 수 있다. -->
+                <p th:classappend="${comment.deleted} ? 'text-muted'"
+                   style="white-space:pre-line" th:text="${comment.content}">내용</p>
+              </article>
+              <article class="panel" th:if="${#lists.isEmpty(post.comments)}">
+                <p class="text-muted">댓글이 없습니다.</p>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="section">
+            <h2 class="section-title">신고 내역</h2>
+            <div class="panel">
+              <div class="data-row"><span class="data-row__label">누적 신고</span><span th:text="|${#lists.size(post.reports)}건|">0건</span></div>
+              <p class="text-muted" th:if="${#lists.isEmpty(post.reports)}">접수된 신고가 없습니다.</p>
+            </div>
+            <div class="stack" th:unless="${#lists.isEmpty(post.reports)}">
+              <article class="panel" th:each="report : ${post.reports}">
+                <div class="cluster cluster--between">
+                  <span class="cluster">
+                    <strong th:text="${report.reporterNickname}">신고자</strong>
+                    <span class="badge" th:text="${report.statusLabel}">접수</span>
+                  </span>
+                  <span class="text-muted" th:text="${report.createdDate}">날짜</span>
+                </div>
+                <p style="white-space:pre-line" th:text="${report.reason}">사유</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">모더레이션</h2>
+            <div class="panel form-stack">
+              <p>현재 상태:
+                <span class="badge"
+                      th:classappend="${post.status == 'ACTIVE'} ? 'badge--success' : (${post.status == 'BLOCKED'} ? 'badge--danger' : '')"
+                      th:text="${post.statusLabel}">정상</span></p>
+
+              <!-- ACTIVE → 제재 (사유 필수) -->
+              <form th:if="${post.status == 'ACTIVE'}"
+                    th:action="@{|/admin/community/${post.id}/block|}" method="post" th:object="${blockForm}">
+                <div class="form-group">
+                  <label for="reason">제재 사유</label>
+                  <textarea class="form-control form-control--textarea" id="reason"
+                            th:field="*{reason}" placeholder="제재 사유 입력 (필수)"></textarea>
+                  <p class="field-error" th:errors="*{reason}"></p>
+                  <button class="btn btn--danger" type="submit">제재하기</button>
+                </div>
+              </form>
+
+              <!-- BLOCKED → 제재 정보 + 해제 -->
+              <div th:if="${post.status == 'BLOCKED'}" class="form-stack">
+                <div class="data-row"><span class="data-row__label">제재 일시</span><span th:text="${post.blockedDate}">-</span></div>
+                <div class="data-row"><span class="data-row__label">제재 사유</span><span th:text="${post.blockedReason}">-</span></div>
+                <div class="data-row"><span class="data-row__label">처리 관리자</span><span th:text="${post.blockedByNickname}">-</span></div>
+                <form th:action="@{|/admin/community/${post.id}/unblock|}" method="post">
+                  <button class="btn" type="submit">제재 해제</button>
+                </form>
+              </div>
+
+              <p class="text-muted" th:if="${post.status == 'DELETED'}">작성자가 삭제한 글입니다. 상태를 변경할 수 없습니다.</p>
+
+              <hr>
+              <!-- 영구 삭제는 후순위 — 백엔드 연결 전까지 비활성화 -->
+              <button class="btn btn--danger" type="button" disabled>게시글 삭제</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <p class="note">제재된 게시글은 고객 화면에서 열람이 차단됩니다.</p>
+    </main>
+  </div>
+</div>
+</body>
+</html>

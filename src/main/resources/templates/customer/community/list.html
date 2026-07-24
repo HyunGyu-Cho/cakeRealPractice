@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>커뮤니티 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body data-page-title="커뮤니티">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container">
+
+    <div class="cluster cluster--between">
+      <h1>커뮤니티</h1>
+      <div class="cluster">
+        <a class="btn" th:href="${currentCategory != null} ? @{/community/scroll(category=${currentCategory})} : @{/community/scroll}">무한스크롤로 보기</a>
+        <a class="btn btn--primary" th:href="@{/community/new}">글쓰기</a>
+      </div>
+    </div>
+
+    <div class="cluster section">
+      <a class="btn" th:classappend="${currentCategory == null} ? 'is-active'" th:href="@{/community}">전체</a>
+      <a class="btn" th:each="category : ${categories}"
+         th:classappend="${currentCategory == category.code} ? 'is-active'"
+         th:href="@{/community(category=${category.code})}"
+         th:text="${category.name}">후기</a>
+    </div>
+
+    <div class="stack">
+      <article class="panel" th:each="post : ${pageResult.content}">
+        <div class="cluster cluster--between">
+          <div class="cluster">
+            <span class="badge"
+                  th:classappend="${post.categoryCode == 'REVIEW'} ? 'badge--info' : (${post.categoryCode == 'RECIPE'} ? 'badge--success' : '')"
+                  th:text="${post.categoryName}">후기</span>
+            <a th:href="@{|/community/${post.id}|}"><strong th:text="${post.title}">제목</strong></a>
+          </div>
+          <span class="text-muted" th:text="|좋아요 ${post.likeCount}|">좋아요 0</span>
+        </div>
+        <p class="text-muted" th:text="|${post.nickname} · ${post.createdDate} · 댓글 ${post.commentCount}|">작성자 · 날짜 · 댓글</p>
+      </article>
+
+      <article class="panel" th:if="${#lists.isEmpty(pageResult.content)}">
+        <p class="text-muted">등록된 게시글이 없습니다.</p>
+      </article>
+    </div>
+
+    <nav th:replace="~{fragments/common/pagination :: pagination(
+        ${pageResult}, '/community',
+        ${currentCategory != null ? '&category=' + currentCategory : ''})}"></nav>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

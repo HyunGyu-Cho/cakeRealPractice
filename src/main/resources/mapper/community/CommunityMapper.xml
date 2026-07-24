@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cakeshop.domain.community.mapper.CommunityMapper">
+    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <select id="findActiveCategories" resultType="com.cakeshop.domain.community.entity.PostCategory">
+        SELECT id,
+               code,
+               name,
+               is_active AS active,
+               sort_order
+          FROM post_categories
+         WHERE is_active = 1
+         ORDER BY sort_order
+    </select>
+
+    <select id="countActivePosts" resultType="long">
+        SELECT COUNT(*)
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE p.status = 'ACTIVE'
+        <if test="categoryCode != null">
+           AND c.code = #{categoryCode}
+        </if>
+    </select>
+
+    <!-- 목록 공통 SELECT. 댓글 수는 자기 도메인 테이블이라 서브쿼리로 세고,
+         닉네임은 member 도메인 소유라 여기서 JOIN 하지 않는다(도메인 간 연동 규칙). -->
+    <sql id="postSummaryColumns">
+        SELECT p.id,
+               p.member_id,
+               c.code AS category_code,
+               c.name AS category_name,
+               p.title,
+               p.like_count,
+               (SELECT COUNT(*)
+                  FROM comments cm
+                 WHERE cm.post_id = p.id
+                   AND cm.status = 'ACTIVE') AS comment_count,
+               p.created_at
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE p.status = 'ACTIVE'
+    </sql>
+
+    <select id="findActivePostPage" resultType="com.cakeshop.domain.community.dto.view.PostSummaryRow">
+        <include refid="postSummaryColumns"/>
+        <if test="categoryCode != null">
+           AND c.code = #{categoryCode}
+        </if>
+         ORDER BY p.id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findActivePostSlice" resultType="com.cakeshop.domain.community.dto.view.PostSummaryRow">
+        <include refid="postSummaryColumns"/>
+        <if test="categoryCode != null">
+           AND c.code = #{categoryCode}
+        </if>
+        <if test="cursor != null">
+           AND p.id &lt; #{cursor}
+        </if>
+         ORDER BY p.id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="findPostDetail" resultType="com.cakeshop.domain.community.dto.view.PostDetailRow">
+        SELECT p.id,
+               p.member_id,
+               c.code AS category_code,
+               c.name AS category_name,
+               p.title,
+               p.content,
+               p.view_count,
+               p.like_count,
+               p.status,
+               p.created_at
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE p.id = #{postId}
+    </select>
+
+    <update id="increaseViewCount">
+        UPDATE posts
+           SET view_count = view_count + 1
+         WHERE id = #{postId}
+    </update>
+
+    <!-- 답글(parent_comment_id)이 부모 댓글 바로 뒤에 오도록 부모 id 기준으로 묶어 정렬한다.
+         DELETED 포함 전체를 내리고 노출 규칙(마스킹·숨김)은 service가 정한다. -->
+    <select id="findCommentsByPost" resultType="com.cakeshop.domain.community.dto.view.CommentRow">
+        SELECT id,
+               member_id,
+               parent_comment_id,
+               content,
+               status,
+               created_at
+          FROM comments
+         WHERE post_id = #{postId}
+         ORDER BY COALESCE(parent_comment_id, id), id
+    </select>
+
+    <update id="updatePost">
+        UPDATE posts
+           SET category_id = #{categoryId},
+               title = #{title},
+               content = #{content}
+         WHERE id = #{postId}
+    </update>
+
+    <update id="softDeletePost">
+        UPDATE posts
+           SET status = 'DELETED'
+         WHERE id = #{postId}
+    </update>
+
+    <update id="softDeleteComment">
+        UPDATE comments
+           SET status = 'DELETED'
+         WHERE id = #{commentId}
+    </update>
+
+    <select id="existsReport" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+              FROM post_reports
+             WHERE post_id = #{postId}
+               AND reporter_id = #{reporterId}
+        )
+    </select>
+
+    <insert id="insertReport">
+        INSERT INTO post_reports (post_id, reporter_id, reason)
+        VALUES (#{postId}, #{reporterId}, #{reason})
+    </insert>
+
+    <select id="findReports" resultType="com.cakeshop.domain.community.dto.view.ReportRow">
+        SELECT id,
+               reporter_id,
+               reason,
+               status,
+               created_at
+          FROM post_reports
+         WHERE post_id = #{postId}
+         ORDER BY id DESC
+    </select>
+
+    <select id="findCategoryByCode" resultType="com.cakeshop.domain.community.entity.PostCategory">
+        SELECT id,
+               code,
+               name,
+               is_active AS active,
+               sort_order
+          FROM post_categories
+         WHERE code = #{code}
+           AND is_active = 1
+    </select>
+
+    <insert id="insertPost" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO posts (member_id, category_id, title, content, status)
+        VALUES (#{memberId}, #{categoryId}, #{title}, #{content}, #{status})
+    </insert>
+
+    <select id="findCommentById" resultType="com.cakeshop.domain.community.entity.Comment">
+        SELECT id,
+               post_id,
+               member_id,
+               parent_comment_id,
+               content,
+               status,
+               created_at,
+               updated_at
+          FROM comments
+         WHERE id = #{commentId}
+    </select>
+
+    <insert id="insertComment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (post_id, member_id, parent_comment_id, content, status)
+        VALUES (#{postId}, #{memberId}, #{parentCommentId}, #{content}, #{status})
+    </insert>
+
+    <select id="existsPostLike" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+              FROM post_likes
+             WHERE post_id = #{postId}
+               AND member_id = #{memberId}
+        )
+    </select>
+
+    <insert id="insertPostLike">
+        INSERT INTO post_likes (post_id, member_id)
+        VALUES (#{postId}, #{memberId})
+    </insert>
+
+    <delete id="deletePostLike">
+        DELETE FROM post_likes
+         WHERE post_id = #{postId}
+           AND member_id = #{memberId}
+    </delete>
+
+    <update id="addLikeCount">
+        UPDATE posts
+           SET like_count = like_count + #{delta}
+         WHERE id = #{postId}
+    </update>
+
+    <select id="findLikeCount" resultType="long">
+        SELECT like_count
+          FROM posts
+         WHERE id = #{postId}
+    </select>
+
+    <!-- ==================== 관리자 ==================== -->
+
+    <sql id="adminPostFilter">
+        <if test="status != null">
+           AND p.status = #{status}
+        </if>
+        <if test="categoryCode != null">
+           AND c.code = #{categoryCode}
+        </if>
+        <if test="title != null">
+           AND p.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <!-- 작성자 검색: member 공개 계약으로 닉네임→id 목록을 먼저 받아 온다 (빈 목록은 service가 차단) -->
+        <if test="memberIds != null">
+           AND p.member_id IN
+            <foreach collection="memberIds" item="writerId" open="(" separator="," close=")">
+                #{writerId}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="countPostsForAdmin" resultType="long">
+        SELECT COUNT(*)
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE 1 = 1
+        <include refid="adminPostFilter"/>
+    </select>
+
+    <select id="findPostPageForAdmin" resultType="com.cakeshop.domain.community.dto.view.AdminPostSummaryRow">
+        SELECT p.id,
+               p.member_id,
+               c.name AS category_name,
+               p.title,
+               p.status,
+               p.created_at
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE 1 = 1
+        <include refid="adminPostFilter"/>
+         ORDER BY p.id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findPostDetailForAdmin" resultType="com.cakeshop.domain.community.dto.view.AdminPostDetailRow">
+        SELECT p.id,
+               p.member_id,
+               c.name AS category_name,
+               p.title,
+               p.content,
+               p.view_count,
+               p.like_count,
+               p.status,
+               p.blocked_at,
+               p.blocked_reason,
+               p.blocked_by,
+               p.created_at
+          FROM posts p
+          JOIN post_categories c ON c.id = p.category_id
+         WHERE p.id = #{postId}
+    </select>
+
+    <!-- 시간 컬럼은 자바에서 세팅하지 않는 규약에 따라 DB의 CURRENT_TIMESTAMP를 쓴다. -->
+    <update id="blockPost">
+        UPDATE posts
+           SET status = 'BLOCKED',
+               blocked_at = CURRENT_TIMESTAMP(6),
+               blocked_reason = #{reason},
+               blocked_by = #{adminId}
+         WHERE id = #{postId}
+    </update>
+
+    <update id="unblockPost">
+        UPDATE posts
+           SET status = 'ACTIVE',
+               blocked_at = NULL,
+               blocked_reason = NULL,
+               blocked_by = NULL
+         WHERE id = #{postId}
+    </update>
+</mapper>

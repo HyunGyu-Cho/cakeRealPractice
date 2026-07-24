@@ -1,0 +1,31 @@
+﻿<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>상품 목록 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/customer-mockup.js}"></script>
+</head>
+<body data-page-title="상품 목록">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container ">
+    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
+    <h1>상품 목록</h1><form class="cluster section" role="search"><label class="visually-hidden" for="product-search">상품명 검색</label><input class="form-control" id="product-search" type="search" placeholder="상품명 검색" style="flex:1"><button class="btn btn--primary" type="submit">검색</button></form>
+    <div class="layout-sidebar"><aside class="filter-panel"><h2 class="section-title">필터</h2><div class="form-group"><strong class="form-label">상품 유형</strong><div class="filter-options"><label class="choice"><input type="radio" name="type" checked> 전체</label><label class="choice"><input type="radio" name="type"> 일반 케이크</label><label class="choice"><input type="radio" name="type"> 주문 제작</label><label class="choice"><input type="radio" name="type"> 당일 픽업</label><label class="choice"><input type="radio" name="type"> 시즌 상품</label></div></div><div class="form-group"><strong class="form-label">가격대</strong><div class="price-range"><input class="form-control" aria-label="최소 가격" value="0원"><span>~</span><input class="form-control" aria-label="최대 가격" value="100,000원"></div></div><div class="form-group"><strong class="form-label">판매 상태</strong><div class="stack"><label class="choice"><input type="radio" name="sale" checked> 전체</label><label class="choice"><input type="radio" name="sale"> 판매 중</label><label class="choice"><input type="radio" name="sale"> 품절</label><label class="choice"><input type="radio" name="sale"> 판매 중지</label></div></div><label class="choice form-group"><input type="checkbox"> 픽업 가능 상품만</label><button class="btn btn--block" type="reset">필터 초기화</button></aside>
+      <section><div class="cluster cluster--between section"><span class="text-muted">총 24개 상품</span><div class="cluster" data-select-group><button class="btn is-active" data-select type="button">인기순</button><button class="btn" data-select type="button">최신순</button><button class="btn" data-select type="button">가격 낮은순</button><button class="btn" data-select type="button">가격 높은순</button></div></div><div class="grid grid--3 product-grid">
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">딸기 생크림 케이크</h3><p class="product-card__price">35,000원</p><span class="badge">일반</span> <span class="badge badge--success">재고 있음</span></div></a>
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">초코 가나슈 케이크</h3><p class="product-card__price">40,000원</p><span class="badge">일반</span> <span class="badge badge--success">재고 있음</span></div></a>
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">레터링 주문 케이크</h3><p class="product-card__price">55,000원</p><span class="badge">주문 제작</span> <span class="badge badge--success">주문 가능</span></div></a>
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">당일 픽업 세트</h3><p class="product-card__price">28,000원</p><span class="badge">당일 픽업</span> <span class="badge badge--danger">품절</span></div></a>
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">생일 케이크 2호</h3><p class="product-card__price">42,000원</p><span class="badge">일반</span> <span class="badge badge--success">재고 있음</span></div></a>
+        <a class="product-card" href="/products/1"><div class="placeholder-image">상품 이미지</div><div class="product-card__body"><h3 class="product-card__name">마카롱 케이크</h3><p class="product-card__price">38,000원</p><span class="badge">시즌</span> <span class="badge badge--success">재고 있음</span></div></a>
+      </div><div class="panel panel--dashed text-muted" style="text-align:center;margin-top:12px">검색 결과 없음 상태 (조건에 맞는 상품이 없습니다)</div><nav class="cluster" aria-label="페이지 이동" style="justify-content:center;margin-top:16px"><a class="btn" href="#">이전</a><a class="btn is-active" href="#">1</a><a class="btn" href="#">2</a><a class="btn" href="#">3</a><a class="btn" href="#">4</a><a class="btn" href="#">5</a><a class="btn" href="#">다음</a></nav></section>
+    </div>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>
+

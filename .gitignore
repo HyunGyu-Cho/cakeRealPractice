@@ -1,0 +1,9 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.vscode/
+application-prod.yml
+.env
+uploads/

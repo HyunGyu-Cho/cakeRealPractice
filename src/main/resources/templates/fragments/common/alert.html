@@ -1,0 +1,5 @@
+<!-- 컨트롤러는 successMessage / errorMessage 키로 플래시를 담고, 화면은 이 공통 조각에서 일괄 출력한다. -->
+<div th:fragment="alert" class="flash-stack" aria-live="polite">
+  <div class="alert alert--success" th:if="${successMessage}" th:text="${successMessage}"></div>
+  <div class="alert alert--error" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+</div>

@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell($p = Get-CimInstance Win32_Process -Filter \"ProcessId=35832\"; $p.Name; $p.CommandLine)",
+      "PowerShell(try { $h = Invoke-WebRequest -Uri http://localhost:8080/actuator/health -UseBasicParsing -TimeoutSec 10; \"health: $\\($h.StatusCode\\) $\\($h.Content\\)\" } catch { \"health error: $\\($_.Exception.Message\\)\" }; try { $r = Invoke-WebRequest -Uri http://localhost:8080/ -UseBasicParsing -TimeoutSec 10; \"home: $\\($r.StatusCode\\), length=$\\($r.Content.Length\\)\" } catch { \"home error: $\\($_.Exception.Message\\)\" }; try { $s = Invoke-WebRequest -Uri http://localhost:8080/screens -UseBasicParsing -TimeoutSec 10; \"screens: $\\($s.StatusCode\\)\" } catch { \"screens error: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(.\\\\gradlew.bat compileJava processResources --console=plain -q; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell($p = Get-CimInstance Win32_Process -Filter \"ProcessId=7836\"; $p.CommandLine)",
+      "PowerShell(try { Remove-Item -Recurse -Force \"C:\\\\Users\\\\user\\\\OneDrive\\\\Desktop\\\\Cho\\\\project\\\\cakeshop\\\\build\\\\classes\" -ErrorAction Stop; \"DELETED\" } catch { $_.Exception.Message })",
+      "PowerShell(.\\\\gradlew.bat bootRun --args=\"--spring.profiles.active=local\" --console=plain)",
+      "Bash(curl -s -o /dev/null -w \"list:%{http_code} \" \"http://localhost:8080/community\")",
+      "Bash(curl -s -o /dev/null -w \"scroll:%{http_code} \" \"http://localhost:8080/community/scroll\")",
+      "Bash(curl -s \"http://localhost:8080/community/api/posts?size=3\")",
+      "Bash(curl -s \"http://localhost:8080/community/api/posts?cursor=45&size=3\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\([p['id'] for p in d['posts']], d['hasNext'], d['nextCursor']\\)\")",
+      "Bash(curl -s \"http://localhost:8080/community/api/posts?category=QUESTION&size=5\")",
+      "Bash(curl -s \"http://localhost:8080/community/api/posts?cursor=4\")",
+      "Bash(curl -s \"http://localhost:8080/community?page=5\")",
+      "Bash(curl -s \"http://localhost:8080/community\")",
+      "Bash(curl -s \"http://localhost:8080/community?category=REVIEW\")",
+      "Bash(/c/Program Files/MariaDB 12.2/bin/mariadb.exe *)",
+      "PowerShell(Copy-Item *)",
+      "PowerShell(try { Remove-Item -Recurse -Force \"build\\\\resources\" -ErrorAction Stop; \"resources deleted\" } catch { $_.Exception.Message }; .\\\\gradlew.bat compileJava processResources --console=plain -q; \"EXIT=$LASTEXITCODE\")",
+      "Bash(rm -f t.txt)",
+      "Bash(curl -s -c t.txt http://localhost:8080/login)",
+      "Bash(sed -i 's|sed '\"'\"'s/.*value=\"//;s/\"//'\"'\"'; }|sed '\"'\"'s/.*value=\"//;s/\"//'\"'\"' | head -1; }|' verify.sh)",
+      "Bash(bash verify.sh)",
+      "Bash(python -c ' *)",
+      "Bash(bash verify2.sh)"
+    ]
+  }
+}

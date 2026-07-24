@@ -1,0 +1,21 @@
+﻿<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쿠폰함 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/customer-mockup.js}"></script>
+</head>
+<body data-page-title="쿠폰함">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--narrow">
+    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
+    <h1>내 쿠폰함</h1><div class="cluster section" data-select-group><button class="btn is-active" data-select type="button">사용 가능</button><button class="btn" data-select type="button">사용 완료</button><button class="btn" data-select type="button">기간 만료</button></div><div class="stack"><article class="coupon-card"><div class="cluster cluster--between"><div><strong>첫 주문 할인 쿠폰</strong><p style="font-size:16px;font-weight:700">5,000원 할인</p><p class="text-muted">30,000원 이상 구매 시</p></div><span class="badge badge--success">사용 가능</span></div><p class="text-muted">유효기간: 2025.03.31</p></article><article class="coupon-card"><div class="cluster cluster--between"><div><strong>10% 할인 쿠폰</strong><p style="font-size:16px;font-weight:700">10% 할인 (최대 10,000원)</p><p class="text-muted">20,000원 이상 구매 시</p></div><span class="badge badge--success">사용 가능</span></div><p class="text-muted">유효기간: 2025.02.28</p></article><article class="coupon-card" style="opacity:.5"><div class="cluster cluster--between"><div><strong>생일 축하 쿠폰</strong><p style="font-size:16px;font-weight:700">15% 할인</p><p class="text-muted">최소 주문 금액 없음</p></div><span class="badge">사용 완료</span></div><p class="text-muted">유효기간: 2025.01.31</p></article></div>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>
+

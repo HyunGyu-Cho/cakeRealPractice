@@ -1,0 +1,21 @@
+﻿<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원정보 수정 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/customer-mockup.js}"></script>
+</head>
+<body data-page-title="회원정보 수정">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--form">
+    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
+    <h1>회원정보 수정</h1><form data-mock-form data-success-url="/mypage"><section class="section"><h2 class="section-title">기본 정보</h2><div class="panel"><div class="form-group"><label class="form-label" for="profile-name">이름 <span class="required">*</span></label><input class="form-control" id="profile-name" value="홍길동" required></div><div class="form-group"><label class="form-label" for="profile-email">이메일</label><input class="form-control" id="profile-email" type="email" value="example@email.com" readonly><p class="form-help">이메일 변경 불가</p></div><div class="form-group"><label class="form-label" for="profile-phone">전화번호 <span class="required">*</span></label><input class="form-control" id="profile-phone" type="tel" value="010-0000-0000" required></div><hr class="divider"><h3 class="section-title">비밀번호 변경</h3><div class="form-group"><label class="form-label" for="current-password">현재 비밀번호 <span class="required">*</span></label><input class="form-control" id="current-password" type="password" required></div><div class="form-group"><label class="form-label" for="new-password">새 비밀번호 <span class="required">*</span></label><input class="form-control" id="new-password" type="password" minlength="8" required><p class="form-help">8자 이상, 영문+숫자+특수문자</p></div><div class="form-group"><label class="form-label" for="new-password-confirm">새 비밀번호 확인 <span class="required">*</span></label><input class="form-control" id="new-password-confirm" type="password" required></div><div class="error-box">입력 오류 메시지 영역</div><button class="btn btn--primary" type="submit">변경사항 저장</button></div></section></form><section class="section"><h2 class="section-title">회원 탈퇴</h2><div class="panel panel--danger panel--dashed"><p class="text-muted">탈퇴 시 모든 주문 내역, 쿠폰, 후기가 삭제됩니다.</p><form data-mock-form data-success-url="/"><button class="btn btn--danger" type="submit" data-confirm="회원 탈퇴를 진행하시겠습니까?">회원 탈퇴</button></form></div></section>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>
+

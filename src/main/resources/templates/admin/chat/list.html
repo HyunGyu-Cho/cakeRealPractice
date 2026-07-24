@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>채팅 관리 | 케이크 쇼핑몰 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body data-page-title="채팅 관리">
+  <div class="admin-layout">
+    <aside th:replace="~{fragments/admin/sidebar :: sidebar('chat')}"></aside>
+
+    <div class="admin-main">
+      <header th:replace="~{fragments/admin/header :: header('채팅 관리')}"></header>
+
+      <main class="admin-content">
+        <div th:replace="~{fragments/admin/mock-notice :: notice}"></div>
+        <div class="cluster cluster--between section">
+          <div>
+            <h1>채팅 관리</h1>
+            <p class="text-muted">고객 1:1 문의 응대 및 주문 제작 승인·거절 관리 페이지입니다.</p>
+          </div>
+        </div>
+
+        <!-- 3열 관리자 채팅 레이아웃 -->
+        <div class="admin-chat-layout">
+
+          <!-- 1열: 고객 대화방 목록 -->
+          <aside class="panel admin-chat-rooms-panel">
+            <div class="admin-chat-search">
+              <input type="text" class="form-control" id="adminChatSearch" placeholder="고객명 또는 주문번호 검색...">
+            </div>
+
+            <div class="cluster admin-chat-filter-tabs" style="margin: 10px 0;">
+              <button type="button" class="btn btn--xs is-active" data-admin-filter="all">전체</button>
+              <button type="button" class="btn btn--xs" data-admin-filter="unread">미답변 <span class="badge badge--danger">1</span></button>
+              <button type="button" class="btn btn--xs" data-admin-filter="done">완료</button>
+            </div>
+
+            <div class="stack admin-chat-room-list" id="adminChatRoomList">
+              <!-- 선택된 대화방 1 (김철수 고객) -->
+              <div class="panel admin-chat-room-item is-selected" data-customer-id="cust-001" style="cursor:pointer; padding:10px;">
+                <div class="cluster cluster--between" style="margin-bottom:4px;">
+                  <strong>김철수 고객님</strong>
+                  <span class="badge badge--danger">미답변</span>
+                </div>
+                <p class="text-muted" style="margin:0; font-size:12px;">파란색 레터링 문구 관련 문의입니다...</p>
+                <div class="cluster cluster--between" style="margin-top:6px; font-size:11px;">
+                  <span class="badge badge--warning">ORD-001 승인대기</span>
+                  <span class="text-muted">10분 전</span>
+                </div>
+              </div>
+
+              <!-- 대화방 2 (이영희 고객) -->
+              <div class="panel admin-chat-room-item" data-customer-id="cust-002" style="cursor:pointer; padding:10px;">
+                <div class="cluster cluster--between" style="margin-bottom:4px;">
+                  <strong>이영희 고객님</strong>
+                  <span class="badge badge--info">상담중</span>
+                </div>
+                <p class="text-muted" style="margin:0; font-size:12px;">딸기 케이크 픽업시간 변경 문의</p>
+                <div class="cluster cluster--between" style="margin-top:6px; font-size:11px;">
+                  <span class="badge badge--info">ORD-002 제작중</span>
+                  <span class="text-muted">1시간 전</span>
+                </div>
+              </div>
+
+              <!-- 대화방 3 (박민수 고객) -->
+              <div class="panel admin-chat-room-item" data-customer-id="cust-003" style="cursor:pointer; padding:10px;">
+                <div class="cluster cluster--between" style="margin-bottom:4px;">
+                  <strong>박민수 고객님</strong>
+                  <span class="text-muted" style="font-size:11px;">완료</span>
+                </div>
+                <p class="text-muted" style="margin:0; font-size:12px;">감사합니다! 케이크 너무 예쁘네요.</p>
+                <div class="cluster cluster--between" style="margin-top:6px; font-size:11px;">
+                  <span class="badge badge--success">ORD-000 완료</span>
+                  <span class="text-muted">어제</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- 2열: 중앙 실시간 1:1 대화창 (고객 화면과 동일한 chat-room 구성) -->
+          <div class="panel chat-room admin-chat-main-room">
+            <!-- 대화방 상단 헤더 -->
+            <div class="chat-room__header cluster cluster--between">
+              <div>
+                <strong>김철수 고객님과의 1:1 상담</strong>
+                <p class="text-muted">가입일: 2025.11.10 | 총 주문: 3건 (상태: <span class="badge badge--warning">승인 대기</span>)</p>
+              </div>
+              <a class="btn btn--outline" th:href="@{/admin/members}">회원 상세 정보</a>
+            </div>
+
+            <!-- 채팅 타임라인 (chat-messages: 관리자 입장에서 고객=좌측, 관리자=우측) -->
+            <div class="chat-messages" id="adminChatMessages">
+              <div class="chat-date-divider" id="msg-admin-ord-001"><span>2026년 1월 18일</span></div>
+
+              <!-- 상대방 메시지 (고객: 김철수) -->
+              <div class="chat-msg chat-msg--other">
+                <div class="chat-msg__sender">김철수 (고객)</div>
+                <div class="chat-msg--other__content-wrap">
+                  <div class="chat-msg__body">
+                    <div class="chat-msg__content">
+                      안녕하세요! 레터링 문구 '생일 축하해' 작업 시 파란색 글씨 가능한지 문의드립니다.
+                    </div>
+                  </div>
+                  <div class="chat-msg__meta">
+                    <span class="chat-msg__time">14:20</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 내 메시지 (관리자: 케이크샵) -->
+              <div class="chat-msg chat-msg--me">
+                <div class="chat-msg__body">
+                  <div class="chat-msg__content">
+                    안녕하세요 고객님! 파란색 레터링 가능합니다. 원하시는 이미지 참고 사진 있으시면 올려주시면 더 정확하게 확인해 드릴 수 있습니다.
+                  </div>
+                </div>
+                <div class="chat-msg__meta">
+                  <span class="chat-msg__read">읽음</span>
+                  <span class="chat-msg__time">14:25</span>
+                </div>
+              </div>
+
+              <!-- 상대방 메시지 (고객 참고 이미지) -->
+              <div class="chat-msg chat-msg--other">
+                <div class="chat-msg__sender">김철수 (고객)</div>
+                <div class="chat-msg--other__content-wrap">
+                  <div class="chat-msg__body">
+                    <div class="placeholder-image placeholder-image--sm" style="width:140px; height:100px; margin-bottom:4px;">
+                      [참고 이미지]
+                    </div>
+                    <div class="chat-msg__content">
+                      이 정도 톤의 파란색으로 부탁드립니다!
+                    </div>
+                  </div>
+                  <div class="chat-msg__meta">
+                    <span class="chat-msg__time">14:28</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 시스템 메시지 카드 -->
+              <div class="chat-msg chat-msg--system" id="adminSystemMsg">
+                <div class="chat-msg__content">
+                  <strong>[시스템] 주문(ORD-001) 제작 승인 요청 상태입니다.</strong><br>
+                  우측 패널에서 주문 사양을 확인 후 [제작 승인] 또는 [제작 거절] 버튼을 눌러주세요.
+                </div>
+              </div>
+
+              <div class="chat-date-divider" id="msg-admin-ord-002"><span>2026년 1월 20일</span></div>
+
+              <!-- 내 메시지 (관리자 답변) -->
+              <div class="chat-msg chat-msg--me">
+                <div class="chat-msg__body">
+                  <div class="chat-msg__content">
+                    네, 확인했습니다! 요청하신 색상으로 예쁘게 만들어 드리겠습니다. 추가 확인사항이 생기면 이 대화방으로 연락드릴게요!
+                  </div>
+                </div>
+                <div class="chat-msg__meta">
+                  <span class="chat-msg__read">읽음</span>
+                  <span class="chat-msg__time">15:30</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 채팅 입력 영역 (고객 화면 chat-input-area 구성과 동일) -->
+            <div class="chat-input-area">
+              <form class="chat-input-form" id="adminChatForm">
+                <div class="chat-input-toolbar cluster">
+                  <label class="btn btn--outline" style="cursor:pointer;">
+                    📷 이미지 첨부
+                    <input type="file" accept="image/*" style="display:none;" id="adminChatImageInput">
+                  </label>
+                  <span class="text-muted" id="adminImageFileName">선택된 파일 없음</span>
+
+                  <!-- 관리자 전용 빠른 답변 템플릿 선택기 -->
+                  <div class="cluster" style="margin-left:auto;">
+                    <label for="quickTemplateSelect" class="text-muted" style="font-size:12px;">빠른 답변:</label>
+                    <select class="form-control" id="quickTemplateSelect" style="width:auto; height:32px; padding:2px 8px; font-size:12px;">
+                      <option value="">-- 자주 쓰는 답변 선택 --</option>
+                      <option value="파란색 레터링 작업 정상 가능합니다. 사진 참고하여 제작하겠습니다.">파란색 레터링 가능 안내</option>
+                      <option value="요청하신 주문 건의 제작이 승인되었습니다. 결제를 진행해 주세요.">제작 승인 안내</option>
+                      <option value="죄송합니다. 해당 일정의 제작 예약이 마감되어 수락이 어렵습니다.">제작 거절 안내</option>
+                      <option value="픽업 시간 변경이 완료되었습니다. 지정된 시간에 방문해 주세요.">픽업 시간 안내</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="chat-input-row">
+                  <textarea class="form-control" id="adminChatInput" placeholder="고객에게 전송할 메시지를 입력하세요..." rows="2" required></textarea>
+                  <button type="submit" class="btn btn--primary" style="height:56px; padding:0 20px;">전송</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- 3열: 우측 고객 프로필 & 연동 주문 관리 패널 -->
+          <aside class="panel admin-chat-info-panel">
+            <h3 style="font-size:14px; margin-bottom:4px; border-bottom:1px solid var(--color-border-light); padding-bottom:6px;">연동 주문 내역 (chat_room_orders)</h3>
+            <p class="text-muted" style="font-size:11px; margin-bottom:10px;">주문 카드를 클릭하면 해당 문의 대화 위치로 이동합니다.</p>
+
+            <!-- 주문 카드 1 (ORD-001 - 승인 대기) -->
+            <div class="panel section admin-order-item" data-scroll-to="msg-admin-ord-001" style="cursor:pointer; padding:10px; margin-bottom:12px; background:var(--color-background-soft);">
+              <div class="cluster cluster--between" style="margin-bottom:6px;">
+                <strong>ORD-001</strong>
+                <span class="badge badge--warning" id="orderStatusBadge001">승인 대기</span>
+              </div>
+              <p style="margin:0; font-weight:600;">레터링 주문 케이크</p>
+              <p class="text-muted" style="font-size:12px; margin:2px 0;">픽업: 2026.01.20 14:00</p>
+              <p class="text-muted" style="font-size:12px; margin:2px 0;">옵션: 1호 / 바닐라시트 / 파란색레터링</p>
+              <p style="font-size:13px; font-weight:700; margin-top:4px;">금액: 55,000원</p>
+
+              <!-- 관리자 조작 버튼 그룹 -->
+              <div class="stack" style="margin-top:10px;" id="orderActionBtns001">
+                <button type="button" class="btn btn--primary btn--block btn--xs" id="btnApproveOrder">✔ 제작 승인 처리</button>
+                <button type="button" class="btn btn--danger btn--block btn--xs" id="btnRejectOrder">✖ 제작 거절 처리</button>
+                <a class="btn btn--outline btn--block btn--xs" th:href="@{/admin/orders/1}">주문 상세서 보기</a>
+              </div>
+            </div>
+
+            <!-- 주문 카드 2 (ORD-002 - 제작 중) -->
+            <div class="panel section admin-order-item" data-scroll-to="msg-admin-ord-002" style="cursor:pointer; padding:10px; margin-bottom:12px;">
+              <div class="cluster cluster--between" style="margin-bottom:6px;">
+                <strong>ORD-002</strong>
+                <span class="badge badge--info">제작 중</span>
+              </div>
+              <p style="margin:0; font-weight:600;">딸기 생크림 케이크</p>
+              <p class="text-muted" style="font-size:12px; margin:2px 0;">픽업: 2026.01.22 15:00</p>
+              <p style="font-size:13px; font-weight:700; margin-top:4px;">금액: 35,000원</p>
+              <a class="btn btn--outline btn--block btn--xs" th:href="@{/admin/orders/1}" style="margin-top:8px;">주문 상세서 보기</a>
+            </div>
+
+            <!-- 관리자 메모 영역 -->
+            <div class="admin-customer-note" style="border-top:1px solid var(--color-border-light); padding-top:10px;">
+              <label for="adminCustomerNote" style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">📌 관리자 특이사항 메모</label>
+              <textarea class="form-control" id="adminCustomerNote" rows="3" placeholder="고객 특이사항이나 유의사항을 메모하세요..." style="font-size:12px;">파란색 레터링 진하게 요청함. 픽업 시간 10분 전 사전 준비 필요.</textarea>
+              <button type="button" class="btn btn--outline btn--xs btn--block" style="margin-top:6px;" onclick="alert('메모가 저장되었습니다.');">메모 저장</button>
+            </div>
+          </aside>
+
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

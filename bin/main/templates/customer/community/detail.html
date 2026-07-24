@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시글 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/customer-mockup.js}"></script>
+</head>
+<body data-page-title="게시글 상세">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--narrow">
+    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
+
+    <div class="cluster cluster--between">
+      <a class="btn" th:href="@{/community}">← 목록</a>
+      <div class="cluster">
+        <a class="btn" th:href="@{/community/new}">수정</a>
+        <button class="btn btn--danger" type="button" data-confirm="게시글을 삭제하시겠습니까?">삭제</button>
+      </div>
+    </div>
+
+    <article class="section">
+      <span class="badge badge--info">후기</span>
+      <h1>딸기 생크림 케이크 재구매 후기입니다 😊</h1>
+      <p class="text-muted">단골손님 · 2025.01.15 · 조회 132</p>
+      <hr class="divider">
+      <div class="stack">
+        <p>지난달 처음 주문했다가 너무 맛있어서 이번에 재구매했어요. 생크림이 무겁지 않고 딸기가 정말 신선합니다.</p>
+        <p>픽업 시간도 정확했고 포장도 꼼꼼하게 해주셔서 이동 중에 하나도 안 무너졌어요. 다음엔 레터링 케이크로 주문해보려고 합니다!</p>
+        <div class="placeholder-image placeholder-image--lg">사진 첨부 영역</div>
+      </div>
+      <!-- 좋아요 버튼은 단독 data-select-group으로 눌렀을 때 활성 표시가 바뀐다. -->
+      <div class="cluster section" data-select-group>
+        <button class="btn" type="button" data-select>♡ 좋아요 24</button>
+        <span class="text-muted">댓글 3</span>
+      </div>
+    </article>
+
+    <hr class="divider">
+
+    <section class="section">
+      <h2 class="section-title">댓글 3</h2>
+      <div class="stack">
+        <article class="panel">
+          <div class="cluster cluster--between">
+            <strong>홈베이킹러</strong>
+            <span class="text-muted">2025.01.15</span>
+          </div>
+          <p>저도 딸기 생크림 완전 추천해요! 재구매 각입니다 👍</p>
+        </article>
+        <article class="panel">
+          <div class="cluster cluster--between">
+            <strong>예비신부</strong>
+            <span class="text-muted">2025.01.15</span>
+          </div>
+          <p>사진 보니까 먹고 싶네요. 혹시 사이즈는 몇 호로 하셨나요?</p>
+        </article>
+        <article class="panel">
+          <div class="cluster cluster--between">
+            <strong>단골손님</strong>
+            <span class="text-muted">2025.01.16</span>
+          </div>
+          <p>1호로 주문했어요! 둘이 먹기 딱 좋아요 😊</p>
+        </article>
+      </div>
+
+      <!-- data-mock-form: 제출하면 customer-mockup.js가 검증 후 data-success-url로 이동한다. -->
+      <form class="section" data-mock-form data-success-url="/community/15">
+        <div class="form-group">
+          <label class="form-label" for="comment">댓글 작성</label>
+          <textarea class="form-control form-control--textarea" id="comment" placeholder="댓글을 입력하세요" required></textarea>
+        </div>
+        <div class="cluster cluster--between">
+          <span class="note">로그인한 회원만 댓글을 작성할 수 있습니다.</span>
+          <button class="btn btn--primary" type="submit">등록</button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

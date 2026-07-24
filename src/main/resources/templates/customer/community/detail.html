@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- '|' 문자가 들어가는 문자열은 |…| 리터럴 안에서 파싱이 깨지므로 + 연결을 쓴다. -->
+  <title th:text="${post.title} + ' | 케이크 쇼핑몰'">게시글 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <!-- fetch POST(좋아요)가 헤더로 보낼 CSRF 토큰 -->
+  <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+  <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/community-detail.js}"></script>
+</head>
+<body data-page-title="게시글 상세">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--narrow">
+    <div th:replace="~{fragments/common/alert :: alert}"></div>
+
+    <div class="cluster cluster--between">
+      <a class="btn" th:href="@{/community}">← 목록</a>
+      <!-- 수정·삭제는 작성자 본인에게만, 신고는 타인 글에만 노출한다. -->
+      <div class="cluster" th:if="${post.mine}">
+        <a class="btn" th:href="@{|/community/${post.id}/edit|}">수정</a>
+        <form th:action="@{|/community/${post.id}/delete|}" method="post"
+              data-confirm="게시글을 삭제하시겠습니까?" style="display:inline">
+          <button class="btn btn--danger" type="submit">삭제</button>
+        </form>
+      </div>
+      <div class="cluster" th:if="${loggedIn and !post.mine}">
+        <button class="btn" type="button" id="report-toggle">신고</button>
+      </div>
+    </div>
+
+    <!-- 신고 사유 입력 (신고 버튼으로 열고 닫음) -->
+    <form class="panel section" id="report-form" hidden
+          th:if="${loggedIn and !post.mine}"
+          th:action="@{|/community/${post.id}/report|}" method="post" th:object="${reportForm}">
+      <div class="form-group">
+        <label class="form-label" for="reason">신고 사유</label>
+        <textarea class="form-control form-control--textarea" id="reason"
+                  th:field="*{reason}" placeholder="신고 사유를 입력하세요"></textarea>
+      </div>
+      <div class="cluster cluster--between">
+        <span class="note">동일 게시글은 한 번만 신고할 수 있습니다.</span>
+        <button class="btn btn--danger" type="submit">신고 접수</button>
+      </div>
+    </form>
+
+    <article class="section">
+      <span class="badge"
+            th:classappend="${post.categoryCode == 'REVIEW'} ? 'badge--info' : (${post.categoryCode == 'RECIPE'} ? 'badge--success' : '')"
+            th:text="${post.categoryName}">후기</span>
+      <h1 th:text="${post.title}">제목</h1>
+      <p class="text-muted" th:text="|${post.nickname} · ${post.createdDate} · 조회 ${post.viewCount}|">작성자 · 날짜 · 조회</p>
+      <hr class="divider">
+      <div class="stack">
+        <!-- 본문은 일반 텍스트로 저장되므로 줄바꿈만 살려 표시한다. -->
+        <p style="white-space:pre-line" th:text="${post.content}">본문</p>
+      </div>
+      <div class="cluster section">
+        <button class="btn" type="button" id="like-button"
+                th:disabled="${!loggedIn}"
+                th:classappend="${post.likedByMe} ? 'is-active'"
+                th:attr="data-post-id=${post.id}, data-liked=${post.likedByMe}"
+                th:text="(${post.likedByMe} ? '♥' : '♡') + ' 좋아요 ' + ${post.likeCount}">♡ 좋아요 0</button>
+        <span class="text-muted" th:text="|댓글 ${post.commentCount()}|">댓글 0</span>
+        <span class="note" th:if="${!loggedIn}">좋아요는 로그인 후 이용할 수 있습니다.</span>
+      </div>
+    </article>
+
+    <hr class="divider">
+
+    <section class="section">
+      <h2 class="section-title" th:text="|댓글 ${post.commentCount()}|">댓글</h2>
+      <div class="stack">
+        <article class="panel" th:each="comment : ${post.comments}"
+                 th:styleappend="${comment.reply} ? 'margin-left:2rem'">
+          <div class="cluster cluster--between">
+            <strong th:classappend="${comment.deleted} ? 'text-muted'"
+                    th:text="${comment.reply} ? |↳ ${comment.nickname}| : ${comment.nickname}">작성자</strong>
+            <span class="cluster">
+              <span class="text-muted" th:text="${comment.createdDate}">날짜</span>
+              <!-- 최상위 정상 댓글에만 답글 허용 (1단계 제한) -->
+              <button class="btn" type="button"
+                      th:if="${loggedIn and !comment.reply and !comment.deleted}"
+                      data-reply-button
+                      th:attr="data-comment-id=${comment.id}, data-nickname=${comment.nickname}">답글</button>
+              <form th:if="${comment.mine}"
+                    th:action="@{|/community/${post.id}/comments/${comment.id}/delete|}" method="post"
+                    data-confirm="댓글을 삭제하시겠습니까?" style="display:inline">
+                <button class="btn btn--danger" type="submit">삭제</button>
+              </form>
+            </span>
+          </div>
+          <p th:classappend="${comment.deleted} ? 'text-muted'"
+             style="white-space:pre-line" th:text="${comment.content}">내용</p>
+        </article>
+
+        <article class="panel" th:if="${#lists.isEmpty(post.comments)}">
+          <p class="text-muted">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</p>
+        </article>
+      </div>
+
+      <!-- 로그인 회원만 댓글을 등록할 수 있다. -->
+      <form class="section" th:if="${loggedIn}" id="comment-form"
+            th:action="@{|/community/${post.id}/comments|}" method="post" th:object="${commentForm}">
+        <input type="hidden" th:field="*{parentCommentId}">
+        <div class="form-group">
+          <label class="form-label" for="content">댓글 작성</label>
+          <!-- 답글 작성 중 표시 (답글 버튼으로 세팅) -->
+          <p class="note" id="reply-indicator" hidden>
+            <span id="reply-target"></span>님에게 답글 작성 중
+            <button class="btn" type="button" id="reply-cancel">취소</button>
+          </p>
+          <textarea class="form-control form-control--textarea" id="content"
+                    th:field="*{content}" placeholder="댓글을 입력하세요"></textarea>
+          <p class="field-error" th:errors="*{content}"></p>
+        </div>
+        <div class="cluster cluster--between">
+          <span class="note">바르고 고운 말로 작성해 주세요.</span>
+          <button class="btn btn--primary" type="submit">등록</button>
+        </div>
+      </form>
+
+      <form class="section" th:unless="${loggedIn}">
+        <div class="form-group">
+          <label class="form-label" for="content-disabled">댓글 작성</label>
+          <textarea class="form-control form-control--textarea" id="content-disabled"
+                    placeholder="로그인한 회원만 댓글을 작성할 수 있습니다" disabled></textarea>
+        </div>
+        <div class="cluster cluster--between">
+          <span class="note">로그인한 회원만 댓글을 작성할 수 있습니다.</span>
+          <a class="btn btn--primary" th:href="@{/login}">로그인</a>
+        </div>
+      </form>
+    </section>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

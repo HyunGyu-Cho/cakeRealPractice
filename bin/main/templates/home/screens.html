@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('화면 목록 | 케이크 쇼핑몰')}"></head>
+<body>
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container">
+    <div class="admin-content__header">
+      <div>
+        <p class="eyebrow">UI ROUTES</p>
+        <h1>전체 화면 목록</h1>
+        <p class="note">local 프로필에서는 고객 목업 화면을 로그인 없이 확인할 수 있습니다. 관리자 화면은 관리자 계정(admin@cakeshop.local) 로그인이 필요합니다. 실제 저장·승인·결제는 아직 동작하지 않습니다.</p>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2 class="section-title">고객 화면 21개</h2>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>번호</th><th>화면</th><th>경로</th><th>상태</th></tr></thead>
+          <tbody>
+            <tr><td>C1</td><td>메인</td><td><a href="/">/</a></td><td><span class="badge badge--success">매장 DB 연동</span></td></tr>
+            <tr><td>C2</td><td>로그인</td><td><a href="/login">/login</a></td><td><span class="badge badge--success">Security 연동</span></td></tr>
+            <tr><td>C3</td><td>회원가입</td><td><a href="/signup">/signup</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C4</td><td>상품 목록</td><td><a href="/products">/products</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C5</td><td>상품 상세</td><td><a href="/products/1">/products/1</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C6</td><td>장바구니</td><td><a href="/cart">/cart</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C7</td><td>픽업 일시 선택</td><td><a href="/orders/pickup">/orders/pickup</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C8</td><td>주문 제작 옵션</td><td><a href="/orders/custom/options">/orders/custom/options</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C9</td><td>제작 승인 대기</td><td><a href="/orders/custom/request">/orders/custom/request</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C10</td><td>주문서·쿠폰</td><td><a href="/orders/checkout">/orders/checkout</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C11</td><td>결제</td><td><a href="/orders/1/payment">/orders/1/payment</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C12</td><td>주문 완료</td><td><a href="/orders/complete">/orders/complete</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C13</td><td>마이페이지</td><td><a href="/mypage">/mypage</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C14</td><td>주문 상세</td><td><a href="/orders/1">/orders/1</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C15</td><td>알림</td><td><a href="/notifications">/notifications</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C16</td><td>후기 작성</td><td><a href="/reviews/new">/reviews/new</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C17</td><td>쿠폰함</td><td><a href="/mypage/coupons">/mypage/coupons</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C18</td><td>회원정보 수정</td><td><a href="/mypage/profile">/mypage/profile</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C19</td><td>커뮤니티 목록</td><td><a href="/community">/community</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C20</td><td>커뮤니티 상세</td><td><a href="/community/15">/community/15</a></td><td><span class="badge">목업</span></td></tr>
+            <tr><td>C21</td><td>커뮤니티 글쓰기</td><td><a href="/community/new">/community/new</a></td><td><span class="badge">목업</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">관리자 화면 14개</h2>
+      <p class="note">관리자 로그인 후 접근할 수 있습니다. 로그인하지 않으면 로그인 화면으로 이동합니다.</p>
+      <div class="grid grid--3">
+        <a class="panel" href="/admin">A1 대시보드</a>
+        <a class="panel" href="/admin/store">A2 매장 관리 <span class="badge badge--success">실제 연동·로그인 필요</span></a>
+        <a class="panel" href="/admin/products">A3 상품 관리</a>
+        <a class="panel" href="/admin/products/new">A4 상품 등록·수정</a>
+        <a class="panel" href="/admin/orders">A5 주문 관리</a>
+        <a class="panel" href="/admin/orders/1">A6 주문 상세</a>
+        <a class="panel" href="/admin/fulfillment">A7 제작·픽업</a>
+        <a class="panel" href="/admin/payments">A8 결제·환불</a>
+        <a class="panel" href="/admin/coupons">A9 쿠폰 관리</a>
+        <a class="panel" href="/admin/members">A10 회원 관리</a>
+        <a class="panel" href="/admin/reviews">A11 후기 관리</a>
+        <a class="panel" href="/admin/community">A12 커뮤니티 관리</a>
+        <a class="panel" href="/admin/notifications">A13 알림 관리</a>
+        <a class="panel" href="/admin/statistics">A14 통계</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

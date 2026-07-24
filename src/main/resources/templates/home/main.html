@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>메인 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+  <header th:replace="~{fragments/common/header :: header}"></header>
+
+  <main class="page-container">
+    <h1 class="visually-hidden">케이크 쇼핑몰 메인</h1>
+
+    <section class="section" aria-labelledby="service-title">
+      <h2 id="service-title" class="section-title">서비스 안내</h2>
+      <div class="hero-placeholder">
+        <strong>정성을 담은 케이크를 원하는 날짜에 만나보세요.</strong>
+        <span>서비스 소개 배너 영역</span>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="category-title">
+      <h2 id="category-title" class="section-title">카테고리</h2>
+      <div class="grid grid--4">
+        <a class="category-card" th:href="@{/products(type='normal')}">
+          <div class="category-card__name">일반 케이크</div>
+          <div class="category-card__desc">당일~7일 이내 픽업</div>
+          <span class="note">상품 목록 →</span>
+        </a>
+        <a class="category-card" th:href="@{/products(type='custom')}">
+          <div class="category-card__name">주문 제작</div>
+          <div class="category-card__desc">원하는 디자인으로 맞춤 제작</div>
+          <span class="note">상품 목록 →</span>
+        </a>
+        <a class="category-card" th:href="@{/products(type='sameday')}">
+          <div class="category-card__name">당일 픽업</div>
+          <div class="category-card__desc">오늘 바로 픽업 가능</div>
+          <span class="note">상품 목록 →</span>
+        </a>
+        <a class="category-card" th:href="@{/products(type='season')}">
+          <div class="category-card__name">시즌 상품</div>
+          <div class="category-card__desc">기간 한정 케이크</div>
+          <span class="note">상품 목록 →</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="recommended-products" class="section" aria-labelledby="recommended-title">
+      <h2 id="recommended-title" class="section-title">추천 · 인기 상품</h2>
+      <!-- ProductService 구현 전까지 화면 확인을 위한 목업 데이터를 사용한다. -->
+      <div class="grid grid--4 product-grid">
+        <a class="product-card" th:href="@{/products/1}">
+          <div class="placeholder-image">상품 이미지</div>
+          <div class="product-card__body">
+            <h3 class="product-card__name">딸기 생크림 케이크</h3>
+            <p class="product-card__price">35,000원</p>
+            <div class="cluster"><span class="badge">일반</span><span class="badge badge--success">재고 있음</span></div>
+          </div>
+        </a>
+        <a class="product-card" th:href="@{/products/2}">
+          <div class="placeholder-image">상품 이미지</div>
+          <div class="product-card__body">
+            <h3 class="product-card__name">초코 가나슈 케이크</h3>
+            <p class="product-card__price">40,000원</p>
+            <div class="cluster"><span class="badge">일반</span><span class="badge badge--success">재고 있음</span></div>
+          </div>
+        </a>
+        <a class="product-card" th:href="@{/products/3}">
+          <div class="placeholder-image">상품 이미지</div>
+          <div class="product-card__body">
+            <h3 class="product-card__name">레터링 주문 케이크</h3>
+            <p class="product-card__price">55,000원</p>
+            <div class="cluster"><span class="badge">주문 제작</span><span class="badge badge--success">주문 가능</span></div>
+          </div>
+        </a>
+        <a class="product-card" th:href="@{/products/4}">
+          <div class="placeholder-image">상품 이미지</div>
+          <div class="product-card__body">
+            <h3 class="product-card__name">당일 픽업 세트</h3>
+            <p class="product-card__price">28,000원</p>
+            <div class="cluster"><span class="badge">당일 픽업</span><span class="badge badge--danger">품절</span></div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="store-title">
+      <h2 id="store-title" class="section-title">매장 정보</h2>
+      <div class="panel grid grid--2 store-panel">
+        <div>
+          <!-- 관리자 저장값 → StorePublicView → 고객 화면으로 이어지는 공개 조회 예시 -->
+          <div class="data-row"><span class="data-row__label">매장명</span><span th:text="${store.name}">OO케이크</span></div>
+          <div class="data-row"><span class="data-row__label">주소</span><span th:text="${store.address}">서울시 OO구 OO로</span></div>
+          <div class="data-row"><span class="data-row__label">연락처</span><span th:text="${store.phone}">02-0000-0000</span></div>
+          <div class="data-row"><span class="data-row__label">영업시간</span><span th:text="${store.businessHours}">10:00 ~ 20:00</span></div>
+          <div class="data-row"><span class="data-row__label">정기 휴무</span><span th:text="${store.closedDays}">정기 휴무 없음</span></div>
+          <div class="data-row"><span class="data-row__label">픽업 장소</span><span th:text="${store.pickupPlace}">1층 카운터</span></div>
+          <div class="data-row"><span class="data-row__label">픽업 시간</span><span th:text="${store.pickupHours}">10:00 ~ 19:00</span></div>
+        </div>
+        <img th:if="${store.imageUrl}" th:src="${store.imageUrl}" alt="매장 사진" class="store-photo">
+        <div th:unless="${store.imageUrl}" class="placeholder-image store-map">매장 사진 준비 중</div>
+      </div>
+    </section>
+  </main>
+
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

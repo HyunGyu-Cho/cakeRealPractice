@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cakeshop.domain.member.mapper.MemberMapper">
+    <resultMap id="memberResultMap" type="com.cakeshop.domain.member.entity.Member">
+        <id property="id" column="id"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="nickname" column="nickname"/>
+        <result property="role" column="role"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 인증 입력도 문자열 치환 없이 #{}로 바인딩한다. -->
+    <select id="findByEmail" resultMap="memberResultMap">
+        SELECT id, email, password, nickname, role, created_at
+          FROM members
+         WHERE email = #{email}
+    </select>
+</mapper>

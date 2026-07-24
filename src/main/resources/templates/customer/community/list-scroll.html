@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>커뮤니티 (무한스크롤) | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/community-scroll.js}"></script>
+</head>
+<body data-page-title="커뮤니티">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container">
+
+    <div class="cluster cluster--between">
+      <h1>커뮤니티</h1>
+      <div class="cluster">
+        <a class="btn" th:href="${currentCategory != null} ? @{/community(category=${currentCategory})} : @{/community}">페이지 번호로 보기</a>
+        <a class="btn btn--primary" th:href="@{/community/new}">글쓰기</a>
+      </div>
+    </div>
+
+    <div class="cluster section">
+      <a class="btn" th:classappend="${currentCategory == null} ? 'is-active'" th:href="@{/community/scroll}">전체</a>
+      <a class="btn" th:each="category : ${categories}"
+         th:classappend="${currentCategory == category.code} ? 'is-active'"
+         th:href="@{/community/scroll(category=${category.code})}"
+         th:text="${category.name}">후기</a>
+    </div>
+
+    <!-- 목록은 /community/api/posts 커서 응답으로 채운다. -->
+    <div class="stack" id="post-list"
+         th:attr="data-category=${currentCategory != null ? currentCategory : ''}"></div>
+    <p class="text-muted section" id="scroll-status" style="text-align:center"></p>
+    <div id="scroll-sentinel" aria-hidden="true"></div>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

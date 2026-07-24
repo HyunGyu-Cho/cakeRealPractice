@@ -1,0 +1,21 @@
+﻿<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주문 완료 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+  <script defer th:src="@{/js/customer-mockup.js}"></script>
+</head>
+<body data-page-title="주문 완료">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--form">
+    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
+    <h1 class="visually-hidden">주문 완료</h1><section class="panel" style="padding:32px;text-align:center"><h2 style="font-size:20px">주문이 완료되었습니다.</h2><p class="text-muted section">주문번호: ORD-20250115-0042</p><div style="text-align:left"><h3 class="section-title">주문 정보</h3><div class="data-row"><span class="data-row__label">상품</span><span>딸기 생크림 케이크 × 1</span></div><div class="data-row"><span class="data-row__label">결제 금액</span><span>30,000원</span></div><div class="data-row"><span class="data-row__label">결제 수단</span><span>카카오페이</span></div><div class="data-row"><span class="data-row__label">픽업 일시</span><span>2025.01.17 (금) 14:00</span></div><div class="data-row"><span class="data-row__label">픽업 장소</span><span>OO케이크 1층 카운터</span></div></div><div class="cluster" style="justify-content:center;margin-top:16px"><a class="btn" href="/orders/1">주문 상세 보기</a><a class="btn btn--primary" href="/">메인으로</a></div></section>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>
+
