@@ -1,6 +1,19 @@
 package com.cakeshop.domain.product.entity;
 
-// DB 조회 결과·도메인 상태
+import java.time.LocalDateTime;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class Category {
-    // TODO: 필드 정의 (ERD 확정 후)
+
+    private Long id;
+    private String code;
+    private String name;
+    private Integer sortOrder;
+    private Boolean isActive;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

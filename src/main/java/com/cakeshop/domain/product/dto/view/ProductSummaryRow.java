@@ -1,4 +1,4 @@
-package com.cakeshop.domain.product.entity;
+package com.cakeshop.domain.product.dto.view;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -6,23 +6,19 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
+/** 목록 쿼리(products + 대표 이미지 LEFT JOIN)의 평면 결과. service가 ProductSummaryView로 완성한다. */
 @Getter
 @Setter
-public class Product {
+public class ProductSummaryRow {
 
     private Long id;
-    private Long categoryId;
     private String name;
-    private String description;
     private Long basePrice;
     private String productType;
-    private Integer preparationDays;
-    private Integer cancellationLimitDays;
-    // NULL = 재고 관리 안 함(주문제작). 품절·재고부족은 이 값에서 파생한다.
     private Integer stockQuantity;
     private String status;
+    private String imageUrl;
     private BigDecimal averageRating;
     private Integer reviewCount;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

@@ -51,7 +51,7 @@ com.cakeshop
 
 규격 정본은 `docs/frontend-template-format.md`. 고객 화면은 `fragments/common/head·header·footer`, 관리자 화면은 `fragments/admin/sidebar·header` 프래그먼트를 재사용하고 화면 고유 마크업만 작성한다. 공통 스타일·스크립트는 `static/css/app.css`·`static/js/app.js`에만 둔다. `successMessage`/`errorMessage`는 `fragments/common/alert.html`이 출력한다.
 
-목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. 프론트 원본 기반 고객 목업 13개는 `scripts\import-customer-mockups.ps1`이 덮어쓰므로 직접 수정하지 않는다(커뮤니티 3개·회원 3개 화면은 실구현 전환으로 예외 — 덮어쓰지 않음). 목업을 실구현으로 전환할 때는 이 스크립트의 `$screenMap`에서 해당 화면을 제외한다.
+목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. 프론트 원본 기반 고객 목업 11개는 `scripts\import-customer-mockups.ps1`이 덮어쓰므로 직접 수정하지 않는다(커뮤니티 3개·회원 3개·상품 2개 화면은 실구현 전환으로 예외 — 덮어쓰지 않음). 목업을 실구현으로 전환할 때는 이 스크립트의 `$screenMap`에서 해당 화면을 제외한다.
 
 ## 3. 빌드/테스트
 
@@ -106,7 +106,7 @@ com.cakeshop
 
 ### 현재 구현 상태
 
-개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store(매장 관리)·community(고객+관리자) 는 실제 구현, 나머지 관리자·고객 화면은 대부분 목업이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
+개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store·community·member·product는 실제 구현(각 스펙은 `docs/specs/`), 나머지 관리자·고객 화면은 목업이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
 
 ## 5. 코딩 컨벤션
 

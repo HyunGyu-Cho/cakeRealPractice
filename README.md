@@ -121,7 +121,7 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 |---|---|---|
 | 대시보드 | `/admin` | 목업 |
 | 매장 | `/admin/store` | 실제 조회·수정·휴무일 관리 |
-| 상품 | `/admin/products`, `/admin/products/new` | 목업 |
+| 상품 | `/admin/products`, `/admin/products/new`, `/admin/products/{id}/edit` | 실제 CRUD·검색·페이징·대표 이미지·판매 중지/재개 |
 | 주문 | `/admin/orders`, `/admin/orders/{id}` | 목업 |
 | 제작·픽업 | `/admin/fulfillment` | 목업 |
 | 결제·환불 | `/admin/payments` | 목업 |
@@ -142,7 +142,7 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 |---|---|---|
 | 전체 화면 목록 | `/screens` | 고객·관리자 35개 경로 안내 |
 | 회원가입 | `/signup` | 실제 가입 (검증·중복 확인) |
-| 상품 목록·상세 | `/products`, `/products/{id}` | 목업 |
+| 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 구매 버튼은 cart/order 전까지 목업 동작) |
 | 장바구니 | `/cart` | 목업 (브라우저 `localStorage`) |
 | 픽업 설정 | `/orders/pickup` | 목업 |
 | 주문 제작 | `/orders/custom/options`, `/orders/custom/request` | 목업 |
@@ -153,7 +153,7 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 | 알림·후기 | `/notifications`, `/reviews/new` | 목업 |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 13개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티 화면, 실구현으로 전환된 회원 3개 화면(가입·마이페이지·프로필)은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 11개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티 화면, 실구현으로 전환된 회원 3개(가입·마이페이지·프로필)·상품 2개(목록·상세) 화면은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1
