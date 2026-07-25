@@ -45,3 +45,11 @@ entity(순수 POJO+Lombok) → Mapper 인터페이스+XML(`#{}`만, 컬럼 명�
 - `.\gradlew.bat test` 전체 통과 확인.
 - 로컬 실행 후 해당 화면 동작 확인(`--spring.profiles.active=local`).
 - 스펙의 "완료 기준" 체크리스트를 점검하고, 스펙 문서를 실제 구현과 일치하도록 최종 갱신한다.
+- TodoList.md 해당 항목을 `[x]`로, README 화면 현황표를 갱신한다.
+
+## 6단계. 브랜치·PR (기능 하나 = 브랜치 하나 = PR 하나)
+
+- 작업 시작 시 `feature/<도메인명>` 브랜치를 만들지 않았다면 이 시점에 만들어 변경을 옮긴다.
+- 커밋 메시지는 한글로, 성격이 다른 변경은 커밋을 나눈다.
+- push 후 `gh pr create --base dev`로 **dev 대상** PR을 만든다(main 직접 push 금지).
+- PR 본문에 SQL 적용 순서와 검증 결과(테스트·E2E)를 적고, `global/*` 변경이 있으면 "합의 필요" 절로 명시한다.
