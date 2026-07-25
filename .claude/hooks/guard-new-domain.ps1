@@ -5,6 +5,10 @@
 
 $ErrorActionPreference = "Stop"
 
+# PowerShell 5.1은 stdout을 콘솔 기본 인코딩(CP949)으로 쓴다. Claude Code는 UTF-8로 읽으므로
+# 이 줄이 없으면 아래 한글 사유가 깨져서 전달된다. (스크립트 파일 자체는 UTF-8 BOM으로 저장해야 한다)
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+
 try {
     $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
     $filePath = $payload.tool_input.file_path

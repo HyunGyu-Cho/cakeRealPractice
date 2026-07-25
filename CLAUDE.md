@@ -21,6 +21,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 - `created_at`/`updated_at`을 자바 코드나 UPDATE 문에서 직접 세팅하지 않는다. DDL의 `DEFAULT`/`ON UPDATE CURRENT_TIMESTAMP(6)`에 위임한다.
 - `global/*`·`store`·`home` 공통 코드는 팀 합의(PR) 없이 변경하지 않는다.
 - 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). 스펙 없는 도메인의 새 클래스 생성은 훅이 차단한다.
+- 기능 작업은 **PR 생성까지만** 한다. 머지는 사람이 PR을 검토하고 지시했을 때만 하며, 머지했으면 **머지된 dev에서 검증까지 한 세트로** 끝낸다(`/merge-feature` 절차). 머지를 감지하면 검증 게이트가 무장되어 `scripts\verify-merge.ps1`이 통과할 때까지 턴이 끝나지 않는다.
 
 ## 2. 아키텍처
 
