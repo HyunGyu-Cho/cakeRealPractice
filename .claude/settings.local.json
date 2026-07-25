@@ -29,7 +29,23 @@
       "Bash(sed -i 's|sed '\"'\"'s/.*value=\"//;s/\"//'\"'\"'; }|sed '\"'\"'s/.*value=\"//;s/\"//'\"'\"' | head -1; }|' verify.sh)",
       "Bash(bash verify.sh)",
       "Bash(python -c ' *)",
-      "Bash(bash verify2.sh)"
+      "Bash(bash verify2.sh)",
+      "PowerShell($paths = @\\(\"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Git\\\\cmd\\\\git.exe\",\"$env:LOCALAPPDATA\\\\Programs\\\\Git\\\\cmd\\\\git.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Output \"FOUND: $p\" } })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://github.com\" -Method Head -TimeoutSec 10 -UseBasicParsing; Write-Output \"GitHub reachable: HTTP $\\($r.StatusCode\\)\" } catch { Write-Output \"GitHub NOT reachable: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Get-Command *)",
+      "PowerShell($found = @\\(\\); foreach \\($root in @\\(\"C:\\\\Program Files\",\"C:\\\\Program Files \\(x86\\)\",\"$env:LOCALAPPDATA\\\\Programs\",\"$env:USERPROFILE\\\\scoop\\\\apps\",\"C:\\\\\"\\)\\) { if \\(Test-Path $root\\) { try { Get-ChildItem -Path $root -Filter git.exe -Recurse -ErrorAction SilentlyContinue -Depth 4 | ForEach-Object { $found += $_.FullName } } catch {} } }; $found | Sort-Object -Unique)",
+      "PowerShell(winget install *)",
+      "PowerShell(winget search *)",
+      "PowerShell($p = @\\(\"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Git\\\\cmd\\\\git.exe\",\"$env:LOCALAPPDATA\\\\Programs\\\\Git\\\\cmd\\\\git.exe\"\\); foreach\\($x in $p\\){ if\\(Test-Path $x\\){ & $x --version } })",
+      "PowerShell(git status; [Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\) -split ';' | Select-String -Pattern 'Git'; [Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) -split ';' | Select-String -Pattern 'Git')",
+      "PowerShell(Set-Content *)",
+      "PowerShell($env:Path = [Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); git --version; git status --short --branch)",
+      "PowerShell(Test-Path *)",
+      "PowerShell($bak = Get-Content \"$env:TEMP\\\\claude\\\\C--Cho-project-cakeRealPractice\\\\08e167f9-1c1a-491b-8868-ed4a2379c8dd\\\\scratchpad\\\\user-path-backup.txt\" -Raw; [Environment]::SetEnvironmentVariable\\(\"Path\", $bak.TrimEnd\\(\"`r\",\"`n\"\\), \"User\"\\); [Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\) -split ';' | Select-String 'Git'; \"---\"; $env:Path -split ';' | Select-String 'Git')",
+      "PowerShell($env:PATH = \"$env:LOCALAPPDATA\\\\Programs\\\\Git\\\\cmd;$env:PATH\"; git --version; git status --short --branch)",
+      "PowerShell($fresh = [Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); $env:Path = $fresh; cmd /c \"git --version & where git\")",
+      "PowerShell($m = [Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\); $u = [Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); \"MACHINE len=$\\($m.Length\\) count=$\\(\\($m -split ';' | ? {$_}\\).Count\\)\"; \"USER    len=$\\($u.Length\\) count=$\\(\\($u -split ';' | ? {$_}\\).Count\\)\"; \"\"; \"--- USER entries also present in MACHINE ---\"; $ms = \\($m -split ';' | ? {$_}\\); \\($u -split ';' | ? {$_}\\) | ? { $ms -contains $_ }; \"\"; \"--- USER duplicates within itself ---\"; \\($u -split ';' | ? {$_}\\) | Group-Object | ? Count -gt 1 | % { \"$\\($_.Count\\)x $\\($_.Name\\)\" })",
+      "PowerShell($p = @\\(\"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Git\\\\cmd\\\\git.exe\",\"$env:LOCALAPPDATA\\\\Programs\\\\Git\\\\cmd\\\\git.exe\"\\); foreach\\($i in $p\\){ if\\(Test-Path $i\\){ \"FOUND: $i\" } }; \"---\"; $env:PATH)"
     ]
   }
 }
