@@ -6,16 +6,64 @@
         <result property="email" column="email"/>
         <result property="password" column="password"/>
         <result property="nickname" column="nickname"/>
+        <result property="phone" column="phone"/>
         <result property="role" column="role"/>
+        <result property="status" column="status"/>
+        <result property="suspendedAt" column="suspended_at"/>
+        <result property="suspendedReason" column="suspended_reason"/>
         <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="withdrawnAt" column="withdrawn_at"/>
     </resultMap>
 
-    <!-- 인증 입력도 문자열 치환 없이 #{}로 바인딩한다. -->
+    <!-- 인증 입력도 문자열 치환 없이 #{}로 바인딩한다.
+         status를 함께 내려 MemberDetailsService가 정지·탈퇴 계정을 판정한다(스펙 docs/specs/member.md). -->
     <select id="findByEmail" resultMap="memberResultMap">
-        SELECT id, email, password, nickname, role, created_at
+        SELECT id, email, password, nickname, role, status, created_at
           FROM members
          WHERE email = #{email}
     </select>
+
+    <select id="findById" resultMap="memberResultMap">
+        SELECT id, email, password, nickname, phone, role, status, created_at, updated_at
+          FROM members
+         WHERE id = #{id}
+    </select>
+
+    <select id="countByEmail" resultType="int">
+        SELECT COUNT(*)
+          FROM members
+         WHERE email = #{email}
+    </select>
+
+    <!-- role·status·created_at은 DDL DEFAULT(USER/ACTIVE/CURRENT_TIMESTAMP)에 위임한다. -->
+    <insert id="insertMember" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO members (email, password, nickname, phone)
+        VALUES (#{email}, #{password}, #{nickname}, #{phone})
+    </insert>
+
+    <!-- updated_at은 DDL의 ON UPDATE CURRENT_TIMESTAMP(6)에 위임한다. -->
+    <update id="updateProfile">
+        UPDATE members
+           SET nickname = #{nickname},
+               phone = #{phone}
+         WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE members
+           SET password = #{password}
+         WHERE id = #{id}
+    </update>
+
+    <!-- withdrawn_at은 업무 시각이라 SQL에서 세팅한다(created/updated_at 위임 규칙과 별개). -->
+    <update id="withdraw">
+        UPDATE members
+           SET status = 'WITHDRAWN',
+               withdrawn_at = CURRENT_TIMESTAMP(6)
+         WHERE id = #{id}
+           AND status = 'ACTIVE'
+    </update>
 
     <!-- 타 도메인 표시용 배치 조회. 필요한 컬럼(id·nickname)만 내려 회원 정보 노출을 최소화한다. -->
     <select id="findNicknamesByIds" resultMap="memberResultMap">

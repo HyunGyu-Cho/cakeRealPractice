@@ -12,6 +12,19 @@ public interface MemberMapper {
 
     Optional<Member> findByEmail(@Param("email") String email);
 
+    Optional<Member> findById(@Param("id") Long id);
+
+    int countByEmail(@Param("email") String email);
+
+    int insertMember(Member member);
+
+    int updateProfile(Member member);
+
+    int updatePassword(@Param("id") Long id, @Param("password") String password);
+
+    // 탈퇴는 soft delete — 타 도메인 FK(orders·posts 등)의 이력을 보존한다.
+    int withdraw(@Param("id") Long id);
+
     // 공개 계약(getNicknameMap)용 배치 조회 — id·nickname만 채워진다.
     List<Member> findNicknamesByIds(@Param("ids") Collection<Long> ids);
 

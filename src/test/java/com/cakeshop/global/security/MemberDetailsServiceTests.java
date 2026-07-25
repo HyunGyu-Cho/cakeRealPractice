@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -57,5 +58,34 @@ class MemberDetailsServiceTests {
 
         assertThatThrownBy(() -> memberDetailsService.loadUserByUsername("missing@cakeshop.local"))
             .isInstanceOf(UsernameNotFoundException.class);
+    }
+
+    @Test
+    void suspendedMemberCannotLogin() {
+        Member suspended = memberWithStatus("SUSPENDED");
+        when(memberMapper.findByEmail(suspended.getEmail())).thenReturn(Optional.of(suspended));
+
+        assertThatThrownBy(() -> memberDetailsService.loadUserByUsername(suspended.getEmail()))
+            .isInstanceOf(LockedException.class);
+    }
+
+    @Test
+    void withdrawnMemberFailsLikeUnknownEmail() {
+        Member withdrawn = memberWithStatus("WITHDRAWN");
+        when(memberMapper.findByEmail(withdrawn.getEmail())).thenReturn(Optional.of(withdrawn));
+
+        // 탈퇴 여부가 로그인 화면에 노출되지 않도록 미존재 계정과 같은 예외로 처리한다.
+        assertThatThrownBy(() -> memberDetailsService.loadUserByUsername(withdrawn.getEmail()))
+            .isInstanceOf(UsernameNotFoundException.class);
+    }
+
+    private Member memberWithStatus(String status) {
+        Member member = new Member();
+        member.setId(2L);
+        member.setEmail("user@cakeshop.local");
+        member.setPassword(LOCAL_ADMIN_HASH);
+        member.setRole("USER");
+        member.setStatus(status);
+        return member;
     }
 }

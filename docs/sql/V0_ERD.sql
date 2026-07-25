@@ -5,7 +5,7 @@
 -- 컬럼명과 용도에 맞춰 타입, NULL 허용 여부, 기본값을 합리적으로 지정했다.
 -- 애플리케이션의 Java enum이 확정되면 각 status 컬럼에 CHECK 제약을 추가한다.
 --
--- payments.active_paid_order_id는 결제 상태가 PAID인 동안에만 order_id를 갖는
+-- payments.active_paid_order_id는 결제 상태가 DONE인 동안에만 order_id를 갖는
 -- 생성 열이다. UNIQUE 제약과 결합하여 주문 하나에 활성 결제가 1건만 존재하게 한다.
 
 SET NAMES utf8mb4;
@@ -71,7 +71,7 @@ CREATE TABLE `members` (
     `nickname`         VARCHAR(50) NOT NULL,
     `phone`            VARCHAR(30) NULL,
     `role`             VARCHAR(30) NOT NULL DEFAULT 'USER',
-    `status`           VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+    `status`           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `suspended_at`     DATETIME(6) NULL,
     `suspended_reason` VARCHAR(500) NULL,
     `created_at`       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -79,7 +79,9 @@ CREATE TABLE `members` (
                                       ON UPDATE CURRENT_TIMESTAMP(6),
     `withdrawn_at`     DATETIME(6) NULL,
     PRIMARY KEY (`id`),
-    CONSTRAINT `uk_members_email` UNIQUE (`email`)
+    CONSTRAINT `uk_members_email` UNIQUE (`email`),
+    CONSTRAINT `chk_members_status`
+        CHECK (`status` IN ('ACTIVE', 'SUSPENDED', 'WITHDRAWN'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `social_accounts` (
@@ -241,15 +243,11 @@ CREATE TABLE `orders` (
     `original_amount`         DECIMAL(12, 0) NOT NULL,
     `discount_amount`         DECIMAL(12, 0) NOT NULL DEFAULT 0,
     `final_amount`            DECIMAL(12, 0) NOT NULL,
-    `status`                  VARCHAR(30) NOT NULL,
+    `status`                  VARCHAR(20) NOT NULL,
     `pickup_at`               DATETIME(6) NOT NULL,
-    `cancellation_blocked_at` DATETIME(6) NULL,
-    `payment_expires_at`      DATETIME(6) NULL,
     `request_message`         TEXT NULL,
     `reject_reason`           TEXT NULL,
-    `approved_at`             DATETIME(6) NULL,
     `rejected_at`             DATETIME(6) NULL,
-    `accepted_at`             DATETIME(6) NULL,
     `ready_at`                DATETIME(6) NULL,
     `picked_up_at`            DATETIME(6) NULL,
     `completed_at`            DATETIME(6) NULL,
@@ -262,6 +260,9 @@ CREATE TABLE `orders` (
                                              ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
     CONSTRAINT `uk_orders_order_number` UNIQUE (`order_number`),
+    CONSTRAINT `chk_orders_status`
+        CHECK (`status` IN ('UNDER_REVIEW', 'IN_PRODUCTION', 'REJECTED',
+                            'PAID', 'READY_FOR_PICKUP', 'PICKED_UP', 'CANCELED')),
     CONSTRAINT `fk_orders_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -326,7 +327,7 @@ CREATE TABLE `payments` (
     `provider_status`      VARCHAR(50) NULL,
     `active_paid_order_id` BIGINT
         GENERATED ALWAYS AS (
-            CASE WHEN `status` = 'PAID' THEN `order_id` ELSE NULL END
+            CASE WHEN `status` = 'DONE' THEN `order_id` ELSE NULL END
         ) STORED,
     `failure_code`         VARCHAR(100) NULL,
     `failure_message`      VARCHAR(500) NULL,
@@ -381,11 +382,13 @@ CREATE TABLE `reviews` (
     `design_rating`  TINYINT UNSIGNED NOT NULL,
     `service_rating` TINYINT UNSIGNED NOT NULL,
     `content`        TEXT NULL,
-    `status`         VARCHAR(30) NOT NULL DEFAULT 'VISIBLE',
+    `status`         VARCHAR(20) NOT NULL DEFAULT 'VISIBLE',
     `created_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `updated_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                     ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `chk_reviews_status`
+        CHECK (`status` IN ('VISIBLE', 'HIDDEN')),
     CONSTRAINT `uk_reviews_order_item` UNIQUE (`order_item_id`),
     CONSTRAINT `fk_reviews_order_item`
         FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`id`),
@@ -660,7 +663,7 @@ CREATE TABLE `posts` (
     `content`        TEXT NOT NULL,
     `view_count`     BIGINT NOT NULL DEFAULT 0,
     `like_count`     BIGINT NOT NULL DEFAULT 0,
-    `status`         VARCHAR(30) NOT NULL DEFAULT 'PUBLISHED',
+    `status`         VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `blocked_at`     DATETIME(6) NULL,
     `blocked_reason` VARCHAR(500) NULL,
     `blocked_by`     BIGINT NULL,
@@ -668,6 +671,8 @@ CREATE TABLE `posts` (
     `updated_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                     ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `chk_posts_status`
+        CHECK (`status` IN ('ACTIVE', 'DELETED', 'BLOCKED')),
     CONSTRAINT `fk_posts_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`id`),
     CONSTRAINT `fk_posts_category`
@@ -682,11 +687,13 @@ CREATE TABLE `comments` (
     `member_id`         BIGINT NOT NULL,
     `parent_comment_id` BIGINT NULL,
     `content`           TEXT NOT NULL,
-    `status`            VARCHAR(30) NOT NULL DEFAULT 'PUBLISHED',
+    `status`            VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `created_at`        DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `updated_at`        DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                        ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `chk_comments_status`
+        CHECK (`status` IN ('ACTIVE', 'DELETED')),
     CONSTRAINT `fk_comments_post`
         FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`),
     CONSTRAINT `fk_comments_member`
@@ -723,9 +730,11 @@ CREATE TABLE `post_reports` (
     `post_id`     BIGINT NOT NULL,
     `reporter_id` BIGINT NOT NULL,
     `reason`      VARCHAR(500) NOT NULL,
-    `status`      VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    `status`      VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     `created_at`  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `chk_post_reports_status`
+        CHECK (`status` IN ('PENDING', 'ACCEPTED', 'REJECTED')),
     CONSTRAINT `uk_post_reports_post_reporter`
         UNIQUE (`post_id`, `reporter_id`),
     CONSTRAINT `fk_post_reports_post`

@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-import com.cakeshop.domain.community.controller.CommunityAdminController;
 import com.cakeshop.domain.coupon.controller.CouponAdminController;
 import com.cakeshop.domain.member.controller.MemberAdminController;
 import com.cakeshop.domain.notification.controller.NotificationAdminController;
@@ -34,8 +33,7 @@ class AdminPageControllerTests {
         mockMvc = MockMvcBuilders.standaloneSetup(
             new StatisticsAdminController(), new ProductAdminController(), new OrderAdminController(),
             new FulfillmentAdminController(), new PaymentAdminController(), new CouponAdminController(),
-            new MemberAdminController(), new ReviewAdminController(), new NotificationAdminController(),
-            new CommunityAdminController()
+            new MemberAdminController(), new ReviewAdminController(), new NotificationAdminController()
         ).build();
 
         pages.put("/admin", "admin/dashboard");
@@ -51,8 +49,7 @@ class AdminPageControllerTests {
         pages.put("/admin/members", "admin/member/list");
         pages.put("/admin/reviews", "admin/review/list");
         pages.put("/admin/notifications", "admin/notification/list");
-        pages.put("/admin/community", "admin/community/list");
-        pages.put("/admin/community/15", "admin/community/detail");
+        // community 관리자 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
     }
 
     @Test

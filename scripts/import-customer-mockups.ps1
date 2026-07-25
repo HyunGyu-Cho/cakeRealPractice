@@ -10,8 +10,8 @@ $templateRoot = Join-Path $backendRoot "src\main\resources\templates"
 $staticRoot = Join-Path $backendRoot "src\main\resources\static"
 
 # Keep the DB-backed home page and Spring Security login page intact.
+# member 3개 화면(signup·mypage·profile-edit)은 실구현으로 전환되어 제외한다 — 덮어쓰면 백엔드 바인딩이 사라진다.
 $screenMap = [ordered]@{
-    "signup.html"        = "customer\member\signup.html"
     "product-list.html"  = "customer\product\list.html"
     "product-detail.html" = "customer\product\detail.html"
     "cart.html"          = "customer\cart\list.html"
@@ -21,12 +21,10 @@ $screenMap = [ordered]@{
     "order-form.html"    = "customer\order\form.html"
     "payment.html"       = "customer\payment\form.html"
     "order-complete.html" = "customer\order\complete.html"
-    "mypage.html"        = "customer\member\mypage.html"
     "order-detail.html"  = "customer\order\detail.html"
     "notification.html"  = "customer\notification\list.html"
     "review-form.html"   = "customer\review\form.html"
     "coupon-list.html"   = "customer\coupon\list.html"
-    "profile-edit.html"  = "customer\member\profile-edit.html"
 }
 
 # Replace longer URLs first so query strings are not consumed by shorter routes.

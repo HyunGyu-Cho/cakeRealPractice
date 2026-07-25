@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cakeshop.domain.store.dto.form.StoreUpdateForm;
 import com.cakeshop.domain.store.dto.view.StoreView;
 import com.cakeshop.domain.store.service.StoreService;
-import com.cakeshop.global.web.FlashMessage;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
@@ -80,7 +79,7 @@ class StoreAdminControllerTests {
                 .param("pickupIntervalMinutes", "60"))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/admin/store"))
-            .andExpect(flash().attribute(FlashMessage.SUCCESS, "매장 정보를 저장했습니다."));
+            .andExpect(flash().attribute("successMessage", "매장 정보를 저장했습니다."));
 
         verify(storeService).updateStore(any(StoreUpdateForm.class), any());
     }
