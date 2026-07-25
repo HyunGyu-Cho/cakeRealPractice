@@ -157,13 +157,17 @@
         `product_type`            VARCHAR(30) NOT NULL,
         `preparation_days`        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
         `cancellation_limit_days` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-        `status`                  VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+        -- NULL = 재고 관리 안 함(주문제작). 품절·재고부족은 이 값의 파생(별도 status 금지).
+        `stock_quantity`          INT UNSIGNED NULL,
+        `status`                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
         `average_rating`          DECIMAL(3, 2) NOT NULL DEFAULT 0.00,
         `review_count`            INT UNSIGNED NOT NULL DEFAULT 0,
         `created_at`              DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         `updated_at`              DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                                 ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
+        CONSTRAINT `chk_products_status`
+            CHECK (`status` IN ('ACTIVE', 'INACTIVE')),
         CONSTRAINT `fk_products_category`
             FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -190,6 +194,17 @@
         PRIMARY KEY (`id`),
         CONSTRAINT `fk_product_options_group`
             FOREIGN KEY (`option_group_id`) REFERENCES `product_option_groups` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    -- 1차는 상품당 대표 1행만 사용 (V6에서 추가)
+    CREATE TABLE `product_images` (
+        `id`         BIGINT NOT NULL AUTO_INCREMENT,
+        `product_id` BIGINT NOT NULL,
+        `image_url`  VARCHAR(500) NOT NULL,
+        `sort_order` INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        CONSTRAINT `fk_product_images_product`
+            FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     -- =========================================================
@@ -388,6 +403,13 @@
     -- =========================================================
     -- 필수 시드
     -- =========================================================
+
+    -- 기본 카테고리 4종 (1차: product_type과 코드 1:1)
+    INSERT INTO `categories` (`code`, `name`, `sort_order`) VALUES
+        ('NORMAL',   '일반 케이크', 1),
+        ('CUSTOM',   '주문 제작',   2),
+        ('SAME_DAY', '당일 픽업',   3),
+        ('SEASON',   '시즌 상품',   4);
 
     -- 공통 샘플 계정: 비밀번호는 둘 다 'Admin1234!' (BCrypt 해시 저장)
     -- role 은 접두어 없는 값(USER/ADMIN)으로 저장 (MemberDetailsService 가 'ROLE_' 부착)

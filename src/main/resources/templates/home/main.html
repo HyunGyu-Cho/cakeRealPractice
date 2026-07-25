@@ -50,41 +50,24 @@
 
     <section id="recommended-products" class="section" aria-labelledby="recommended-title">
       <h2 id="recommended-title" class="section-title">추천 · 인기 상품</h2>
-      <!-- ProductService 구현 전까지 화면 확인을 위한 목업 데이터를 사용한다. -->
-      <div class="grid grid--4 product-grid">
-        <a class="product-card" th:href="@{/products/1}">
-          <div class="placeholder-image">상품 이미지</div>
+      <!-- product 공개 조회(getLatestActiveProducts) — 판매 가능 상품 최신순 -->
+      <div class="grid grid--4 product-grid" th:if="${!latestProducts.isEmpty()}">
+        <a class="product-card" th:each="product : ${latestProducts}" th:href="@{|/products/${product.id}|}">
+          <img class="placeholder-image" th:if="${product.imageUrl != null}" th:src="${product.imageUrl}"
+               th:alt="${product.name}" style="object-fit:cover">
+          <div class="placeholder-image" th:if="${product.imageUrl == null}">상품 이미지</div>
           <div class="product-card__body">
-            <h3 class="product-card__name">딸기 생크림 케이크</h3>
-            <p class="product-card__price">35,000원</p>
-            <div class="cluster"><span class="badge">일반</span><span class="badge badge--success">재고 있음</span></div>
-          </div>
-        </a>
-        <a class="product-card" th:href="@{/products/2}">
-          <div class="placeholder-image">상품 이미지</div>
-          <div class="product-card__body">
-            <h3 class="product-card__name">초코 가나슈 케이크</h3>
-            <p class="product-card__price">40,000원</p>
-            <div class="cluster"><span class="badge">일반</span><span class="badge badge--success">재고 있음</span></div>
-          </div>
-        </a>
-        <a class="product-card" th:href="@{/products/3}">
-          <div class="placeholder-image">상품 이미지</div>
-          <div class="product-card__body">
-            <h3 class="product-card__name">레터링 주문 케이크</h3>
-            <p class="product-card__price">55,000원</p>
-            <div class="cluster"><span class="badge">주문 제작</span><span class="badge badge--success">주문 가능</span></div>
-          </div>
-        </a>
-        <a class="product-card" th:href="@{/products/4}">
-          <div class="placeholder-image">상품 이미지</div>
-          <div class="product-card__body">
-            <h3 class="product-card__name">당일 픽업 세트</h3>
-            <p class="product-card__price">28,000원</p>
-            <div class="cluster"><span class="badge">당일 픽업</span><span class="badge badge--danger">품절</span></div>
+            <h3 class="product-card__name" th:text="${product.name}">상품명</h3>
+            <p class="product-card__price" th:text="|${#numbers.formatInteger(product.basePrice, 3, 'COMMA')}원|">0원</p>
+            <div class="cluster">
+              <span class="badge" th:text="${product.productTypeLabel}">유형</span>
+              <span class="badge badge--success" th:text="${product.stockLabel}">재고 있음</span>
+            </div>
           </div>
         </a>
       </div>
+      <div class="panel panel--dashed text-muted" th:if="${latestProducts.isEmpty()}"
+           style="text-align:center">아직 등록된 상품이 없습니다.</div>
     </section>
 
     <section class="section" aria-labelledby="store-title">

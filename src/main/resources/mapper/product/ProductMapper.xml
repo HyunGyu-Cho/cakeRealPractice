@@ -2,4 +2,190 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.product.mapper.ProductMapper">
     <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <resultMap id="productResultMap" type="com.cakeshop.domain.product.entity.Product">
+        <id property="id" column="id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="basePrice" column="base_price"/>
+        <result property="productType" column="product_type"/>
+        <result property="preparationDays" column="preparation_days"/>
+        <result property="cancellationLimitDays" column="cancellation_limit_days"/>
+        <result property="stockQuantity" column="stock_quantity"/>
+        <result property="status" column="status"/>
+        <result property="averageRating" column="average_rating"/>
+        <result property="reviewCount" column="review_count"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 목록 카드에 필요한 컬럼 + 대표 이미지(sort_order=0) LEFT JOIN. 카운트와 목록이 같은 WHERE를 공유한다. -->
+    <sql id="summaryColumns">
+        SELECT p.id,
+               p.name,
+               p.base_price,
+               p.product_type,
+               p.stock_quantity,
+               p.status,
+               p.average_rating,
+               p.review_count,
+               p.created_at,
+               pi.image_url
+          FROM products p
+          LEFT JOIN product_images pi
+            ON pi.product_id = p.id AND pi.sort_order = 0
+    </sql>
+
+    <sql id="customerWhere">
+        <where>
+            <if test="cond.normalizedType != null">
+                AND p.product_type = #{cond.normalizedType}
+            </if>
+            <if test="cond.minPrice != null">
+                AND p.base_price &gt;= #{cond.minPrice}
+            </if>
+            <if test="cond.maxPrice != null">
+                AND p.base_price &lt;= #{cond.maxPrice}
+            </if>
+            <if test="cond.normalizedKeyword != null">
+                AND p.name LIKE CONCAT('%', #{cond.normalizedKeyword}, '%')
+            </if>
+            <if test="cond.normalizedSale == 'ON_SALE'">
+                AND p.status = 'ACTIVE'
+                AND (p.stock_quantity IS NULL OR p.stock_quantity &gt; 0)
+            </if>
+            <if test="cond.normalizedSale == 'SOLD_OUT'">
+                AND p.stock_quantity = 0
+            </if>
+            <if test="cond.normalizedSale == 'INACTIVE'">
+                AND p.status = 'INACTIVE'
+            </if>
+            <if test="cond.pickupTodayOnly">
+                AND p.preparation_days = 0
+            </if>
+        </where>
+    </sql>
+
+    <select id="countProducts" resultType="long">
+        SELECT COUNT(*)
+          FROM products p
+        <include refid="customerWhere"/>
+    </select>
+
+    <select id="findProductPage" resultType="com.cakeshop.domain.product.dto.view.ProductSummaryRow">
+        <include refid="summaryColumns"/>
+        <include refid="customerWhere"/>
+        <choose>
+            <when test="cond.normalizedSort == 'priceAsc'">ORDER BY p.base_price ASC, p.id DESC</when>
+            <when test="cond.normalizedSort == 'priceDesc'">ORDER BY p.base_price DESC, p.id DESC</when>
+            <when test="cond.normalizedSort == 'popular'">ORDER BY p.review_count DESC, p.id DESC</when>
+            <otherwise>ORDER BY p.id DESC</otherwise>
+        </choose>
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <sql id="adminWhere">
+        <where>
+            <if test="cond.normalizedKeyword != null">
+                AND p.name LIKE CONCAT('%', #{cond.normalizedKeyword}, '%')
+            </if>
+            <if test="cond.normalizedType != null">
+                AND p.product_type = #{cond.normalizedType}
+            </if>
+            <if test="cond.normalizedStatus != null">
+                AND p.status = #{cond.normalizedStatus}
+            </if>
+            <if test="cond.normalizedStock == 'IN_STOCK'">
+                AND (p.stock_quantity IS NULL OR p.stock_quantity &gt; 0)
+            </if>
+            <if test="cond.normalizedStock == 'SOLD_OUT'">
+                AND p.stock_quantity = 0
+            </if>
+        </where>
+    </sql>
+
+    <select id="countAdminProducts" resultType="long">
+        SELECT COUNT(*)
+          FROM products p
+        <include refid="adminWhere"/>
+    </select>
+
+    <select id="findAdminProductPage" resultType="com.cakeshop.domain.product.dto.view.ProductSummaryRow">
+        <include refid="summaryColumns"/>
+        <include refid="adminWhere"/>
+        ORDER BY p.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findProductById" resultMap="productResultMap">
+        SELECT id, category_id, name, description, base_price, product_type,
+               preparation_days, cancellation_limit_days, stock_quantity, status,
+               average_rating, review_count, created_at, updated_at
+          FROM products
+         WHERE id = #{id}
+    </select>
+
+    <!-- 홈 메인 노출: 판매 가능(ACTIVE + 품절 아님) 최신순 -->
+    <select id="findLatestActiveProducts" resultType="com.cakeshop.domain.product.dto.view.ProductSummaryRow">
+        <include refid="summaryColumns"/>
+         WHERE p.status = 'ACTIVE'
+           AND (p.stock_quantity IS NULL OR p.stock_quantity &gt; 0)
+         ORDER BY p.id DESC
+         LIMIT #{limit}
+    </select>
+
+    <!-- status·average_rating·review_count·시간 컬럼은 DDL DEFAULT에 위임한다(status는 폼 값으로 명시 세팅). -->
+    <insert id="insertProduct" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO products
+            (category_id, name, description, base_price, product_type,
+             preparation_days, stock_quantity, status)
+        VALUES
+            (#{categoryId}, #{name}, #{description}, #{basePrice}, #{productType},
+             #{preparationDays}, #{stockQuantity}, #{status})
+    </insert>
+
+    <!-- updated_at은 DDL의 ON UPDATE CURRENT_TIMESTAMP(6)에 위임한다. -->
+    <update id="updateProduct">
+        UPDATE products
+           SET category_id = #{categoryId},
+               name = #{name},
+               description = #{description},
+               base_price = #{basePrice},
+               product_type = #{productType},
+               preparation_days = #{preparationDays},
+               stock_quantity = #{stockQuantity},
+               status = #{status}
+         WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE products
+           SET status = #{status}
+         WHERE id = #{id}
+    </update>
+
+    <select id="findCategoryByCode" resultType="com.cakeshop.domain.product.entity.Category">
+        SELECT id, code, name, sort_order, is_active, created_at, updated_at
+          FROM categories
+         WHERE code = #{code}
+    </select>
+
+    <select id="findMainImage" resultType="com.cakeshop.domain.product.entity.ProductImage">
+        SELECT id, product_id, image_url, sort_order
+          FROM product_images
+         WHERE product_id = #{productId}
+           AND sort_order = 0
+    </select>
+
+    <insert id="insertProductImage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product_images (product_id, image_url, sort_order)
+        VALUES (#{productId}, #{imageUrl}, #{sortOrder})
+    </insert>
+
+    <update id="updateProductImageUrl">
+        UPDATE product_images
+           SET image_url = #{imageUrl}
+         WHERE id = #{id}
+    </update>
 </mapper>

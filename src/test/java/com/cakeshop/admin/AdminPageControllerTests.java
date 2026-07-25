@@ -11,7 +11,6 @@ import com.cakeshop.domain.notification.controller.NotificationAdminController;
 import com.cakeshop.domain.order.controller.FulfillmentAdminController;
 import com.cakeshop.domain.order.controller.OrderAdminController;
 import com.cakeshop.domain.payment.controller.PaymentAdminController;
-import com.cakeshop.domain.product.controller.ProductAdminController;
 import com.cakeshop.domain.review.controller.ReviewAdminController;
 import com.cakeshop.domain.statistics.controller.StatisticsAdminController;
 import java.util.LinkedHashMap;
@@ -30,17 +29,15 @@ class AdminPageControllerTests {
 
     @BeforeEach
     void setUp() {
+        // product 관리자 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
-            new StatisticsAdminController(), new ProductAdminController(), new OrderAdminController(),
+            new StatisticsAdminController(), new OrderAdminController(),
             new FulfillmentAdminController(), new PaymentAdminController(), new CouponAdminController(),
             new MemberAdminController(), new ReviewAdminController(), new NotificationAdminController()
         ).build();
 
         pages.put("/admin", "admin/dashboard");
         pages.put("/admin/statistics", "admin/statistics");
-        pages.put("/admin/products", "admin/product/list");
-        pages.put("/admin/products/new", "admin/product/form");
-        pages.put("/admin/products/1/edit", "admin/product/form");
         pages.put("/admin/orders", "admin/order/list");
         pages.put("/admin/orders/1", "admin/order/detail");
         pages.put("/admin/fulfillment", "admin/fulfillment/list");

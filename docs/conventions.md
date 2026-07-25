@@ -158,7 +158,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | 도메인.컬럼 | 담당 | 목업 표기 | 저장값(enum) | 상태 |
 |---|---|---|---|---|
 | `members.status` | 수민 | 정상 / 이용 제한 | **`ACTIVE / SUSPENDED / WITHDRAWN` (확정)** | ✅ 확정 (V5, 스펙 docs/specs/member.md) |
-| `products.status` | 시은 | 판매 중 / 판매 중지 | `ACTIVE / INACTIVE` | 거의 확정 |
+| `products.status` | 시은 | 판매 중 / 판매 중지 | **`ACTIVE / INACTIVE` (확정)** | ✅ 확정 (V6, 스펙 docs/specs/product.md) |
 | `product_options.status` | 시은 | (표기 없음) | `ACTIVE / INACTIVE` ? | ☐ 열림 |
 | `orders.status` | 주환 | 결제완료/확인중/제작중/픽업대기/픽업완료/취소/반려 | **`OrderStatus` 7개 (확정)** | ✅ 코드 확정 |
 | `payments.status` | 주환 | 결제 완료 / 결제 대기 | **`PaymentStatus` 6개 (확정)** | ✅ 코드 확정 |

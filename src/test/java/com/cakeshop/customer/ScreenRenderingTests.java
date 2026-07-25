@@ -35,8 +35,9 @@ class ScreenRenderingTests {
         // 관리자 화면은 public-preview 에서도 열리지 않는다(SecurityConfig: /admin/** = ROLE_ADMIN).
         // 따라서 로그인 없이 렌더되는 고객 프리뷰 화면만 검증한다.
         // /mypage·/mypage/profile 은 실구현 전환으로 로그인이 필요해져 프리뷰 대상에서 제외했다.
+        // /products/1 은 실구현 전환으로 DB에 해당 상품이 있어야 열려 목록만 남긴다(빈 목록도 200).
         String[] paths = {
-            "/screens", "/login", "/signup", "/products", "/products/1", "/cart",
+            "/screens", "/login", "/signup", "/products", "/cart",
             "/orders/pickup", "/orders/custom/options", "/orders/custom/request",
             "/orders/checkout", "/orders/1/payment", "/orders/complete",
             "/orders/1", "/notifications", "/reviews/new", "/mypage/coupons"

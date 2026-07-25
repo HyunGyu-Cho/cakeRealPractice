@@ -77,11 +77,22 @@ Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
 
 Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 로컬 DB에 수동으로 동일하게 적용한다.
 
-- `V0_ERD.sql`: 전체 ERD 참조 스키마(정본 설계). 실제 적용은 아래 `V1_first_MVC_table.sql`로 올린다.
-- `V1_first_MVC_table.sql`: 도메인별 1차 기능 병렬 착수용 테이블 15개. 로그인 가능한 공통 샘플 계정과 매장 필수 시드를 포함한다.
-- `V2_...sql` 이후: 이미 생성된 DB에 순서대로 적용하는 증분 마이그레이션. 파일 번호를 건너뛰지 않고 모두 적용한다.
+- `V0_ERD.sql`: 전체 스키마 정본(37개 테이블). **보관용 정본이라 확정 변경을 소급 반영한다.**
+- `V1_first_MVC_table.sql`: 1차 병렬 착수용 테이블 15개. 마찬가지로 보관용 정본이며, 로그인 가능한 공통 샘플 계정과 매장 필수 시드(대표 매장 1행 + 7개 요일 요일 영업시간)를 포함한다.
+- `V2` 이후: 이미 만들어진 DB에 적용하는 **증분 마이그레이션**. 적용된 파일은 수정하지 않고 새 번호를 추가한다.
 
-새 로컬 DB는 `V1`을 적용한 뒤 `V2`부터 최신 파일까지 차례대로 적용한다. 증분 파일은 다음 도우미로 안전하게 적용할 수 있다.
+### 적용 방법
+
+| 상황 | 적용 순서 |
+|---|---|
+| **신규 DB 구축**(새 팀원, RDS 재구축) | `V0_ERD.sql` 하나면 스키마가 완성된다(소급 반영되어 있음). 커뮤니티 개발용 시드가 필요하면 `V2`도 적용한다. |
+| **기존 DB 갱신** | 아직 적용하지 않은 V2 이후 파일만 번호 순서대로 적용한다. |
+
+증분 파일은 재적용해도 안전하도록 `IF EXISTS` / `IF NOT EXISTS` 가드를 둔다. V0가 소급 반영되어 있어 가드가 없으면 신규 DB에서 증분을 재적용할 때 `Duplicate column` / `Can't DROP COLUMN`으로 실패한다.
+
+> 검증됨: 빈 DB에 `V0 → V2 → V3 → V4 → V5 → V6`를 순서대로 적용한 결과가 실사용 DB와 동일하다(37테이블, CHECK 제약 11개). 재실행해도 오류가 없다.
+
+기존 DB에 증분 파일을 적용할 때는 다음 도우미를 사용할 수 있다.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V2_community_status_and_seed.sql
@@ -130,7 +141,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 |---|---|---|
 | 대시보드 | `/admin` | 목업 |
 | 매장 | `/admin/store` | 실제 조회·수정·휴무일 관리 |
-| 상품 | `/admin/products`, `/admin/products/new` | 목업 |
+| 상품 | `/admin/products`, `/admin/products/new`, `/admin/products/{id}/edit` | 실제 CRUD·검색·페이징·대표 이미지·판매 중지/재개 |
 | 주문 | `/admin/orders`, `/admin/orders/{id}` | 목업 |
 | 제작·픽업 | `/admin/fulfillment` | 목업 |
 | 결제·환불 | `/admin/payments` | 목업 |
@@ -151,7 +162,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 |---|---|---|
 | 전체 화면 목록 | `/screens` | 고객·관리자 35개 경로 안내 |
 | 회원가입 | `/signup` | 실제 가입 (검증·중복 확인) |
-| 상품 목록·상세 | `/products`, `/products/{id}` | 목업 |
+| 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 구매 버튼은 cart/order 전까지 목업 동작) |
 | 장바구니 | `/cart` | 목업 (브라우저 `localStorage`) |
 | 픽업 설정 | `/orders/pickup` | 목업 |
 | 주문 제작 | `/orders/custom/options`, `/orders/custom/request` | 목업 |
@@ -162,7 +173,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 알림·후기 | `/notifications`, `/reviews/new` | 목업 |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 13개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티 화면, 실구현으로 전환된 회원 3개 화면(가입·마이페이지·프로필)은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 11개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티 화면, 실구현으로 전환된 회원 3개(가입·마이페이지·프로필)·상품 2개(목록·상세) 화면은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1
