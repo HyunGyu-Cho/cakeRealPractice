@@ -1,0 +1,6 @@
+﻿[2026-07-25T19:24:29] SKIPPED head=6f4bbad 사유: syntax check only
+[2026-07-25T19:29:53] VERIFIED head=6f4bbad 테스트·부팅·스모크 통과
+[2026-07-25T19:31:55] FAILED head=6f4bbad 실패항목: boot timeout
+[2026-07-25T19:36:41] FAILED head=6f4bbad 실패항목: boot timeout
+[2026-07-25T19:41:19] VERIFIED head=6f4bbad 잔재·마이그레이션·테스트·스모크 통과
+[2026-07-25T19:46:48] VERIFIED head=6f4bbad 잔재·마이그레이션·테스트·스모크 통과

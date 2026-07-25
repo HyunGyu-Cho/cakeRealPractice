@@ -6,6 +6,10 @@
 -- 시작 상태가 주문 유형별로 다르므로(일반 PAID / 수제 UNDER_REVIEW) DEFAULT는 두지 않고
 -- 주문 생성 시 서비스가 명시적으로 세팅한다.
 -- 전이 규칙은 OrderStatus.canTransitionTo()가 소유하며, CHECK는 허용 값 집합만 지킨다.
+--
+-- IF EXISTS 를 붙인 이유: V0/V1은 확정 변경을 소급 반영하는 보관용 정본이라 이 컬럼들이 이미 빠져 있다.
+-- 신규 DB를 V0로 만든 뒤 증분 파일을 순서대로 재적용하면 "Can't DROP COLUMN"으로 실패한다(실측 확인).
+-- 이미 적용된 DB에서의 결과는 달라지지 않는다 — 재적용만 안전해진다.
 
 ALTER TABLE `orders`
     DROP CONSTRAINT IF EXISTS `chk_orders_status`,
@@ -17,7 +21,7 @@ ALTER TABLE `orders`
 -- 삭제된 옛 상태(APPROVED / PENDING_PAYMENT / ACCEPTED)에 묶인 컬럼 정리.
 -- rejected_at·ready_at·picked_up_at·canceled_* 는 새 모델에도 대응 상태가 있어 유지한다.
 ALTER TABLE `orders`
-    DROP COLUMN `cancellation_blocked_at`,
-    DROP COLUMN `payment_expires_at`,
-    DROP COLUMN `approved_at`,
-    DROP COLUMN `accepted_at`;
+    DROP COLUMN IF EXISTS `cancellation_blocked_at`,
+    DROP COLUMN IF EXISTS `payment_expires_at`,
+    DROP COLUMN IF EXISTS `approved_at`,
+    DROP COLUMN IF EXISTS `accepted_at`;

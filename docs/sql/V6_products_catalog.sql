@@ -4,13 +4,17 @@
 --      품절(0)·재고부족(1~4)은 이 값의 파생이며 별도 status로 저장하지 않는다.
 --   3) product_images 테이블 추가(V0 정의 그대로) — 1차는 상품당 대표 1행만 사용
 --   4) categories 기본 4행 시드 — 1차에서는 product_type과 코드 1:1
+--
+-- IF NOT EXISTS 를 붙인 이유: V0/V1은 확정 변경을 소급 반영하는 보관용 정본이라 stock_quantity가 이미 있다.
+-- 신규 DB를 V0로 만든 뒤 증분 파일을 재적용하면 "Duplicate column name"으로 실패하고,
+-- MariaDB의 단일 ALTER는 원자적이라 CHECK 재부착까지 통째로 롤백된다(실측 확인).
 
 ALTER TABLE `products`
     DROP CONSTRAINT IF EXISTS `chk_products_status`,
     MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     ADD CONSTRAINT `chk_products_status`
         CHECK (`status` IN ('ACTIVE', 'INACTIVE')),
-    ADD COLUMN `stock_quantity` INT UNSIGNED NULL AFTER `cancellation_limit_days`;
+    ADD COLUMN IF NOT EXISTS `stock_quantity` INT UNSIGNED NULL AFTER `cancellation_limit_days`;
 
 CREATE TABLE IF NOT EXISTS `product_images` (
     `id`         BIGINT NOT NULL AUTO_INCREMENT,
