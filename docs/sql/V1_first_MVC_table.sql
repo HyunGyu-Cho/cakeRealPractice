@@ -27,6 +27,7 @@
     DROP TABLE IF EXISTS `posts`;
     DROP TABLE IF EXISTS `post_categories`;
     DROP TABLE IF EXISTS `coupons`;
+    DROP TABLE IF EXISTS `payment_cancellations`;
     DROP TABLE IF EXISTS `payments`;
     DROP TABLE IF EXISTS `order_items`;
     DROP TABLE IF EXISTS `orders`;
@@ -272,6 +273,9 @@
                                                 ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
         CONSTRAINT `uk_orders_order_number` UNIQUE (`order_number`),
+        INDEX `idx_orders_member_created` (`member_id`, `created_at`),
+        INDEX `idx_orders_status_pickup` (`status`, `pickup_at`),
+        INDEX `idx_orders_pickup` (`pickup_at`),
         CONSTRAINT `chk_orders_status`
             CHECK (`status` IN ('UNDER_REVIEW', 'IN_PRODUCTION', 'REJECTED',
                                 'PAID', 'READY_FOR_PICKUP', 'PICKED_UP', 'CANCELED')),
@@ -293,6 +297,7 @@
         `preparation_days`        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
         `cancellation_limit_days` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (`id`),
+        INDEX `idx_order_items_order` (`order_id`),
         CONSTRAINT `fk_order_items_order`
             FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
         CONSTRAINT `fk_order_items_product`
@@ -332,8 +337,36 @@
         CONSTRAINT `uk_payments_payment_key` UNIQUE (`payment_key`),
         CONSTRAINT `uk_payments_idempotency` UNIQUE (`idempotency_key`),
         CONSTRAINT `uk_payments_active_paid_order` UNIQUE (`active_paid_order_id`),
+        CONSTRAINT `chk_payments_status`
+            CHECK (`status` IN ('READY', 'DONE', 'CANCELED',
+                                'PARTIAL_CANCELED', 'ABORTED', 'EXPIRED')),
+        INDEX `idx_payments_status_approved` (`status`, `approved_at`),
+        INDEX `idx_payments_order` (`order_id`),
         CONSTRAINT `fk_payments_order`
             FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE `payment_cancellations` (
+        `id`               BIGINT NOT NULL AUTO_INCREMENT,
+        `payment_id`       BIGINT NOT NULL,
+        `idempotency_key`  VARCHAR(100) NOT NULL,
+        `cancel_amount`    DECIMAL(12, 0) NOT NULL,
+        `cancel_reason`    VARCHAR(500) NOT NULL,
+        `status`           VARCHAR(30) NOT NULL DEFAULT 'REQUESTED',
+        `transaction_key`  VARCHAR(200) NULL,
+        `failure_code`     VARCHAR(100) NULL,
+        `failure_message`  VARCHAR(500) NULL,
+        `requested_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        `canceled_at`      DATETIME(6) NULL,
+        `created_at`       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        PRIMARY KEY (`id`),
+        CONSTRAINT `uk_payment_cancellations_idempotency` UNIQUE (`idempotency_key`),
+        CONSTRAINT `uk_payment_cancellations_transaction` UNIQUE (`transaction_key`),
+        CONSTRAINT `chk_payment_cancellations_status`
+            CHECK (`status` IN ('REQUESTED', 'DONE', 'REJECTED')),
+        INDEX `idx_payment_cancellations_payment_created` (`payment_id`, `created_at`),
+        CONSTRAINT `fk_payment_cancellations_payment`
+            FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     -- =========================================================

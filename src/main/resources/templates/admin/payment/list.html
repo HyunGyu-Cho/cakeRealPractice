@@ -1,8 +1,45 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>결제·환불 관리 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('payments')}"></aside><div class="admin-main"><header th:replace="~{fragments/admin/header :: header('결제·환불 관리')}"></header><main class="admin-content">
-<div th:replace="~{fragments/admin/mock-notice :: notice}"></div><h1 class="admin-page-title">결제·환불 관리</h1><div class="cluster section" data-select-group><button class="btn is-active" data-select type="button">전체</button><button class="btn" data-select type="button">결제 완료</button><button class="btn" data-select type="button">취소 요청</button><button class="btn" data-select type="button">환불 처리 중</button><button class="btn" data-select type="button">환불 완료</button></div>
-<div class="table-wrap section"><table class="data-table"><thead><tr><th>결제번호</th><th>주문번호</th><th>회원</th><th>결제 수단</th><th>금액</th><th>상태</th><th>결제 일시</th><th>관리</th></tr></thead><tbody>
-<tr><td>PAY-001</td><td>ORD-002</td><td>이영희</td><td>카카오페이</td><td>35,000원</td><td><span class="badge badge--success">결제 완료</span></td><td>01.10 14:30</td><td><button class="btn" type="button">상세</button></td></tr>
-<tr><td>PAY-002</td><td>ORD-003</td><td>박민수</td><td>신용카드</td><td>40,000원</td><td><span class="badge badge--warning">취소 요청</span></td><td>01.05 11:00</td><td><button class="btn" type="button">상세</button></td></tr>
-<tr><td>PAY-003</td><td>ORD-001</td><td>홍길동</td><td>네이버페이</td><td>64,000원</td><td><span class="badge badge--warning">결제 대기</span></td><td>01.15 14:30</td><td><button class="btn" type="button">상세</button></td></tr>
-</tbody></table></div><section><h2 class="section-title">취소·환불 요청 처리</h2><div class="panel"><div class="grid grid--2"><div><div class="data-row"><span class="data-row__label">결제번호</span><span>PAY-002</span></div><div class="data-row"><span class="data-row__label">주문번호</span><span>ORD-003</span></div><div class="data-row"><span class="data-row__label">회원</span><span>박민수 (park@example.com)</span></div><div class="data-row"><span class="data-row__label">결제 금액</span><span>40,000원</span></div><div class="data-row"><span class="data-row__label">취소 사유</span><span>개인 사정으로 픽업 불가</span></div></div><div><div class="data-row"><span class="data-row__label">취소 요청일</span><span>2025.01.08 10:00</span></div><div class="data-row"><span class="data-row__label">픽업일</span><span>2025.01.10 15:00</span></div><div class="data-row"><span class="data-row__label">환불 정책</span><span>픽업 2일 전: 50% 환불</span></div><div class="data-row"><span class="data-row__label">환불 예상액</span><strong>20,000원</strong></div></div></div><div class="cluster" style="margin-top:12px"><button class="btn btn--primary" type="button" data-confirm="20,000원을 환불 처리하시겠습니까?">환불 처리</button><button class="btn btn--danger" type="button" data-confirm="취소 요청을 거절하시겠습니까?">취소 거절</button></div></div></section></main></div></div></body></html>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('결제·환불 관리')}"></head>
+<body><div class="admin-layout">
+<aside th:replace="~{fragments/admin/sidebar :: sidebar('payments')}"></aside>
+<div class="admin-main"><header th:replace="~{fragments/admin/header :: header('결제·환불 관리')}"></header>
+<main class="admin-content"><div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1 class="admin-page-title">결제·환불 내역</h1>
+  <form class="admin-toolbar" method="get" th:action="@{/admin/payments}" th:object="${cond}">
+    <select class="form-control" th:field="*{status}"><option value="">상태 전체</option>
+      <option value="DONE">결제 완료</option><option value="CANCELED">취소 완료</option></select>
+    <select class="form-control" th:field="*{method}"><option value="">수단 전체</option>
+      <option value="CARD">카드</option><option value="KAKAO">카카오페이</option>
+      <option value="NAVER">네이버페이</option><option value="TOSS">토스페이</option>
+      <option value="BANK">무통장</option></select>
+    <input class="form-control" th:field="*{paidFrom}" type="date">
+    <input class="form-control" th:field="*{paidTo}" type="date">
+    <button class="btn" type="submit">조회</button>
+  </form>
+  <div class="table-wrap"><table class="data-table"><thead><tr>
+    <th>결제 키</th><th>주문번호</th><th>회원</th><th>수단</th><th>금액</th><th>상태</th><th>취소 내역</th><th>처리</th>
+  </tr></thead><tbody th:if="${payments != null}">
+    <tr th:each="payment : ${payments.content}">
+      <td th:text="${payment.paymentKey}">MOCK-</td><td th:text="${payment.orderNumber}">ORD-</td>
+      <td th:text="${payment.memberName}">회원</td><td th:text="${payment.method}">CARD</td>
+      <td th:text="${#numbers.formatInteger(payment.amount, 0, 'COMMA') + '원'}">0원</td>
+      <td th:text="${payment.status}">DONE</td>
+      <td><span th:if="${payment.cancellationStatus != null}"
+                th:text="${payment.cancellationStatus + ' · ' + payment.cancellationReason}">DONE</span></td>
+      <td><form method="post" th:if="${payment.status == 'DONE'}"
+                th:action="@{/admin/payments/orders/{id}/cancel(id=${payment.orderId})}">
+        <input class="form-control" name="reason" required placeholder="관리자 취소 사유">
+        <button class="btn btn--danger" type="submit">전액 취소</button>
+      </form></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(payments.content)}"><td colspan="8">결제 내역이 없습니다.</td></tr>
+  </tbody></table></div>
+  <nav class="cluster" th:if="${payments != null and payments.totalPages > 1}" aria-label="결제 페이지">
+    <a class="btn" th:if="${payments.page > 1}"
+       th:href="@{/admin/payments(page=${payments.page - 1},size=${payments.size},status=${cond.status},method=${cond.method},paidFrom=${cond.paidFrom},paidTo=${cond.paidTo})}">이전</a>
+    <span th:text="${payments.page + ' / ' + payments.totalPages}">1 / 1</span>
+    <a class="btn" th:if="${payments.page < payments.totalPages}"
+       th:href="@{/admin/payments(page=${payments.page + 1},size=${payments.size},status=${cond.status},method=${cond.method},paidFrom=${cond.paidFrom},paidTo=${cond.paidTo})}">다음</a>
+  </nav>
+</main></div></div></body></html>

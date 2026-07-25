@@ -165,6 +165,22 @@
          WHERE id = #{id}
     </update>
 
+    <update id="decreaseStockIfAvailable">
+        UPDATE products
+           SET stock_quantity = stock_quantity - #{quantity}
+         WHERE id = #{id}
+           AND status = 'ACTIVE'
+           AND stock_quantity IS NOT NULL
+           AND stock_quantity &gt;= #{quantity}
+    </update>
+
+    <update id="increaseStock">
+        UPDATE products
+           SET stock_quantity = stock_quantity + #{quantity}
+         WHERE id = #{id}
+           AND stock_quantity IS NOT NULL
+    </update>
+
     <select id="findCategoryByCode" resultType="com.cakeshop.domain.product.entity.Category">
         SELECT id, code, name, sort_order, is_active, created_at, updated_at
           FROM categories

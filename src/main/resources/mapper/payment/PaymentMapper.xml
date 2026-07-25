@@ -1,5 +1,143 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.payment.mapper.PaymentMapper">
-    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+    <resultMap id="paymentResultMap" type="com.cakeshop.domain.payment.entity.Payment">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="tossOrderId" column="toss_order_id"/>
+        <result property="paymentKey" column="payment_key"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="method" column="method"/>
+        <result property="amount" column="amount"/>
+        <result property="status" column="status"/>
+        <result property="providerStatus" column="provider_status"/>
+        <result property="failureCode" column="failure_code"/>
+        <result property="failureMessage" column="failure_message"/>
+        <result property="requestedAt" column="requested_at"/>
+        <result property="approvedAt" column="approved_at"/>
+        <result property="canceledAt" column="canceled_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="cancellationResultMap" type="com.cakeshop.domain.payment.entity.PaymentCancellation">
+        <id property="id" column="id"/>
+        <result property="paymentId" column="payment_id"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="cancelAmount" column="cancel_amount"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="status" column="status"/>
+        <result property="transactionKey" column="transaction_key"/>
+        <result property="failureCode" column="failure_code"/>
+        <result property="failureMessage" column="failure_message"/>
+        <result property="requestedAt" column="requested_at"/>
+        <result property="canceledAt" column="canceled_at"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="paymentColumns">
+        id, order_id, toss_order_id, payment_key, idempotency_key, method, amount, status,
+        provider_status, failure_code, failure_message, requested_at, approved_at, canceled_at,
+        created_at, updated_at
+    </sql>
+
+    <insert id="insertPayment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payments
+            (order_id, toss_order_id, payment_key, idempotency_key, method, amount,
+             status, provider_status, approved_at)
+        VALUES
+            (#{orderId}, #{tossOrderId}, #{paymentKey}, #{idempotencyKey}, #{method}, #{amount},
+             #{status}, #{providerStatus}, #{approvedAt})
+    </insert>
+
+    <select id="findByIdempotencyKey" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE idempotency_key = #{idempotencyKey}
+    </select>
+
+    <select id="findByOrderId" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE order_id = #{orderId}
+         ORDER BY id DESC
+         LIMIT 1
+    </select>
+
+    <select id="findByOrderIdForUpdate" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE order_id = #{orderId}
+         ORDER BY id DESC
+         LIMIT 1
+         FOR UPDATE
+    </select>
+
+    <update id="cancelPayment">
+        UPDATE payments
+           SET status = 'CANCELED',
+               provider_status = 'MOCK_CANCELED',
+               canceled_at = CURRENT_TIMESTAMP(6)
+         WHERE id = #{paymentId}
+           AND status = #{currentStatus}
+    </update>
+
+    <insert id="insertCancellation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payment_cancellations
+            (payment_id, idempotency_key, cancel_amount, cancel_reason,
+             status, transaction_key, canceled_at)
+        VALUES
+            (#{paymentId}, #{idempotencyKey}, #{cancelAmount}, #{cancelReason},
+             #{status}, #{transactionKey}, #{canceledAt})
+    </insert>
+
+    <select id="findCancellationsByPaymentId" resultMap="cancellationResultMap">
+        SELECT id, payment_id, idempotency_key, cancel_amount, cancel_reason, status,
+               transaction_key, failure_code, failure_message, requested_at, canceled_at, created_at
+          FROM payment_cancellations
+         WHERE payment_id = #{paymentId}
+         ORDER BY id DESC
+    </select>
+
+    <select id="findCancellationsByPaymentIds" resultMap="cancellationResultMap">
+        SELECT id, payment_id, idempotency_key, cancel_amount, cancel_reason, status,
+               transaction_key, failure_code, failure_message, requested_at, canceled_at, created_at
+          FROM payment_cancellations
+         WHERE payment_id IN
+        <foreach collection="paymentIds" item="paymentId" open="(" separator="," close=")">
+            #{paymentId}
+        </foreach>
+         ORDER BY id DESC
+    </select>
+
+    <sql id="paymentSearchWhere">
+        <where>
+            <if test="cond.normalizedStatus() != null">
+                AND status = #{cond.normalizedStatus}
+            </if>
+            <if test="cond.normalizedMethod() != null">
+                AND method = #{cond.normalizedMethod}
+            </if>
+            <if test="cond.paidFrom != null">
+                AND approved_at &gt;= #{cond.paidFrom}
+            </if>
+            <if test="cond.paidTo != null">
+                AND approved_at &lt; DATE_ADD(#{cond.paidTo}, INTERVAL 1 DAY)
+            </if>
+        </where>
+    </sql>
+
+    <select id="countPayments" resultType="long">
+        SELECT COUNT(*)
+          FROM payments
+        <include refid="paymentSearchWhere"/>
+    </select>
+
+    <select id="findPaymentPage" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+        <include refid="paymentSearchWhere"/>
+         ORDER BY id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
 </mapper>

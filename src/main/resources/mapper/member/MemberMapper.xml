@@ -81,4 +81,11 @@
           FROM members
          WHERE nickname LIKE CONCAT('%', #{keyword}, '%')
     </select>
+
+    <select id="findIdsByKeyword" resultType="long">
+        SELECT id
+          FROM members
+         WHERE nickname LIKE CONCAT('%', #{keyword}, '%')
+            OR email LIKE CONCAT('%', #{keyword}, '%')
+    </select>
 </mapper>

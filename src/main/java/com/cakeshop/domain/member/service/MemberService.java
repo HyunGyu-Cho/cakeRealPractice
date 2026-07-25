@@ -101,4 +101,13 @@ public class MemberService {
     public List<Long> searchMemberIdsByNickname(String keyword) {
         return memberMapper.findIdsByNicknameLike(keyword);
     }
+
+    /** 관리자 타 도메인 목록의 회원 닉네임·이메일 검색 공개 계약. */
+    @Transactional(readOnly = true)
+    public List<Long> searchMemberIds(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+        return memberMapper.findIdsByKeyword(keyword.trim());
+    }
 }

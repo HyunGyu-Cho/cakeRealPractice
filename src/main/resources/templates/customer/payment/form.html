@@ -1,23 +1,46 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>결제 | 케이크 쇼핑몰</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
-  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
-  <script defer th:src="@{/js/app.js}"></script>
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
-</head>
-<body data-page-title="결제">
-  <header th:replace="~{fragments/common/header :: header}"></header>
-  <main class="page-container page-container--narrow">
-    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
-    <h1>결제</h1><form data-mock-form data-success-url="/orders/complete"><section class="section"><h2 class="section-title">주문 요약</h2><div class="panel"><div class="data-row"><span class="data-row__label">상품</span><span>딸기 생크림 케이크 × 1</span></div><div class="data-row"><span class="data-row__label">픽업 일시</span><span>2025.01.17 (금) 14:00</span></div><div class="data-row"><span class="data-row__label">쿠폰 할인</span><span>-5,000원</span></div><div class="data-row"><span class="data-row__label">최종 결제 금액</span><strong>30,000원</strong></div></div></section>
-      <section class="section"><h2 class="section-title">결제 수단</h2><div class="panel stack"><label class="choice"><input type="radio" name="payment" value="card" required> 신용카드 / 체크카드</label><label class="choice"><input type="radio" name="payment" value="kakao"> 카카오페이</label><label class="choice"><input type="radio" name="payment" value="naver"> 네이버페이</label><label class="choice"><input type="radio" name="payment" value="toss"> 토스페이</label><label class="choice"><input type="radio" name="payment" value="bank"> 무통장 입금</label></div></section>
-      <section class="section"><h2 class="section-title">취소·환불 규정 동의</h2><div class="panel panel--soft"><p>· 픽업일 3일 전까지: 100% 환불</p><p>· 픽업일 1~2일 전: 50% 환불</p><p>· 픽업일 당일: 환불 불가</p><label class="choice" style="margin-top:8px"><input type="checkbox" required> 취소·환불 규정에 동의합니다. (필수)</label></div></section><div class="panel panel--dashed section"><p>처리 중: <span class="badge badge--warning">결제 처리 중...</span></p><p>실패: <span class="badge badge--danger">결제 실패</span> <button class="btn" type="button">다시 시도</button></p></div><button class="btn btn--primary btn--block" type="submit">30,000원 결제하기</button></form>
-  </main>
-  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+<head th:replace="~{fragments/common/head :: head('모의 결제')}"></head>
+<body>
+<header th:replace="~{fragments/common/header :: header}"></header>
+<main class="page-container page-container--narrow">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1>모의 결제</h1>
+  <form method="post" th:if="${checkout != null}" th:action="@{/orders/payment}" th:object="${paymentForm}">
+    <input type="hidden" name="checkoutId" th:value="${checkout.checkoutId}">
+    <section class="panel section"><h2 class="section-title">주문 요약</h2>
+      <p th:each="item : ${checkout.items}">
+        <span th:text="${item.productName}">상품</span> × <span th:text="${item.quantity}">1</span>
+      </p>
+      <div class="data-row"><span class="data-row__label">픽업 일시</span>
+        <span th:text="${#temporals.format(checkout.pickupAt, 'yyyy.MM.dd HH:mm')}">-</span></div>
+      <div class="data-row"><span class="data-row__label">최종 결제 금액</span>
+        <strong><span th:text="${#numbers.formatInteger(checkout.totalAmount, 0, 'COMMA')}">0</span>원</strong></div>
+    </section>
+    <section class="panel section"><h2 class="section-title">결제 수단</h2>
+      <div class="stack">
+        <label class="choice"><input type="radio" th:field="*{method}" value="CARD"> 신용·체크카드</label>
+        <label class="choice"><input type="radio" th:field="*{method}" value="KAKAO"> 카카오페이</label>
+        <label class="choice"><input type="radio" th:field="*{method}" value="NAVER"> 네이버페이</label>
+        <label class="choice"><input type="radio" th:field="*{method}" value="TOSS"> 토스페이</label>
+        <label class="choice"><input type="radio" th:field="*{method}" value="BANK"> 무통장 입금</label>
+      </div>
+      <p class="form-error" th:errors="*{method}"></p>
+    </section>
+    <section class="panel panel--soft section"><h2 class="section-title">취소·환불 규정</h2>
+      <p>각 상품의 취소 가능 기한 중 가장 이른 시각 전까지 전액 취소할 수 있습니다.</p>
+      <label class="choice"><input type="checkbox" th:field="*{refundPolicyAgreed}">
+        취소·환불 규정에 동의합니다. (필수)</label>
+      <p class="form-error" th:errors="*{refundPolicyAgreed}"></p>
+    </section>
+    <button class="btn btn--primary btn--block" type="submit">
+      <span th:text="${#numbers.formatInteger(checkout.totalAmount, 0, 'COMMA')}">0</span>원 결제하기
+    </button>
+  </form>
+  <div class="panel" th:unless="${checkout != null}">
+    <p>주문서 작성을 마치면 이 화면에서 모의 결제를 진행할 수 있습니다.</p>
+  </div>
+</main>
+<footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
 </html>
-

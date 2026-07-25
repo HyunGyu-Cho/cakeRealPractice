@@ -142,9 +142,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 대시보드 | `/admin` | 목업 |
 | 매장 | `/admin/store` | 실제 조회·수정·휴무일 관리 |
 | 상품 | `/admin/products`, `/admin/products/new`, `/admin/products/{id}/edit` | 실제 CRUD·검색·페이징·대표 이미지·판매 중지/재개 |
-| 주문 | `/admin/orders`, `/admin/orders/{id}` | 목업 |
-| 제작·픽업 | `/admin/fulfillment` | 목업 |
-| 결제·환불 | `/admin/payments` | 목업 |
+| 주문 | `/admin/orders`, `/admin/orders/{id}` | 실제 조회·검색·상태/주문일/픽업일 필터·페이징 |
+| 제작·픽업 | `/admin/fulfillment` | 실제 픽업일 조회·`PAID → READY_FOR_PICKUP → PICKED_UP` 처리 |
+| 결제·환불 | `/admin/payments` | 실제 모의 결제·전액 취소/환불 내역 조회 및 관리자 취소 |
 | 쿠폰 | `/admin/coupons` | 목업 |
 | 회원 | `/admin/members` | 목업 |
 | 후기 | `/admin/reviews` | 목업 |
@@ -164,10 +164,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 회원가입 | `/signup` | 실제 가입 (검증·중복 확인) |
 | 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 일반 상품 DB 장바구니 담기) |
 | 장바구니 | `/cart` | 실제 DB 구현 (조회·합산·수량 변경·단건/선택/전체 삭제·선택 주문 인계·최신 판매 정보 검증) |
-| 픽업 설정 | `/orders/pickup` | 목업 |
+| 픽업 설정 | `/orders/pickup` | 실제 준비일·영업일·휴무일·운영시간 기반 슬롯 선택 |
 | 주문 제작 | `/orders/custom/options`, `/orders/custom/request` | 목업 |
-| 주문서·완료·상세 | `/orders/checkout`, `/orders/complete`, `/orders/{id}` | 목업 |
-| 결제 | `/orders/{id}/payment` | 목업 |
+| 주문서·완료·상세 | `/orders/checkout`, `/orders/complete`, `/orders/{id}` | 실제 세션 초안·소유권 검증·전액 취소 |
+| 결제 | `/orders/payment` | 실제 UUID 멱등 모의 결제 (`DONE`, 결제 성공 시 `PAID` 주문 생성) |
 | 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
 | 쿠폰함 | `/mypage/coupons` | 목업 |
 | 알림·후기 | `/notifications`, `/reviews/new` | 목업 |

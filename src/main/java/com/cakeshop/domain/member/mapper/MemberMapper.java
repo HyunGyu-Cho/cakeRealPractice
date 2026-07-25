@@ -30,4 +30,6 @@ public interface MemberMapper {
 
     // 공개 계약(searchMemberIdsByNickname)용 — 닉네임 부분 일치로 id만 반환한다.
     List<Long> findIdsByNicknameLike(@Param("keyword") String keyword);
+
+    List<Long> findIdsByKeyword(@Param("keyword") String keyword);
 }

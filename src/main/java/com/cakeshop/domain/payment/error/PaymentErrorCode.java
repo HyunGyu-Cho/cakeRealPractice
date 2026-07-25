@@ -3,8 +3,10 @@ package com.cakeshop.domain.payment.error;
 import com.cakeshop.global.error.ErrorCode;
 
 public enum PaymentErrorCode implements ErrorCode {
-
-    AMOUNT_MISMATCH("PAYMENT_001", "결제 금액이 일치하지 않습니다.", 400);
+    AMOUNT_MISMATCH("PAYMENT_001", "결제 금액이 일치하지 않습니다.", 400),
+    NOT_FOUND("PAYMENT_002", "결제 정보를 찾을 수 없습니다.", 404),
+    INVALID_METHOD("PAYMENT_003", "지원하지 않는 결제 수단입니다.", 400),
+    PAYMENT_FAILED("PAYMENT_004", "결제를 처리하지 못했습니다.", 500);
 
     private final String code;
     private final String message;

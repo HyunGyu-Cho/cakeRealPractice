@@ -68,6 +68,24 @@ public class ProductService {
             product.getId(), isOnSale(product), product.getBasePrice(), product.getStockQuantity());
     }
 
+    /**
+     * order 결제 트랜잭션용 공개 계약. 조건부 UPDATE 한 번으로 동시 주문의 초과 차감을 막는다.
+     */
+    @Transactional
+    public void decreaseStock(Long productId, int quantity) {
+        if (quantity < 1 || productMapper.decreaseStockIfAvailable(productId, quantity) != 1) {
+            throw new BusinessException(ProductErrorCode.INSUFFICIENT_STOCK);
+        }
+    }
+
+    /** 취소 트랜잭션용 공개 계약. 일반 상품의 차감 수량을 정확히 복구한다. */
+    @Transactional
+    public void restoreStock(Long productId, int quantity) {
+        if (quantity < 1 || productMapper.increaseStock(productId, quantity) != 1) {
+            throw new BusinessException(ProductErrorCode.STOCK_UPDATE_FAILED);
+        }
+    }
+
     /** [공개 계약] 홈 메인 노출용 — 판매 가능 상품 최신순. */
     @Transactional(readOnly = true)
     public List<ProductSummaryView> getLatestActiveProducts(int limit) {
