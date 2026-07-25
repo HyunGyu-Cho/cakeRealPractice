@@ -264,6 +264,9 @@ if ($newSql.Count -eq 0) {
             if (-not $actual.Ok -or -not $actual.Value) { continue }
             $parts = $actual.Value.Split("|", 3)
             $actualType = ($parts[0] -replace '\s+', '').ToLowerInvariant()
+            # MariaDB reports legacy integer display widths (for example BIGINT as bigint(20)).
+            # They do not change storage or range, so compare the semantic type without the width.
+            $actualType = $actualType -replace '^(tinyint|smallint|mediumint|int|integer|bigint)\(\d+\)$', '$1'
             $actualDefault = $parts[2].Trim("'")
             if ($actualType -ne $expected.Type -or ($expected.NotNull -and $parts[1] -ne "NO") -or
                     ($expected.HasDefault -and $actualDefault -ne $expected.Default)) {
