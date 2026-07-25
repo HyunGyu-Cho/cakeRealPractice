@@ -14,13 +14,18 @@ import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProductAdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductAdminService.class);
     private static final String IMAGE_DIRECTORY = "product";
 
     private final ProductMapper productMapper;
@@ -81,18 +86,34 @@ public class ProductAdminService {
             return;
         }
         validateImage(image);
-        String newUrl = fileStorageClient.store(image, IMAGE_DIRECTORY);
         ProductImage existing = productMapper.findMainImage(productId).orElse(null);
-        if (existing == null) {
-            ProductImage mainImage = new ProductImage();
-            mainImage.setProductId(productId);
-            mainImage.setImageUrl(newUrl);
-            mainImage.setSortOrder(0);
-            productMapper.insertProductImage(mainImage);
-        } else {
-            productMapper.updateProductImageUrl(existing.getId(), newUrl);
-            // DB 반영이 끝난 뒤에만 이전 파일을 지워 원본 유실을 막는다.
-            fileStorageClient.delete(existing.getImageUrl());
+        String previousUrl = existing == null ? null : existing.getImageUrl();
+        String newUrl = fileStorageClient.store(image, IMAGE_DIRECTORY);
+        boolean transactionSynchronized = TransactionSynchronizationManager.isSynchronizationActive();
+        if (transactionSynchronized) {
+            registerImageCleanup(previousUrl, newUrl);
+        }
+
+        try {
+            if (existing == null) {
+                ProductImage mainImage = new ProductImage();
+                mainImage.setProductId(productId);
+                mainImage.setImageUrl(newUrl);
+                mainImage.setSortOrder(0);
+                productMapper.insertProductImage(mainImage);
+            } else {
+                productMapper.updateProductImageUrl(existing.getId(), newUrl);
+            }
+        } catch (RuntimeException exception) {
+            if (!transactionSynchronized) {
+                deleteImageQuietly(newUrl);
+            }
+            throw exception;
+        }
+
+        // 프록시를 거치지 않는 단위 테스트 같은 비트랜잭션 호출도 파일 정합성을 지킨다.
+        if (!transactionSynchronized) {
+            deleteImageQuietly(previousUrl);
         }
     }
 
@@ -134,6 +155,30 @@ public class ProductAdminService {
         String contentType = image.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new BusinessException(ProductErrorCode.INVALID_IMAGE);
+        }
+    }
+
+    private void registerImageCleanup(String previousUrl, String newUrl) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_COMMITTED) {
+                    deleteImageQuietly(previousUrl);
+                } else {
+                    deleteImageQuietly(newUrl);
+                }
+            }
+        });
+    }
+
+    private void deleteImageQuietly(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        try {
+            fileStorageClient.delete(imageUrl);
+        } catch (RuntimeException exception) {
+            log.warn("상품 이미지 파일 정리에 실패했습니다: {}", imageUrl, exception);
         }
     }
 

@@ -18,6 +18,7 @@ import com.cakeshop.domain.product.mapper.ProductMapper;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class ProductAdminServiceTests {
@@ -40,6 +43,13 @@ class ProductAdminServiceTests {
     @BeforeEach
     void setUp() {
         productAdminService = new ProductAdminService(productMapper, fileStorageClient);
+    }
+
+    @AfterEach
+    void clearTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test
@@ -97,6 +107,51 @@ class ProductAdminServiceTests {
 
         verify(productMapper).updateProductImageUrl(10L, "/uploads/product/202607/new.jpg");
         verify(fileStorageClient).delete("/uploads/product/202606/old.jpg");
+    }
+
+    @Test
+    void updateDefersPreviousImageDeletionUntilTransactionCommit() {
+        when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
+        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        ProductImage existing = new ProductImage();
+        existing.setId(10L);
+        existing.setProductId(1L);
+        existing.setImageUrl("/uploads/product/202606/old.jpg");
+        existing.setSortOrder(0);
+        when(productMapper.findMainImage(1L)).thenReturn(Optional.of(existing));
+        when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
+        MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
+        TransactionSynchronizationManager.initSynchronization();
+
+        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), image);
+
+        verify(fileStorageClient, never()).delete(any());
+        TransactionSynchronizationManager.getSynchronizations().forEach(
+            synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+        verify(fileStorageClient).delete("/uploads/product/202606/old.jpg");
+        verify(fileStorageClient, never()).delete("/uploads/product/202607/new.jpg");
+    }
+
+    @Test
+    void updateDeletesNewImageAndKeepsPreviousImageAfterTransactionRollback() {
+        when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
+        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        ProductImage existing = new ProductImage();
+        existing.setId(10L);
+        existing.setProductId(1L);
+        existing.setImageUrl("/uploads/product/202606/old.jpg");
+        existing.setSortOrder(0);
+        when(productMapper.findMainImage(1L)).thenReturn(Optional.of(existing));
+        when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
+        MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
+        TransactionSynchronizationManager.initSynchronization();
+
+        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), image);
+
+        TransactionSynchronizationManager.getSynchronizations().forEach(
+            synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+        verify(fileStorageClient).delete("/uploads/product/202607/new.jpg");
+        verify(fileStorageClient, never()).delete("/uploads/product/202606/old.jpg");
     }
 
     @Test
