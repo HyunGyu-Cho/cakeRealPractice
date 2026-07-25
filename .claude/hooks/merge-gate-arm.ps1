@@ -26,6 +26,7 @@ if ($command -match '(?i)\bgit\s+merge\s+--(abort|quit)\b') { exit 0 }
 $root = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { (Get-Location).Path }
 $stateDir = Join-Path $root ".claude/state"
 $pending = Join-Path $stateDir "merge-gate-pending.json"
+$blockFile = Join-Path $stateDir "merge-gate-blocks.txt"
 
 try {
     if (-not (Test-Path $stateDir)) { New-Item -ItemType Directory -Force -Path $stateDir | Out-Null }
@@ -40,6 +41,8 @@ try {
         command   = $command
         headAtArm = "$head"
     } | ConvertTo-Json -Compress | Set-Content -Path $pending -Encoding UTF8
+    # 새 머지는 새 검증 사이클이다. 이전 사이클의 Stop 차단 횟수를 이어받지 않는다.
+    if (Test-Path $blockFile) { Remove-Item $blockFile -Force -ErrorAction SilentlyContinue }
 } catch {
     exit 0
 }
@@ -48,7 +51,7 @@ try {
     hookSpecificOutput = @{
         hookEventName    = "PostToolUse"
         additionalContext = "[머지 검증 게이트] 머지를 감지해 검증 대기 상태로 전환했습니다. " +
-            "scripts\verify-merge.ps1 이 통과할 때까지 이 턴은 종료되지 않습니다. " +
+            "scripts\verify-merge.ps1 을 실행해 통과시켜야 합니다. 미검증 종료는 Stop 훅이 최대 3회 차단하고 기록합니다. " +
             "머지 후 절차는 /merge-feature 스킬을 따르세요."
     }
 } | ConvertTo-Json -Compress

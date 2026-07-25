@@ -22,9 +22,9 @@ import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommunityService {
-    // TODO: 작성·수정·삭제는 작성자 본인 검증
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 

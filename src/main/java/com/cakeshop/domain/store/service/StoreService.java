@@ -2,6 +2,7 @@ package com.cakeshop.domain.store.service;
 
 import com.cakeshop.domain.store.dto.form.StoreHolidayForm;
 import com.cakeshop.domain.store.dto.form.StoreUpdateForm;
+import com.cakeshop.domain.store.dto.view.StoreHolidayView;
 import com.cakeshop.domain.store.dto.view.StorePublicView;
 import com.cakeshop.domain.store.dto.view.StoreView;
 import com.cakeshop.domain.store.error.StoreErrorCode;
@@ -19,12 +20,18 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class StoreService {
+
+    private static final Logger log = LoggerFactory.getLogger(StoreService.class);
 
     // 현재 서비스는 단일 매장을 운영하므로 초기 SQL에서 보장한 대표 행을 사용한다.
     public static final long DEFAULT_STORE_ID = 1L;
@@ -46,6 +53,10 @@ public class StoreService {
         Store store = findDefaultStore();
         List<StoreBusinessHour> hours = storeMapper.findBusinessHours(DEFAULT_STORE_ID);
         List<StoreHoliday> holidays = storeMapper.findHolidays(DEFAULT_STORE_ID);
+        List<StoreHolidayView> holidayViews = holidays.stream()
+            .map(holiday -> new StoreHolidayView(
+                holiday.getId(), holiday.getHolidayDate(), holiday.getReason()))
+            .toList();
         Map<DayOfWeek, StoreBusinessHour> hourMap = toHourMap(hours);
 
         StoreBusinessHour weekday = representativeHour(hourMap,
@@ -61,7 +72,7 @@ public class StoreService {
             store.getAddress(), store.getPhone(),
             weekday.getOpenTime(), weekday.getCloseTime(), weekend.getOpenTime(), weekend.getCloseTime(),
             Set.copyOf(closedDays), store.getPickupPlace(), store.getPickupStartTime(), store.getPickupEndTime(),
-            store.getPickupIntervalMinutes(), List.copyOf(holidays)
+            store.getPickupIntervalMinutes(), holidayViews
         );
     }
 
@@ -104,31 +115,50 @@ public class StoreService {
         // 새 이미지가 올라온 경우에만 교체한다. 첨부가 없으면 기존 이미지를 그대로 유지한다.
         String previousImageUrl = store.getImageUrl();
         boolean imageReplaced = image != null && !image.isEmpty();
+        String newImageUrl = null;
         if (imageReplaced) {
             validateImage(image);
-            store.setImageUrl(fileStorageClient.store(image, IMAGE_DIRECTORY));
+            newImageUrl = fileStorageClient.store(image, IMAGE_DIRECTORY);
+            store.setImageUrl(newImageUrl);
+        }
+
+        boolean transactionSynchronized =
+            imageReplaced && TransactionSynchronizationManager.isSynchronizationActive();
+        if (transactionSynchronized) {
+            registerImageCleanup(previousImageUrl, newImageUrl);
         }
 
         if (storeMapper.updateStore(store) != 1) {
+            if (imageReplaced && !transactionSynchronized) {
+                deleteImageQuietly(newImageUrl);
+            }
             throw new BusinessException(StoreErrorCode.UPDATE_FAILED);
         }
 
-        // DB 저장이 확정된 뒤에만 이전 파일을 지워, 실패 시 원본이 사라지는 것을 막는다.
-        if (imageReplaced && previousImageUrl != null) {
-            fileStorageClient.delete(previousImageUrl);
+        // DB 작업이 모두 끝난 뒤에만 파일 정리를 확정한다.
+        try {
+            for (DayOfWeek day : DayOfWeek.values()) {
+                boolean weekend = day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+                boolean closed = form.getClosedDays().contains(day);
+                StoreBusinessHour hour = new StoreBusinessHour();
+                hour.setStoreId(DEFAULT_STORE_ID);
+                hour.setDayOfWeek(day);
+                hour.setClosed(closed);
+                // DB 제약(chk_store_business_hour_time): 휴무일은 영업시간이 NULL 이어야 한다.
+                hour.setOpenTime(closed ? null : (weekend ? form.getWeekendOpenTime() : form.getWeekdayOpenTime()));
+                hour.setCloseTime(closed ? null : (weekend ? form.getWeekendCloseTime() : form.getWeekdayCloseTime()));
+                storeMapper.upsertBusinessHour(hour);
+            }
+        } catch (RuntimeException exception) {
+            if (imageReplaced && !transactionSynchronized) {
+                deleteImageQuietly(newImageUrl);
+            }
+            throw exception;
         }
 
-        for (DayOfWeek day : DayOfWeek.values()) {
-            boolean weekend = day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
-            boolean closed = form.getClosedDays().contains(day);
-            StoreBusinessHour hour = new StoreBusinessHour();
-            hour.setStoreId(DEFAULT_STORE_ID);
-            hour.setDayOfWeek(day);
-            hour.setClosed(closed);
-            // DB 제약(chk_store_business_hour_time): 휴무일은 영업시간이 NULL 이어야 한다.
-            hour.setOpenTime(closed ? null : (weekend ? form.getWeekendOpenTime() : form.getWeekdayOpenTime()));
-            hour.setCloseTime(closed ? null : (weekend ? form.getWeekendCloseTime() : form.getWeekdayCloseTime()));
-            storeMapper.upsertBusinessHour(hour);
+        // 프록시를 거치지 않는 단위 테스트 같은 비트랜잭션 호출도 파일 정합성을 지킨다.
+        if (imageReplaced && !transactionSynchronized) {
+            deleteImageQuietly(previousImageUrl);
         }
     }
 
@@ -204,6 +234,30 @@ public class StoreService {
         String contentType = image.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new BusinessException(StoreErrorCode.INVALID_IMAGE);
+        }
+    }
+
+    private void registerImageCleanup(String previousImageUrl, String newImageUrl) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_COMMITTED) {
+                    deleteImageQuietly(previousImageUrl);
+                } else {
+                    deleteImageQuietly(newImageUrl);
+                }
+            }
+        });
+    }
+
+    private void deleteImageQuietly(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        try {
+            fileStorageClient.delete(imageUrl);
+        } catch (RuntimeException exception) {
+            log.warn("이미지 파일 정리에 실패했습니다: {}", imageUrl, exception);
         }
     }
 

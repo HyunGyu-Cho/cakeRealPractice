@@ -20,7 +20,9 @@
 #>
 param(
     [string]$Skip = "",
-    [int]$BootTimeoutSec = 120
+    [int]$BootTimeoutSec = 120,
+    # 개발 서버(8080)를 켜 둔 채로도 검증할 수 있도록 별도 포트를 쓴다.
+    [int]$Port = 18080
 )
 
 $ErrorActionPreference = "Continue"
@@ -31,7 +33,7 @@ $stateDir = Join-Path $root ".claude/state"
 $pending  = Join-Path $stateDir "merge-gate-pending.json"
 $logFile  = Join-Path $stateDir "merge-gate.log"
 $bootLog  = Join-Path $stateDir "verify-boot.log"
-$baseUrl  = "http://localhost:8080"
+$baseUrl  = "http://localhost:$Port"
 $errorTitles = @("<title>500</title>", "<title>404</title>", "<title>요청 오류</title>")
 
 if (-not (Test-Path $stateDir)) { New-Item -ItemType Directory -Force -Path $stateDir | Out-Null }
@@ -78,13 +80,19 @@ Step "2/4 마이그레이션 반영 확인"
 $mariadb = Get-ChildItem "C:\Program Files\MariaDB *\bin\mariadb.exe" -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty FullName
 $envFile = Join-Path $root ".env"
-$dbCfg = @{ port = "3307"; db = "cakeshop"; user = "root"; pass = "" }
+$dbCfg = @{ host = "localhost"; port = "3307"; db = "cakeshop"; user = "root"; pass = "" }
 if (Test-Path $envFile) {
     foreach ($line in Get-Content $envFile -Encoding UTF8) {
-        if ($line -match '^\s*LOCAL_DB_PORT\s*=\s*(.+)$')     { $dbCfg.port = $Matches[1].Trim() }
-        if ($line -match '^\s*LOCAL_DB_DATABASE\s*=\s*(.+)$') { $dbCfg.db   = $Matches[1].Trim() }
-        if ($line -match '^\s*LOCAL_DB_USERNAME\s*=\s*(.+)$') { $dbCfg.user = $Matches[1].Trim() }
-        if ($line -match '^\s*LOCAL_DB_PASSWORD\s*=\s*(.+)$') { $dbCfg.pass = $Matches[1].Trim() }
+        if ($line -notmatch '^\s*([A-Z0-9_]+)\s*=\s*(.*)$') { continue }
+        $key = $Matches[1]
+        $value = $Matches[2].Trim().Trim('"').Trim("'")
+        switch ($key) {
+            "LOCAL_DB_HOST"     { $dbCfg.host = $value }
+            "LOCAL_DB_PORT"     { $dbCfg.port = $value }
+            "LOCAL_DB_DATABASE" { $dbCfg.db   = $value }
+            "LOCAL_DB_USERNAME" { $dbCfg.user = $value }
+            "LOCAL_DB_PASSWORD" { $dbCfg.pass = $value }
+        }
     }
 }
 
@@ -101,43 +109,198 @@ $newSql = @(Get-ChildItem (Join-Path $root "docs/sql") -Filter "V*.sql" |
 if ($newSql.Count -eq 0) {
     Ok "확인할 증분 마이그레이션 없음"
 } elseif (-not $mariadb) {
-    Warn "mariadb 클라이언트를 찾지 못해 스키마 대조를 건너뜁니다. 확인 대상: $($newSql.Count)건"
+    Fail "mariadb 클라이언트를 찾지 못했습니다. 마이그레이션 $($newSql.Count)건을 검증할 수 없습니다."
+    $failures.Add("mariadb client missing")
 } else {
-    # V파일이 만드는 테이블/컬럼을 뽑아 information_schema로 실제 존재를 확인한다.
-    # 로컬 DB가 이미 앞서 있으면 통과하고, 적용을 잊었으면 여기서 잡힌다.
-    $missing = @()
-    foreach ($rel in $newSql) {
-        $sqlText = Get-Content (Join-Path $root $rel) -Raw -Encoding UTF8
-        $wanted = @()
-        foreach ($m in [regex]::Matches($sqlText, '(?is)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?')) {
-            $wanted += @{ table = $m.Groups[1].Value; column = $null }
-        }
-        foreach ($m in [regex]::Matches($sqlText, '(?is)ALTER\s+TABLE\s+`?(\w+)`?(.*?)(?=;\s*(?:ALTER|CREATE|INSERT|UPDATE|DROP|$))')) {
-            $tbl = $m.Groups[1].Value
-            foreach ($c in [regex]::Matches($m.Groups[2].Value, '(?is)ADD\s+COLUMN\s+`?(\w+)`?')) {
-                $wanted += @{ table = $tbl; column = $c.Groups[1].Value }
-            }
-        }
-        foreach ($w in $wanted) {
-            if ($w.column) {
-                $q = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$($w.table)' AND COLUMN_NAME='$($w.column)';"
-                $label = "$($w.table).$($w.column)"
+    function Invoke-DbScalar([string]$query) {
+        $hadPassword = Test-Path Env:MYSQL_PWD
+        $previousPassword = $env:MYSQL_PWD
+        try {
+            $env:MYSQL_PWD = $dbCfg.pass
+            $result = & $mariadb "--host=$($dbCfg.host)" "--port=$($dbCfg.port)" "--user=$($dbCfg.user)" `
+                "--database=$($dbCfg.db)" --ssl=0 --skip-column-names --batch "--execute=$query" 2>$null
+            $exitCode = $LASTEXITCODE
+        } finally {
+            if ($hadPassword) {
+                $env:MYSQL_PWD = $previousPassword
             } else {
-                $q = "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$($w.table)';"
-                $label = "테이블 $($w.table)"
+                Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
             }
-            $res = & $mariadb -h localhost -P $dbCfg.port -u $dbCfg.user "-p$($dbCfg.pass)" $dbCfg.db -N -B -e $q 2>$null
-            if (($res | Select-Object -Last 1) -notmatch '^\s*[1-9]') { $missing += "$rel -> $label" }
+        }
+        return @{
+            Ok = ($exitCode -eq 0)
+            Value = [string]($result | Select-Object -Last 1)
         }
     }
-    if ($missing.Count -gt 0) {
-        Fail "로컬 DB에 미반영된 마이그레이션:"
-        $missing | ForEach-Object { Write-Host "        $_" -ForegroundColor Red }
-        # V3의 DROP COLUMN, V6의 ADD COLUMN에는 IF (NOT) EXISTS가 없어 이미 적용된 파일을 다시 돌리면 실패한다.
-        Write-Host "        위에 나온 파일만 번호 순서대로 적용하세요(이미 적용된 V파일 재실행 금지 — 멱등하지 않습니다)." -ForegroundColor Red
-        $failures.Add("migration not applied")
+
+    $connection = Invoke-DbScalar "SELECT 1;"
+    if (-not $connection.Ok -or $connection.Value.Trim() -ne "1") {
+        Fail "로컬 DB에 접속하지 못했습니다: $($dbCfg.host):$($dbCfg.port)/$($dbCfg.db)"
+        $failures.Add("local database connection")
     } else {
-        Ok "증분 마이그레이션 $($newSql.Count)건이 모두 DB에 반영돼 있음"
+        # 모든 증분 SQL의 최종 구조를 계산한다. ADD/DROP이 같은 파일에 함께 있어도 마지막 연산이 정본이다.
+        $expectedTables = @{}
+        $expectedColumns = @{}
+        $expectedConstraints = @{}
+        $expectedColumnDefinitions = @{}
+        $expectedCheckValues = @{}
+        $expectedGeneratedExpressions = @{}
+        $sourceByArtifact = @{}
+
+        foreach ($rel in $newSql) {
+            $sqlText = Get-Content (Join-Path $root $rel) -Raw -Encoding UTF8
+
+            foreach ($m in [regex]::Matches($sqlText, '(?is)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?')) {
+                $table = $m.Groups[1].Value
+                $expectedTables[$table] = $true
+                $sourceByArtifact["table:$table"] = $rel
+            }
+
+            foreach ($m in [regex]::Matches($sqlText, '(?is)ALTER\s+TABLE\s+`?(\w+)`?\s+(.*?);')) {
+                $table = $m.Groups[1].Value
+                $body = $m.Groups[2].Value
+                $expectedTables[$table] = $true
+                $sourceByArtifact["table:$table"] = $rel
+
+                $columnOps = @()
+                foreach ($op in [regex]::Matches($body, '(?is)\b(ADD|DROP)\s+COLUMN\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?`?(\w+)`?')) {
+                    $columnOps += [pscustomobject]@{
+                        Index = $op.Index
+                        Action = $op.Groups[1].Value.ToUpperInvariant()
+                        Name = $op.Groups[2].Value
+                    }
+                }
+                foreach ($op in [regex]::Matches($body, '(?is)\bMODIFY\s+(?:COLUMN\s+)?`?(\w+)`?\s+([A-Z]+\s*(?:\([^)]*\))?)([^,]*)')) {
+                    $column = $op.Groups[1].Value
+                    $tail = $op.Groups[3].Value
+                    $columnOps += [pscustomobject]@{ Index = $op.Index; Action = "MODIFY"; Name = $column }
+                    $expectedColumnDefinitions["$table.$column"] = @{
+                        Type = ($op.Groups[2].Value -replace '\s+', '').ToLowerInvariant()
+                        NotNull = ($tail -match '(?i)\bNOT\s+NULL\b')
+                        HasDefault = ($tail -match "(?i)\bDEFAULT\s+'([^']*)'")
+                        Default = if ($tail -match "(?i)\bDEFAULT\s+'([^']*)'") { $Matches[1] } else { "" }
+                    }
+                }
+                foreach ($op in ($columnOps | Sort-Object Index)) {
+                    $key = "$table.$($op.Name)"
+                    $expectedColumns[$key] = ($op.Action -ne "DROP")
+                    $sourceByArtifact["column:$key"] = $rel
+                    if ($op.Action -eq "DROP") {
+                        $expectedColumnDefinitions.Remove($key)
+                        $expectedGeneratedExpressions.Remove($key)
+                    }
+                }
+
+                foreach ($generated in [regex]::Matches(
+                        $body,
+                        '(?is)\bADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?.*?GENERATED\s+ALWAYS\s+AS\s*\((.*?)\)\s*STORED')) {
+                    $key = "$table.$($generated.Groups[1].Value)"
+                    $expectedGeneratedExpressions[$key] = $generated.Groups[2].Value
+                }
+
+                $constraintOps = @()
+                foreach ($op in [regex]::Matches($body, '(?is)\b(ADD|DROP)\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?`?(\w+)`?')) {
+                    $constraintOps += [pscustomobject]@{
+                        Index = $op.Index
+                        Action = $op.Groups[1].Value.ToUpperInvariant()
+                        Name = $op.Groups[2].Value
+                    }
+                }
+                foreach ($op in ($constraintOps | Sort-Object Index)) {
+                    $key = "$table.$($op.Name)"
+                    $expectedConstraints[$key] = ($op.Action -ne "DROP")
+                    $sourceByArtifact["constraint:$key"] = $rel
+                    if ($op.Action -eq "DROP") {
+                        $expectedCheckValues.Remove($key)
+                    }
+                }
+
+                foreach ($check in [regex]::Matches(
+                        $body,
+                        "(?is)ADD\\s+CONSTRAINT\\s+`?(\\w+)`?\\s+CHECK\\s*\\(\\s*`?\\w+`?\\s+IN\\s*\\(([^)]*)\\)\\s*\\)")) {
+                    $key = "$table.$($check.Groups[1].Value)"
+                    $expectedCheckValues[$key] = @(
+                        [regex]::Matches($check.Groups[2].Value, "'([^']*)'") |
+                            ForEach-Object { $_.Groups[1].Value } |
+                            Sort-Object -Unique
+                    )
+                }
+            }
+        }
+
+        $schemaProblems = @()
+        foreach ($table in $expectedTables.Keys) {
+            $q = "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$table';"
+            $actual = Invoke-DbScalar $q
+            if (-not $actual.Ok -or $actual.Value -notmatch '^\s*[1-9]') {
+                $schemaProblems += "$($sourceByArtifact["table:$table"]) -> 테이블 $table 없음"
+            }
+        }
+        foreach ($key in $expectedColumns.Keys) {
+            $table, $column = $key.Split(".", 2)
+            $q = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$table' AND COLUMN_NAME='$column';"
+            $actual = Invoke-DbScalar $q
+            $exists = $actual.Ok -and $actual.Value -match '^\s*[1-9]'
+            if ($exists -ne [bool]$expectedColumns[$key]) {
+                $expectation = if ($expectedColumns[$key]) { "없음" } else { "삭제되지 않음" }
+                $schemaProblems += "$($sourceByArtifact["column:$key"]) -> $key $expectation"
+            }
+        }
+        foreach ($key in $expectedConstraints.Keys) {
+            $table, $constraint = $key.Split(".", 2)
+            $q = "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$table' AND CONSTRAINT_NAME='$constraint';"
+            $actual = Invoke-DbScalar $q
+            $exists = $actual.Ok -and $actual.Value -match '^\s*[1-9]'
+            if ($exists -ne [bool]$expectedConstraints[$key]) {
+                $expectation = if ($expectedConstraints[$key]) { "없음" } else { "삭제되지 않음" }
+                $schemaProblems += "$($sourceByArtifact["constraint:$key"]) -> 제약 $key $expectation"
+            }
+        }
+        foreach ($key in $expectedColumnDefinitions.Keys) {
+            $table, $column = $key.Split(".", 2)
+            $expected = $expectedColumnDefinitions[$key]
+            $q = "SELECT CONCAT(COLUMN_TYPE, '|', IS_NULLABLE, '|', COALESCE(COLUMN_DEFAULT, '<NULL>')) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$table' AND COLUMN_NAME='$column';"
+            $actual = Invoke-DbScalar $q
+            if (-not $actual.Ok -or -not $actual.Value) { continue }
+            $parts = $actual.Value.Split("|", 3)
+            $actualType = ($parts[0] -replace '\s+', '').ToLowerInvariant()
+            $actualDefault = $parts[2].Trim("'")
+            if ($actualType -ne $expected.Type -or ($expected.NotNull -and $parts[1] -ne "NO") -or
+                    ($expected.HasDefault -and $actualDefault -ne $expected.Default)) {
+                $schemaProblems += "$($sourceByArtifact["column:$key"]) -> $key 정의 불일치 (type/null/default)"
+            }
+        }
+        foreach ($key in $expectedCheckValues.Keys) {
+            $table, $constraint = $key.Split(".", 2)
+            $q = "SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='$($dbCfg.db)' AND CONSTRAINT_NAME='$constraint';"
+            $actual = Invoke-DbScalar $q
+            $actualValues = @(
+                [regex]::Matches($actual.Value, "'([^']*)'") |
+                    ForEach-Object { $_.Groups[1].Value } |
+                    Sort-Object -Unique
+            )
+            if (-not $actual.Ok -or (Compare-Object $expectedCheckValues[$key] $actualValues)) {
+                $schemaProblems += "$($sourceByArtifact["constraint:$key"]) -> CHECK $key 허용값 불일치"
+            }
+        }
+        foreach ($key in $expectedGeneratedExpressions.Keys) {
+            $table, $column = $key.Split(".", 2)
+            $q = "SELECT GENERATION_EXPRESSION FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$($dbCfg.db)' AND TABLE_NAME='$table' AND COLUMN_NAME='$column';"
+            $actual = Invoke-DbScalar $q
+            $normalize = { param($v) (($v -replace '[`\s()]', '').ToLowerInvariant()) }
+            if (-not $actual.Ok -or (& $normalize $actual.Value) -ne (& $normalize $expectedGeneratedExpressions[$key])) {
+                $schemaProblems += "$($sourceByArtifact["column:$key"]) -> 생성 열 $key 표현식 불일치"
+            }
+        }
+
+        if ($schemaProblems.Count -gt 0) {
+            Fail "로컬 DB에 미반영되었거나 정의가 다른 마이그레이션:"
+            $schemaProblems | Sort-Object -Unique | ForEach-Object { Write-Host "        $_" -ForegroundColor Red }
+            Write-Host "        표시된 V파일만 번호 순서대로 적용한 뒤 다시 검증하세요." -ForegroundColor Red
+            $failures.Add("migration not applied")
+        } else {
+            Ok "증분 마이그레이션 $($newSql.Count)건의 테이블·컬럼·제약·핵심 정의가 DB와 일치"
+        }
     }
 }
 
@@ -187,12 +350,12 @@ function Test-Page([string]$path, $session) {
     return @{ Ok = $true; Content = $resp.Content }
 }
 
-if (Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue) {
-    Fail "포트 8080이 이미 사용 중입니다. 실행 중인 서버를 종료한 뒤 다시 검증하세요."
-    $failures.Add("port 8080 busy")
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+    Fail "검증용 포트 $Port 가 이미 사용 중입니다. 해당 프로세스를 종료하거나 -Port 로 다른 포트를 지정하세요."
+    $failures.Add("port $Port busy")
 } else {
     $proc = Start-Process -FilePath "cmd.exe" `
-        -ArgumentList "/c", ".\gradlew.bat bootRun --args=`"--spring.profiles.active=local`" --console=plain > `"$bootLog`" 2>&1" `
+        -ArgumentList "/c", ".\gradlew.bat bootRun --args=`"--spring.profiles.active=local --server.port=$Port`" --console=plain > `"$bootLog`" 2>&1" `
         -WorkingDirectory $root -PassThru -WindowStyle Hidden
 
     $up = $false
@@ -230,19 +393,19 @@ if (Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyCont
         }
     }
 
-    # 종료 처리: 앱을 확실히 죽이지 않으면 포트 8080이 물려 다음 검증이 실패하고,
+    # 종료 처리: 앱을 확실히 죽이지 않으면 검증용 포트가 물려 다음 검증이 실패하고,
     # 남은 JVM이 build/classes 를 붙잡아 이후 gradle 빌드가 깨진다. 게이트가 환경을 오염시키면 안 된다.
     if ($proc -and -not $proc.HasExited) { & taskkill /PID $proc.Id /T /F 2>&1 | Out-Null }
     for ($i = 0; $i -lt 20; $i++) {
-        $listener = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+        $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
         if (-not $listener) { break }
         $listener | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { & taskkill /PID $_ /T /F 2>&1 | Out-Null }
         Start-Sleep -Milliseconds 500
     }
     Push-Location $root; & cmd /c ".\gradlew.bat --stop 2>&1" | Out-Null; Pop-Location
-    if (Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue) {
-        Fail "검증 후에도 포트 8080이 남아 있습니다. 수동으로 종료하세요."; $failures.Add("teardown: port 8080")
-    } else { Ok "앱 종료 완료 (포트 8080 해제)" }
+    if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+        Fail "검증 후에도 포트 $Port 가 남아 있습니다. 수동으로 종료하세요."; $failures.Add("teardown: port $Port")
+    } else { Ok "앱 종료 완료 (포트 $Port 해제)" }
 }
 
 # ── 결과 ────────────────────────────────────────────────────────

@@ -10,12 +10,12 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 1. 각 PC에 MariaDB 11.4를 설치하고 실행한다.
 2. `cakeshop` 데이터베이스와 접속 계정을 생성한다.
-3. `docs/sql` 디렉터리의 DDL을 로컬 DB에 순서대로 적용한다.
-4. `src/main/resources/application.yml`의 `local` 데이터소스가 자신의 MariaDB 접속 정보와 일치하는지 확인한다.
+3. `.env_sample`을 `.env`로 복사하고 `LOCAL_DB_*` 값을 자신의 MariaDB에 맞춘다.
+4. `docs/sql` 디렉터리의 DDL을 로컬 DB에 순서대로 적용한다.
 
 ## 실행 프로필 선택
 
-애플리케이션을 시작할 때 `local`과 `rds` 중 하나를 선택한다. 기본 프로필은 `rds`이므로 프로필을 지정하지 않으면 공용 AWS RDS에 접속한다. 개인 개발·화면 확인은 아래처럼 `local`을 명시해 실행한다. 실행 중에는 프로필을 바꿀 수 없으므로 전환하기 전에 실행 중인 서버를 `Ctrl+C`로 종료해야 한다. 종료하지 않고 다시 실행하면 `Port 8080 was already in use` 오류가 발생한다.
+애플리케이션을 시작할 때 `local`과 `rds` 중 하나를 선택한다. 기본 프로필은 `local`이며, 공용 AWS RDS는 `rds`를 명시한 경우에만 접속한다. 실행 중에는 프로필을 바꿀 수 없으므로 전환하기 전에 실행 중인 서버를 `Ctrl+C`로 종료해야 한다. 종료하지 않고 다시 실행하면 `Port 8080 was already in use` 오류가 발생한다.
 
 ### 로컬 DB로 실행
 
@@ -25,7 +25,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
 ```
 
-기본 프로필은 `rds`이므로 로컬 DB로 실행하려면 반드시 `--spring.profiles.active=local`을 명시해야 한다. 프로필을 빼고 `.\gradlew.bat bootRun`만 실행하면 `rds` 프로필로 공용 RDS에 접속한다.
+`local`이 기본 프로필이므로 `.\gradlew.bat bootRun`만 실행해도 같은 환경으로 시작한다. 위 명령은 현재 프로필을 명확히 보이게 하는 권장 형식이다.
 
 정상 실행 로그에는 `The following 1 profile is active: "local"`과 `Tomcat started on port 8080`이 표시된다. 실행 후 `http://localhost:8080/`에서 고객 화면을 확인한다.
 
@@ -70,15 +70,24 @@ Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
 
 ## 프로필 요약
 
-- `local`: 각 PC에 직접 설치한 MariaDB와 `application.yml`의 로컬 데이터소스 설정 사용
-- `rds` (기본): `.env`의 `RDS_ENDPOINT`, `RDS_PORT`, `RDS_DATABASE`, `RDS_USERNAME`, `RDS_PASSWORD` 사용
+- `local` (기본): 각 PC에 직접 설치한 MariaDB와 `.env`의 `LOCAL_DB_*` 설정 사용
+- `rds`: `.env`의 `RDS_ENDPOINT`, `RDS_PORT`, `RDS_DATABASE`, `RDS_USERNAME`, `RDS_PASSWORD` 사용
 
 ## DB 스키마 관리
 
 Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 로컬 DB에 수동으로 동일하게 적용한다.
 
 - `V0_ERD.sql`: 전체 ERD 참조 스키마(정본 설계). 실제 적용은 아래 `V1_first_MVC_table.sql`로 올린다.
-- `V1_first_MVC_table.sql`: 도메인별 1차 기능 병렬 착수용 테이블 15개(컬럼 정의는 `V0_ERD.sql`과 동일, 2차는 테이블 추가만으로 확장). 로그인 가능한 공통 샘플 계정과 매장 필수 시드(대표 매장 1행 + 7개 요일 영업시간)를 함께 포함한다.
+- `V1_first_MVC_table.sql`: 도메인별 1차 기능 병렬 착수용 테이블 15개. 로그인 가능한 공통 샘플 계정과 매장 필수 시드를 포함한다.
+- `V2_...sql` 이후: 이미 생성된 DB에 순서대로 적용하는 증분 마이그레이션. 파일 번호를 건너뛰지 않고 모두 적용한다.
+
+새 로컬 DB는 `V1`을 적용한 뒤 `V2`부터 최신 파일까지 차례대로 적용한다. 증분 파일은 다음 도우미로 안전하게 적용할 수 있다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V2_community_status_and_seed.sql
+```
+
+적용 후 `scripts\verify-merge.ps1`가 증분 SQL의 최종 구조와 로컬 DB를 대조한다.
 
 상태값(`status`) 컬럼은 도메인마다 흩어지지 않도록 `docs/conventions.md`의 상태값 공통 규칙(영문 enum 이름 저장·한글 라벨 미저장·전이는 service)을 따른다.
 
@@ -89,7 +98,7 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 
 ## Store 수직 슬라이스 구현 예시
 
-새 설정형 도메인은 `domain/store`의 흐름을 기준으로 구현한다. 단, store는 단일 매장 설정이므로 목록·페이징을 포함한 전체 CRUD 예시는 product 도메인에서 별도로 제공한다.
+새 설정형 도메인은 `domain/store`의 흐름을 기준으로 구현한다. 단, store는 단일 매장 설정이므로 목록·페이징을 포함한 전체 CRUD는 product 실구현이 현재 브랜치에 병합된 뒤 그 코드를 참고한다.
 
 ### 적용 순서
 

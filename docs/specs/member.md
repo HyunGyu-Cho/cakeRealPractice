@@ -1,3 +1,9 @@
+---
+domain: member
+status: approved
+approved-at: 2026-07-25
+---
+
 # member 스펙
 
 > 확정일: 2026-07-25. 범위: 회원가입·마이페이지·프로필/비밀번호 수정·탈퇴·상태별 로그인 차단.

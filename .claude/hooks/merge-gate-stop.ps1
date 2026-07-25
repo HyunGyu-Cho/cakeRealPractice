@@ -3,7 +3,8 @@
 
 # Stop: 머지 후 검증이 끝나지 않았으면 턴 종료를 막는다.
 # 판정만 한다 — 검증 자체는 실행하지 않는다(빌드/부팅은 훅에서 돌리기엔 느리고 실패 원인이 안 보인다).
-# 안전장치: (1) 오류 시 통과 (2) stop_hook_active면 물러남 (3) 상태 파일은 gitignore라 팀원에게 전파되지 않음
+# 안전장치: (1) 오류 시 통과 (2) 최대 차단 횟수 후 기록을 남기고 통과
+#             (3) 머지를 실행한 세션만 차단 (4) 상태 파일은 gitignore라 팀원에게 전파되지 않음
 
 $MAX_BLOCKS = 3   # 상한을 둬 세션이 갇히지 않게 한다. 이 횟수를 넘으면 통과시킨다.
 
@@ -23,20 +24,34 @@ if (-not (Test-Path $pending)) {
     exit 0
 }
 
-# stop_hook_active 만으로 물러나면 턴당 단 1회만 차단돼 강제력이 거의 없다.
-# 대신 자체 카운터로 상한을 두어 "여러 번 막되 갇히지는 않게" 한다.
-$blocks = 0
-try { if (Test-Path $blockFile) { $blocks = [int](Get-Content $blockFile -Raw).Trim() } } catch { $blocks = 0 }
-if ($blocks -ge $MAX_BLOCKS) { exit 0 }
-try { Set-Content -Path $blockFile -Value ([string]($blocks + 1)) -Encoding ASCII } catch { }
-
 $armedAt = "(알 수 없음)"
 $command = "(알 수 없음)"
+$armedSessionId = ""
 try {
     $state = Get-Content $pending -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($state.armedAt) { $armedAt = [string]$state.armedAt }
     if ($state.command) { $command = [string]$state.command }
+    if ($state.sessionId) { $armedSessionId = [string]$state.sessionId }
 } catch { }
+
+# 같은 로컬 프로젝트를 연 다른 Claude 세션까지 남의 미완료 검증으로 막지 않는다.
+$currentSessionId = [string]$payload.session_id
+if ($armedSessionId -and $currentSessionId -and $armedSessionId -ne $currentSessionId) {
+    exit 0
+}
+
+# 자체 카운터로 여러 번 막되 세션이 영구히 갇히지 않도록 상한을 둔다.
+$blocks = 0
+try { if (Test-Path $blockFile) { $blocks = [int](Get-Content $blockFile -Raw).Trim() } } catch { $blocks = 0 }
+if ($blocks -ge $MAX_BLOCKS) {
+    # 상한을 넘기면 통과시키되 조용히 넘어가지 않는다 — 검증 없이 지나간 머지가 있었다는 흔적을 남긴다.
+    try {
+        Add-Content -Path (Join-Path $root ".claude/state/merge-gate.log") -Encoding UTF8 `
+            -Value ("[{0}] ESCALATED 차단 상한({1}회) 초과 — 검증 없이 턴이 종료됨" -f (Get-Date).ToString("s"), $MAX_BLOCKS)
+    } catch { }
+    exit 0
+}
+try { Set-Content -Path $blockFile -Value ([string]($blocks + 1)) -Encoding ASCII } catch { }
 
 $reason = "[머지 검증 게이트] 머지 후 검증이 아직 통과하지 않았습니다. ($($blocks + 1)/$MAX_BLOCKS 회 차단)`n" +
     "  머지 명령: $command`n" +

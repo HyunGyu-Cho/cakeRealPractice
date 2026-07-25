@@ -104,6 +104,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 - 세션 기반 인증을 사용한다(구현 완료).
 - 현재 로그인 회원은 컨트롤러 파라미터에 `@AuthenticationPrincipal MemberDetails member`로 직접 받는다. 세션 키를 직접 읽거나 별도 커스텀 애너테이션을 만들지 않는다.
 - **역할(role)** 값은 접두어 없이 `USER` / `ADMIN`으로 DB에 저장한다. `MemberDetailsService`가 권한 문자열로 변환할 때 `ROLE_` 접두어를 붙이므로, `hasRole('ADMIN')` / `sec:authorize="hasRole('ADMIN')"`가 그대로 동작한다. role 컬럼에 직접 `ROLE_`를 넣지 않는다.
+- 인증 인프라인 `global/security/MemberDetailsService`는 로그인 자격을 구성하기 위해 `MemberMapper`를 직접 사용할 수 있다. 이는 `Controller → Service → Mapper` 도메인 계층 규칙의 명시적 예외이며, 일반 Controller나 다른 도메인 Service에는 확대하지 않는다.
 
 ## 도메인 간 연동
 

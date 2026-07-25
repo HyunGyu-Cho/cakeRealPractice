@@ -1,6 +1,5 @@
 package com.cakeshop.domain.store.dto.view;
 
-import com.cakeshop.domain.store.entity.StoreHoliday;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
@@ -23,6 +22,6 @@ public record StoreView(
     LocalTime pickupStartTime,
     LocalTime pickupEndTime,
     Integer pickupIntervalMinutes,
-    List<StoreHoliday> holidays
+    List<StoreHolidayView> holidays
 ) {
 }

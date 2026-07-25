@@ -1,6 +1,6 @@
-﻿# spec-driven 관문: 스펙 문서 없는 도메인에 새 클래스 파일을 만들려 하면 차단한다.
-# - 대상: Write 도구로 src/main/java/com/cakeshop/domain/<도메인>/ 아래 "새 파일" 생성
-# - 통과: 기존 파일 수정, docs/specs/<도메인>.md 존재, 이미 구현·조합 계층인 도메인(allowlist)
+﻿# spec-driven 관문: 승인된 스펙 없는 도메인의 운영 코드를 만들거나 수정하려 하면 차단한다.
+# - 대상: Write/Edit 도구로 src/main/java/com/cakeshop/domain/<도메인>/ 아래 파일 생성·수정
+# - 통과: docs/specs/<도메인>.md frontmatter가 status: approved, 또는 조합 전용 계층(home)
 # - 차단 시 /new-domain 스킬로 스펙부터 작성하도록 안내한다.
 
 $ErrorActionPreference = "Stop"
@@ -24,20 +24,37 @@ $normalized = $filePath -replace '\\', '/'
 if ($normalized -notmatch 'src/main/java/com/cakeshop/domain/([a-z][a-z0-9]*)/') { exit 0 }
 $domain = $Matches[1]
 
-# 이미 구현됐거나(store·community) 조합 전용 계층(home)은 관문 대상이 아니다
-$allowlist = @('store', 'community', 'home')
+# home은 다른 도메인의 공개 View를 조합하는 전용 계층이라 독립 비즈니스 스펙 대상이 아니다.
+$allowlist = @('home')
 if ($allowlist -contains $domain) { exit 0 }
-
-# 기존 파일 수정(덮어쓰기)은 통과 — 관문은 "새 클래스 생성 = 구현 착수"만 본다
-if (Test-Path $filePath) { exit 0 }
 
 $root = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { (Get-Location).Path }
 $spec = Join-Path $root "docs/specs/$domain.md"
-if (Test-Path $spec) { exit 0 }
+if (Test-Path $spec) {
+    try {
+        $specText = Get-Content -LiteralPath $spec -Raw -Encoding UTF8
+        $lines = @($specText -split '\r?\n')
+        if ($lines.Count -gt 2 -and $lines[0].Trim() -eq '---') {
+            $frontmatterEnd = -1
+            for ($i = 1; $i -lt $lines.Count; $i++) {
+                if ($lines[$i].Trim() -eq '---') {
+                    $frontmatterEnd = $i
+                    break
+                }
+            }
+            if ($frontmatterEnd -gt 1) {
+                $frontmatter = $lines[1..($frontmatterEnd - 1)]
+                if ($frontmatter -match '^status:\s*approved\s*$') { exit 0 }
+            }
+        }
+    } catch { }
+}
 
-$reason = "spec-driven 관문: docs/specs/$domain.md 가 없습니다. " +
-          "'$domain' 도메인 구현에 착수하기 전에 /new-domain 스킬로 스펙(유스케이스·상태값·비즈니스 규칙)을 " +
-          "먼저 작성·확정하세요. 템플릿: docs/specs/_template.md"
+$specState = if (Test-Path $spec) { "있지만 status: approved 가 아닙니다" } else { "없습니다" }
+$reason = "spec-driven 관문: docs/specs/$domain.md 가 $specState. " +
+          "'$domain' 도메인의 운영 코드를 만들거나 수정하기 전에 /new-domain 스킬로 " +
+          "스펙(유스케이스·상태값·비즈니스 규칙)을 작성하고 사용자 확정 후 status: approved 로 바꾸세요. " +
+          "템플릿: docs/specs/_template.md"
 
 @{
     hookSpecificOutput = @{

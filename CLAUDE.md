@@ -20,8 +20,8 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 - DB에 이미 적용된 증분 SQL(V2 이후)은 수정하지 않고 새 V번호 파일을 추가한다. 단 `V0_ERD.sql`(전체 스펙 보관)과 `V1_first_MVC_table.sql`(1차 MVP 보관)은 보관용 정본이므로 확정 변경을 소급 반영한다 — 확정 변경 시 "증분 V파일 + V0/V1" 두 곳을 함께 고친다.
 - `created_at`/`updated_at`을 자바 코드나 UPDATE 문에서 직접 세팅하지 않는다. DDL의 `DEFAULT`/`ON UPDATE CURRENT_TIMESTAMP(6)`에 위임한다.
 - `global/*`·`store`·`home` 공통 코드는 팀 합의(PR) 없이 변경하지 않는다.
-- 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). 스펙 없는 도메인의 새 클래스 생성은 훅이 차단한다.
-- 기능 작업은 **PR 생성까지만** 한다. 머지는 사람이 PR을 검토하고 지시했을 때만 하며, 머지했으면 **머지된 dev에서 검증까지 한 세트로** 끝낸다(`/merge-feature` 절차). 머지를 감지하면 검증 게이트가 무장되어 `scripts\verify-merge.ps1`이 통과할 때까지 턴이 끝나지 않는다.
+- 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). frontmatter가 `status: approved`가 아닌 도메인의 운영 코드 생성·수정은 훅이 차단한다(`home` 조합 계층 제외).
+- 기능 작업은 **PR 생성까지만** 한다. 머지는 사람이 PR을 검토하고 지시했을 때만 하며, 머지했으면 **머지된 dev에서 검증까지 한 세트로** 끝낸다(`/merge-feature` 절차). 머지를 감지하면 검증 게이트가 무장되고, 미검증 종료를 최대 3회 차단한다. 상한을 넘긴 종료도 `ESCALATED`로 기록되며 pending 상태는 검증 또는 사유 있는 `-Skip` 전까지 유지된다.
 
 ## 2. 아키텍처
 
@@ -46,7 +46,7 @@ com.cakeshop
 ### 표준 구현 예시
 
 - **`domain/store`가 팀 표준 수직 슬라이스** — 계층 분리, 트랜잭션, 검증 실패 재렌더, FlashMessage까지 판단이 서지 않으면 store 코드를 그대로 따른다. 코드 흐름 해설은 `docs/store-usecase-flow.md`(스냅샷 문서) 참고.
-- 목록·페이징 포함 전체 CRUD는 `domain/product` 참조.
+- 목록·페이징 포함 전체 CRUD는 현재 브랜치에 product 실구현이 병합된 경우에만 `domain/product`를 참조한다. 병합 전 브랜치에서는 `TodoList.md`와 실제 코드를 우선한다.
 
 ### 화면(템플릿)
 
@@ -57,7 +57,7 @@ com.cakeshop
 ## 3. 빌드/테스트
 
 ```powershell
-# 로컬 DB로 실행 (개인 개발 표준 — 프로필을 빼면 기본값 rds로 공용 RDS에 붙는다)
+# 로컬 DB로 실행 (개인 개발 표준이자 기본 프로필)
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
 
 # 빌드
@@ -107,7 +107,7 @@ com.cakeshop
 
 ### 현재 구현 상태
 
-개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store(매장 관리)·community(고객+관리자) 는 실제 구현, 나머지 관리자·고객 화면은 대부분 목업이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
+개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store(매장 관리)·community(고객+관리자)·member(가입·마이페이지)는 실제 구현, 나머지 관리자·고객 화면은 대부분 목업이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
 
 ## 5. 코딩 컨벤션
 
@@ -120,4 +120,5 @@ com.cakeshop
 - **에러**: 도메인마다 `ErrorCode` 구현 enum(`STORE_001` 식 접두어). 화면에서 고칠 수 있는 오류는 `bindingResult.rejectValue(...)`로 필드에 반환.
 - **Controller**: PRG 패턴. 성공 시 `redirect:` + `redirectAttributes.addFlashAttribute("successMessage", ...)`(오류는 `"errorMessage"` — 문자열 키가 표준, FlashMessage 상수 클래스 없음), 검증 실패 시 리다이렉트 없이 form 재렌더.
 - **인증**: 로그인 회원은 `@AuthenticationPrincipal MemberDetails member`로 받는다. role은 DB에 `USER`/`ADMIN`으로 저장(`ROLE_` 접두어는 MemberDetailsService가 붙인다).
+- 인증 인프라인 `global/security/MemberDetailsService → MemberMapper` 직접 호출만 계층 규칙의 예외다. 일반 Controller나 다른 도메인 Service로 확대하지 않는다.
 - **DB 네이밍**: 테이블·컬럼 `snake_case`, 테이블명 복수형(예외: `store`·`store_business_hour`·`store_holiday`는 단수). PK는 `BIGINT AUTO_INCREMENT id`(Java `Long`). 상태 컬럼은 `VARCHAR(20) NOT NULL` + `chk_<table>_status CHECK` + 시작 상태 `DEFAULT`.
