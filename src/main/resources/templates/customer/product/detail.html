@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras-spring-security">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +8,11 @@
   <link rel="stylesheet" th:href="@{/css/app.css}">
   <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
   <script defer th:src="@{/js/app.js}"></script>
-  <!-- 수량 컨트롤·장바구니 담기 등 구매 동선은 cart/order 구현 전까지 목업 JS로 동작한다. -->
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
 </head>
 <body data-page-title="상품 상세">
   <header th:replace="~{fragments/common/header :: header}"></header>
   <main class="page-container ">
+    <div th:replace="~{fragments/common/alert :: alert}"></div>
     <h1 class="visually-hidden">상품 상세</h1>
     <p class="text-muted section">
       <a href="/">메인</a> &gt; <a th:href="@{/products}">전체 상품</a> &gt; <span th:text="${product.name}">상품명</span>
@@ -45,19 +45,24 @@
           <span class="data-row__label">픽업 가능일</span>
           <span th:text="${product.preparationDays == 0} ? '당일 픽업 가능' : |주문일로부터 ${product.preparationDays}일 후부터|">픽업 가능일</span>
         </div>
-        <div class="form-group" style="margin-top:12px" th:if="${product.onSale}">
-          <span class="form-label">수량</span>
-          <div class="quantity-control" data-quantity data-min="1" data-max="10">
-            <button class="btn" type="button" data-quantity-change="-1" aria-label="수량 감소">−</button>
-            <output class="panel quantity-control__value" data-quantity-value>1</output>
-            <button class="btn" type="button" data-quantity-change="1" aria-label="수량 증가">+</button>
-          </div>
-        </div>
         <div class="stack" th:if="${product.onSale}">
-          <div class="cluster" th:if="${product.productType != 'CUSTOM'}">
-            <a class="btn btn--primary" href="/orders/pickup?intent=order" data-prepare-product>픽업 일시 선택</a>
-            <button class="btn" type="button" data-add-product-cart>장바구니 담기</button>
-            <span class="note">픽업 일시는 장바구니에서 나중에 선택할 수 있습니다.</span>
+          <div th:if="${product.productType != 'CUSTOM'}">
+            <form sec:authorize="isAuthenticated()" th:action="@{/cart/items}" method="post" class="stack">
+              <input type="hidden" name="productId" th:value="${product.id}">
+              <label class="form-group">
+                <span class="form-label">수량</span>
+                <input class="form-control" style="max-width:120px" type="number" name="quantity"
+                       value="1" min="1" th:max="${product.stockQuantity}" required>
+              </label>
+              <div class="cluster">
+                <button class="btn btn--primary" type="submit">장바구니 담기</button>
+                <span class="note">픽업 일시는 선택 상품을 주문할 때 한 번 정합니다.</span>
+              </div>
+            </form>
+            <div sec:authorize="isAnonymous()" class="cluster">
+              <a class="btn btn--primary" th:href="@{/login}">로그인 후 장바구니 담기</a>
+              <span class="note">장바구니는 로그인 회원에게 저장됩니다.</span>
+            </div>
           </div>
           <div class="cluster" th:if="${product.productType == 'CUSTOM'}">
             <a class="btn btn--primary" href="/orders/custom/options">제작 옵션 선택</a>

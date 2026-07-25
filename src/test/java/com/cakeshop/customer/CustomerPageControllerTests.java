@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import com.cakeshop.domain.coupon.controller.CouponController;
-import com.cakeshop.domain.cart.controller.CartController;
 import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
 import com.cakeshop.domain.notification.controller.NotificationController;
@@ -34,13 +33,11 @@ class CustomerPageControllerTests {
         // member(로그인·가입·마이페이지)·product(목록·상세) 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
             new HomeController(mock(HomeService.class)),
-            new CartController(),
             new OrderController(), new PaymentController(),
             new NotificationController(), new CouponController(), new ReviewController()
         ).build();
 
         pages.put("/screens", "home/screens");
-        pages.put("/cart", "customer/cart/list");
         pages.put("/orders/pickup", "customer/order/pickup-setting");
         pages.put("/orders/custom/options", "customer/order/custom-option");
         pages.put("/orders/custom/request", "customer/order/custom-request");
@@ -74,15 +71,15 @@ class CustomerPageControllerTests {
     }
 
     @Test
-    void importedCartMockupUsesSpringRoutesAndIncludesItsBehavior() throws IOException {
+    void cartTemplateUsesServerDataAndDedicatedBehavior() throws IOException {
         String cartTemplate = new ClassPathResource("templates/customer/cart/list.html")
             .getContentAsString(StandardCharsets.UTF_8);
-        String mockupScript = new ClassPathResource("static/js/customer-mockup.js")
+        String cartScript = new ClassPathResource("static/js/cart.js")
             .getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(cartTemplate).contains("data-cart-root", "href=\"/products\"");
-        assertThat(mockupScript)
-            .contains("source: cakeProjectSample/js/cart.js", "location.href = \"/cart\"")
-            .doesNotContain("/customer/");
+        assertThat(cartTemplate)
+            .contains("th:each=\"item : ${cart.items}\"", "data-cart-root", "/cart/checkout")
+            .doesNotContain("fragments/customer/mock-notice", "customer-mockup.js");
+        assertThat(cartScript).contains("data-cart-item-check").doesNotContain("localStorage");
     }
 }

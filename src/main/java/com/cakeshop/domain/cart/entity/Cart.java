@@ -6,12 +6,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CartItem {
+public class Cart {
 
     private Long id;
-    private Long cartId;
-    private Long productId;
-    private Integer quantity;
+    private Long memberId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

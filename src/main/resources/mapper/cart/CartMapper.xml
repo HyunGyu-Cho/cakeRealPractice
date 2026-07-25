@@ -1,5 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.cart.mapper.CartMapper">
-    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <insert id="insertCartIfAbsent">
+        INSERT IGNORE INTO carts (member_id)
+        VALUES (#{memberId})
+    </insert>
+
+    <select id="findCartIdByMemberIdForUpdate" resultType="long">
+        SELECT id
+        FROM carts
+        WHERE member_id = #{memberId}
+        FOR UPDATE
+    </select>
+
+    <select id="findItemByCartAndProduct"
+            resultType="com.cakeshop.domain.cart.entity.CartItem">
+        SELECT id, cart_id, product_id, quantity, created_at, updated_at
+        FROM cart_items
+        WHERE cart_id = #{cartId}
+          AND product_id = #{productId}
+    </select>
+
+    <select id="findItemByIdAndCart"
+            resultType="com.cakeshop.domain.cart.entity.CartItem">
+        SELECT id, cart_id, product_id, quantity, created_at, updated_at
+        FROM cart_items
+        WHERE id = #{cartItemId}
+          AND cart_id = #{cartId}
+    </select>
+
+    <select id="findItemsByMemberId"
+            resultType="com.cakeshop.domain.cart.entity.CartItem">
+        SELECT ci.id, ci.cart_id, ci.product_id, ci.quantity, ci.created_at, ci.updated_at
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+        ORDER BY ci.created_at DESC, ci.id DESC
+    </select>
+
+    <select id="findItemsByIdsAndMemberId"
+            resultType="com.cakeshop.domain.cart.entity.CartItem">
+        SELECT ci.id, ci.cart_id, ci.product_id, ci.quantity, ci.created_at, ci.updated_at
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+          AND ci.id IN
+          <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+              #{cartItemId}
+          </foreach>
+    </select>
+
+    <select id="countItemsByIdsAndMemberId" resultType="int">
+        SELECT COUNT(DISTINCT ci.id)
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+          AND ci.id IN
+          <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+              #{cartItemId}
+          </foreach>
+    </select>
+
+    <select id="sumQuantityByMemberId" resultType="int">
+        SELECT COALESCE(SUM(ci.quantity), 0)
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+    </select>
+
+    <insert id="insertItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cart_items (cart_id, product_id, quantity)
+        VALUES (#{cartId}, #{productId}, #{quantity})
+    </insert>
+
+    <update id="updateItemQuantity">
+        UPDATE cart_items
+        SET quantity = #{quantity}
+        WHERE id = #{cartItemId}
+    </update>
+
+    <delete id="deleteItemByIdAndMemberId">
+        DELETE ci
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE ci.id = #{cartItemId}
+          AND c.member_id = #{memberId}
+    </delete>
+
+    <delete id="deleteItemsByIdsAndMemberId">
+        DELETE ci
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+          AND ci.id IN
+          <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+              #{cartItemId}
+          </foreach>
+    </delete>
+
+    <delete id="deleteAllByMemberId">
+        DELETE ci
+        FROM cart_items ci
+        INNER JOIN carts c ON c.id = ci.cart_id
+        WHERE c.member_id = #{memberId}
+    </delete>
 </mapper>

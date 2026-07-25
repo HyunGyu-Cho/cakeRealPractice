@@ -17,7 +17,7 @@
 
 ## 2단계 — 구매 흐름 (핵심 가치, 서로 강결합 — 여기까지가 "필수")
 
-- [ ] **cart** — localStorage 목업 → DB(`carts`/`cart_items`) 전환
+- [x] **cart** — localStorage 목업 → DB(`carts`/`cart_items`) 전환
   - 스펙 단계에서 team-plan 8장 🟡 임시 답 확정: 같은 상품 수량 합산, 가격 재검증 방식.
 - [ ] **order(일반) + payment** — 픽업 설정 → 주문서 → 결제(모의 또는 토스) → `PAID` 생성 → 관리자 픽업 처리(`READY_FOR_PICKUP → PICKED_UP`)
   - 일반 주문 시작 상태가 PAID라 결제와 주문 생성은 한 몸. 덩어리가 크면 "모의 결제로 주문 생성" / "실 결제 연동"으로 분할.

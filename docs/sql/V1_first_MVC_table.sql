@@ -208,8 +208,40 @@
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     -- =========================================================
+    -- 장바구니
+    -- =========================================================
+
+    CREATE TABLE `carts` (
+        `id`         BIGINT NOT NULL AUTO_INCREMENT,
+        `member_id`  BIGINT NOT NULL,
+        `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                     ON UPDATE CURRENT_TIMESTAMP(6),
+        PRIMARY KEY (`id`),
+        CONSTRAINT `uk_carts_member` UNIQUE (`member_id`),
+        CONSTRAINT `fk_carts_member`
+            FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE `cart_items` (
+        `id`         BIGINT NOT NULL AUTO_INCREMENT,
+        `cart_id`    BIGINT NOT NULL,
+        `product_id` BIGINT NOT NULL,
+        `quantity`   INT UNSIGNED NOT NULL,
+        `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                   ON UPDATE CURRENT_TIMESTAMP(6),
+        PRIMARY KEY (`id`),
+        CONSTRAINT `uk_cart_items_cart_product` UNIQUE (`cart_id`, `product_id`),
+        CONSTRAINT `chk_cart_items_quantity` CHECK (`quantity` > 0),
+        CONSTRAINT `fk_cart_items_cart`
+            FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`),
+        CONSTRAINT `fk_cart_items_product`
+            FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    -- =========================================================
     -- 주문 (주환)
-    -- 장바구니(carts) 연결 없이 member_id / product_id 를 직접 넣어 테스트 주문을 만든다.
     -- =========================================================
 
     CREATE TABLE `orders` (
