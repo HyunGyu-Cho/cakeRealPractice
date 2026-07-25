@@ -93,6 +93,19 @@ public class MemberService {
             .collect(Collectors.toMap(Member::getId, Member::getNickname));
     }
 
+    /** 타 도메인 관리자 화면용 최소 회원 프로필 배치 조회 공개 계약. */
+    @Transactional(readOnly = true)
+    public Map<Long, MemberProfileView> getProfileMap(Collection<Long> memberIds) {
+        if (memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return memberMapper.findProfilesByIds(memberIds).stream()
+            .collect(Collectors.toMap(Member::getId, member -> new MemberProfileView(
+                member.getId(), member.getNickname(), member.getEmail(),
+                member.getPhone(), member.getCreatedAt()
+            )));
+    }
+
     /**
      * [공개 계약] 닉네임 부분 일치로 회원 id를 찾는다.
      * community 관리자 작성자 검색이 첫 사용처다 — 시그니처 변경 시 사용처(수민↔현규) 합의 필요.

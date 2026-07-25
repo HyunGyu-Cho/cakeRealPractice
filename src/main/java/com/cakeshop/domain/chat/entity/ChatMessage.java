@@ -1,6 +1,25 @@
 package com.cakeshop.domain.chat.entity;
 
-// DB 조회 결과·도메인 상태
+import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class ChatMessage {
-    // TODO: 필드 정의 (ERD 확정 후)
+    private Long id;
+    private Long chatRoomId;
+    private Long senderId;
+    private ChatSenderType senderType;
+    private ChatMessageType messageType;
+    private String content;
+    private String imageKey;
+    private String imageOriginalName;
+    private String imageContentType;
+    private Long imageSize;
+    private String actionType;
+    private String actionUrl;
+    private String clientMessageId;
+    private LocalDateTime createdAt;
+    private boolean read;
 }

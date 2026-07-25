@@ -35,6 +35,9 @@ app:
     upload-dir: ${FILE_UPLOAD_DIR:${user.home}/cakeshop-uploads}
     # 저장 파일에 접근하는 웹 경로 접두. WebConfig 리소스 핸들러와 짝을 이룬다.
     url-prefix: /uploads
+  chat:
+    # 채팅 이미지는 /uploads/** 공개 리소스와 분리하며, 소유권 검사 API로만 읽는다.
+    private-image-dir: ${CHAT_IMAGE_DIR:${user.home}/cakeshop-chat-images}
 
 ---
 # 기본 개발 환경: 각 PC에 직접 설치한 MariaDB

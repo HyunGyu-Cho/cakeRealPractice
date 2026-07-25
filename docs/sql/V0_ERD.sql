@@ -467,40 +467,46 @@ CREATE TABLE `member_coupons` (
 CREATE TABLE `chat_rooms` (
     `id`              BIGINT NOT NULL AUTO_INCREMENT,
     `customer_id`     BIGINT NOT NULL,
-    `admin_id`        BIGINT NULL,
-    `status`          VARCHAR(30) NOT NULL DEFAULT 'OPEN',
+    `status`          VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     `last_message_at` DATETIME(6) NULL,
+    `closed_at`       DATETIME(6) NULL,
     `created_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `updated_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                      ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
     CONSTRAINT `uk_chat_rooms_customer` UNIQUE (`customer_id`),
+    CONSTRAINT `chk_chat_rooms_status`
+        CHECK (`status` IN ('OPEN', 'CLOSED')),
     CONSTRAINT `fk_chat_rooms_customer`
-        FOREIGN KEY (`customer_id`) REFERENCES `members` (`id`),
-    CONSTRAINT `fk_chat_rooms_admin`
-        FOREIGN KEY (`admin_id`) REFERENCES `members` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `chat_room_orders` (
-    `id`           BIGINT NOT NULL AUTO_INCREMENT,
-    `chat_room_id` BIGINT NOT NULL,
-    `order_id`     BIGINT NOT NULL,
-    `created_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`id`),
-    CONSTRAINT `uk_chat_room_orders_order` UNIQUE (`order_id`),
-    CONSTRAINT `fk_chat_room_orders_room`
-        FOREIGN KEY (`chat_room_id`) REFERENCES `chat_rooms` (`id`),
-    CONSTRAINT `fk_chat_room_orders_order`
-        FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
+        FOREIGN KEY (`customer_id`) REFERENCES `members` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `chat_messages` (
-    `id`           BIGINT NOT NULL AUTO_INCREMENT,
-    `chat_room_id` BIGINT NOT NULL,
-    `sender_id`    BIGINT NOT NULL,
-    `message_type` VARCHAR(30) NOT NULL,
-    `content`      TEXT NULL,
-    `image_url`    VARCHAR(500) NULL,
-    `created_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `id`                  BIGINT NOT NULL AUTO_INCREMENT,
+    `chat_room_id`        BIGINT NOT NULL,
+    `sender_id`           BIGINT NULL,
+    `sender_type`         VARCHAR(20) NOT NULL,
+    `message_type`        VARCHAR(20) NOT NULL,
+    `content`             TEXT NULL,
+    `image_key`           VARCHAR(500) NULL,
+    `image_original_name` VARCHAR(255) NULL,
+    `image_content_type`  VARCHAR(100) NULL,
+    `image_size`          BIGINT NULL,
+    `action_type`         VARCHAR(50) NULL,
+    `action_url`          VARCHAR(500) NULL,
+    `client_message_id`   CHAR(36) NULL,
+    `created_at`          DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `uk_chat_messages_room_client`
+        UNIQUE (`chat_room_id`, `client_message_id`),
+    KEY `idx_chat_messages_room_id` (`chat_room_id`, `id`),
+    CONSTRAINT `chk_chat_messages_sender_type`
+        CHECK (`sender_type` IN ('CUSTOMER', 'ADMIN', 'SYSTEM')),
+    CONSTRAINT `chk_chat_messages_message_type`
+        CHECK (`message_type` IN ('TEXT', 'IMAGE', 'SYSTEM_CARD')),
+    CONSTRAINT `chk_chat_messages_sender`
+        CHECK ((`sender_type` = 'SYSTEM' AND `sender_id` IS NULL)
+            OR (`sender_type` <> 'SYSTEM' AND `sender_id` IS NOT NULL)),
     CONSTRAINT `fk_chat_messages_room`
         FOREIGN KEY (`chat_room_id`) REFERENCES `chat_rooms` (`id`),
     CONSTRAINT `fk_chat_messages_sender`
@@ -515,10 +521,25 @@ CREATE TABLE `chat_message_reads` (
     PRIMARY KEY (`id`),
     CONSTRAINT `uk_chat_message_reads_message_member`
         UNIQUE (`chat_message_id`, `member_id`),
+    KEY `idx_chat_message_reads_member` (`member_id`, `chat_message_id`),
     CONSTRAINT `fk_chat_message_reads_message`
         FOREIGN KEY (`chat_message_id`) REFERENCES `chat_messages` (`id`),
     CONSTRAINT `fk_chat_message_reads_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `chat_room_orders` (
+    `id`           BIGINT NOT NULL AUTO_INCREMENT,
+    `chat_room_id` BIGINT NOT NULL,
+    `order_id`     BIGINT NOT NULL,
+    `created_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_chat_room_orders_order` UNIQUE (`order_id`),
+    KEY `idx_chat_room_orders_room` (`chat_room_id`),
+    CONSTRAINT `fk_chat_room_orders_room`
+        FOREIGN KEY (`chat_room_id`) REFERENCES `chat_rooms` (`id`),
+    CONSTRAINT `fk_chat_room_orders_order`
+        FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================

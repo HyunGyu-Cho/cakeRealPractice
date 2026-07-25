@@ -66,7 +66,7 @@ function Invoke-SqlFile([string]$database, [string]$path) {
 $targets = @(
     @{
         name = "cakeshop_schema_verify_v0"
-        files = @("V0_ERD.sql") + (2..8 | ForEach-Object {
+        files = @("V0_ERD.sql") + (2..9 | ForEach-Object {
             Get-ChildItem $sqlRoot -Filter "V$($_)_*.sql" | Select-Object -ExpandProperty Name
         })
     },
@@ -74,7 +74,7 @@ $targets = @(
         name = "cakeshop_schema_verify_v1"
         # V1은 comments 등 커뮤니티 하위 테이블을 의도적으로 제외한 최소 정본이므로
         # 해당 테이블을 ALTER하는 V2는 V0 기준에서만 검증한다.
-        files = @("V1_first_MVC_table.sql") + (3..8 | ForEach-Object {
+        files = @("V1_first_MVC_table.sql") + (3..9 | ForEach-Object {
             Get-ChildItem $sqlRoot -Filter "V$($_)_*.sql" | Select-Object -ExpandProperty Name
         })
     }
