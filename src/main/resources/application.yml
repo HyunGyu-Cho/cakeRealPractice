@@ -2,7 +2,8 @@ spring:
   config:
     import: optional:file:.env[.properties]
   profiles:
-    default: rds
+    # 프로필 누락으로 공용 RDS에 접속하지 않도록 안전한 로컬 환경을 기본값으로 둔다.
+    default: local
   application:
     name: cakeshop
   thymeleaf:

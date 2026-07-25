@@ -1,5 +1,6 @@
 .gradle/
 build/
+bin/
 out/
 .idea/
 *.iml
@@ -8,3 +9,5 @@ application-prod.yml
 .env
 uploads/
 .claude/settings.local.json
+# 머지 검증 게이트의 로컬 상태 — 커밋되면 팀원 전체가 남의 미완료 검증에 갇힌다
+.claude/state/

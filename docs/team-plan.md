@@ -97,7 +97,7 @@
 
 | 결정할 사항 | 최종 결정 | 담당자 |
 |---|---|---|
-| 표준 구현 예제로 사용할 도메인 | 🟡 `domain/store` 수직 슬라이스를 팀 표준으로 확정(계층 분리·주석 규칙 포함). 목록·페이징 포함 CRUD는 `domain/product` 참조 | |
+| 표준 구현 예제로 사용할 도메인 | ✅ `domain/store` 수직 슬라이스를 팀 표준으로 확정(계층 분리·주석 규칙 포함). 목록·페이징 CRUD는 product 실구현이 현재 브랜치에 병합된 뒤 참조 | |
 | Controller·Service·Mapper의 책임 범위 | ✅ [`conventions.md`](conventions.md) 준수 (`Controller → Service → Mapper` 단방향) | |
 | Form DTO·View DTO·Entity의 사용 기준 | ✅ [`conventions.md`](conventions.md) 준수 | |
 | 도메인 간 DTO·Entity 직접 공유 허용 여부 | ⬜ (원칙: 합의된 Service 인터페이스로만 연동) | |
@@ -223,7 +223,7 @@
 | (a) | `application.yml`엔 공통값만, 개인 로컬값은 `application-local.yml`(gitignore)로 분리 |
 | (b) | 로컬 datasource도 `.env` 방식으로 통일 |
 
-> 현재는 `local` 프로필의 로컬 DB 값도 `.env`(`LOCAL_DB_*`)에서 읽도록 되어 있어 (b)에 가깝다. 최종 채택안을 확정한다.
+> ✅ `local` 프로필도 `.env`의 `LOCAL_DB_*`를 읽는 방식으로 확정했다. 프로필 누락 시 공용 RDS에 접속하지 않도록 `local`을 기본 프로필로 사용한다.
 
 ---
 
@@ -245,9 +245,9 @@
 | 결정할 사항 | 최종 결정 | 담당자 |
 |---|---|---|
 | PR 전 필수 실행 명령 | | |
-| Controller·Service·Mapper의 필수 테스트 범위 | | |
+| Controller·Service·Mapper의 필수 테스트 범위 | ✅ 실구현 도메인은 Service 업무 규칙 + Controller 검증/PRG 전용 테스트를 둔다. Mapper XML은 머지 검증의 로컬 DB 부팅·화면 스모크로 실행 확인 | |
 | RDS 통합 테스트 일정 | | |
-| 테스트 결과 기록 방법 | | |
+| 테스트 결과 기록 방법 | ✅ PR 본문에 전용/전체 테스트 결과를 기록하고, 머지 후 `scripts/verify-merge.ps1` 결과는 `.claude/state/merge-gate.log`에 로컬 기록 | |
 | 버그 우선순위 기준 | | |
 
 ### 기능 완료 기준

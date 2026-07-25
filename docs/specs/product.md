@@ -1,3 +1,9 @@
+---
+domain: product
+status: approved
+approved-at: 2026-07-25
+---
+
 # product 스펙
 
 > 확정일: 2026-07-25. 범위: 고객 상품 목록(필터·정렬·검색·페이징 — 목업 전체)·상세, 관리자 CRUD + 대표 이미지 1장, 공개 계약 getSalesInfo.

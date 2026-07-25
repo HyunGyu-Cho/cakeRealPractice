@@ -260,7 +260,7 @@ public record StoreView(
     LocalTime pickupStartTime,
     LocalTime pickupEndTime,
     Integer pickupIntervalMinutes,
-    List<StoreHoliday> holidays
+    List<StoreHolidayView> holidays
 ) {
 }
 ```
@@ -289,6 +289,7 @@ src/main/java/com/cakeshop/domain/store/dto/form/StoreUpdateForm.java
 |---|---|
 | `Store` | DB의 `store` 한 행 |
 | `StoreBusinessHour` | DB의 요일별 영업시간 한 행 |
+| `StoreHolidayView` | 휴무일 Entity에서 화면에 필요한 값만 옮긴 조회 결과 |
 | `StoreView` | 여러 테이블을 조합한 관리자 조회 결과 |
 | `StoreUpdateForm` | 관리자 입력값과 입력 검증 |
 
@@ -476,9 +477,9 @@ public void updateStore(StoreUpdateForm form, MultipartFile image)
   → 입력값을 Store에 반영
   → 새 이미지가 있으면 저장
   → store 테이블 UPDATE
-  → 기존 이미지 삭제
   → 월~일 영업시간 UPSERT 7회
   → 트랜잭션 커밋
+  → 기존 이미지 삭제
 ```
 
 ### 4.5 기존 매장 조회
@@ -885,9 +886,9 @@ POST /admin/store
       → Store Entity 값 변경
       → 새 이미지가 있으면 FileStorageClient.store()
       → StoreMapper.updateStore()
-      → 이전 이미지가 있으면 FileStorageClient.delete()
       → StoreMapper.upsertBusinessHour() 7회
       → 트랜잭션 커밋
+      → 이전 이미지가 있으면 FileStorageClient.delete()
   → successMessage 저장
   → redirect:/admin/store
   → GET /admin/store
@@ -920,7 +921,7 @@ POST /admin/store
 
 ## 8. 현재 구현에서 확인되는 주의점
 
-### 8.1 파일과 DB 트랜잭션 불일치
+### 8.1 파일과 DB 트랜잭션의 보상 처리
 
 DB 작업은 `@Transactional`로 묶여 있지만 파일 저장과 삭제는 DB 트랜잭션에 참여하지 않는다.
 
@@ -929,31 +930,24 @@ DB 작업은 `@Transactional`로 묶여 있지만 파일 저장과 삭제는 DB 
 ```text
 새 이미지 저장
   → store UPDATE
-  → 기존 이미지 삭제
   → 영업시간 UPSERT 7회
   → DB 커밋
+  → 기존 이미지 삭제
 ```
 
-영업시간 저장 중 오류가 발생하면 다음 상태가 생길 수 있다.
+`TransactionSynchronization.afterCompletion()`으로 DB 결과에 맞춰 파일을 정리한다.
 
 ```text
-DB 변경
-  → 롤백됨
+커밋
+  → 새 이미지 URL을 유지
+  → 기존 이미지 파일 삭제
 
-새 이미지 파일
-  → 디스크에 남음
-
-기존 이미지 파일
-  → 이미 삭제됐을 수 있음
+롤백
+  → 기존 이미지 URL과 파일을 유지
+  → 새 이미지 파일 보상 삭제
 ```
 
-특히 `StoreService`의 주석은 “DB 저장이 확정된 뒤 기존 파일을 삭제한다”고 설명하지만, 실제 코드는 DB 트랜잭션 커밋 전에 기존 파일을 삭제한다.
-
-개선 방향:
-
-- 트랜잭션 커밋 이후 기존 파일 삭제
-- DB 저장 실패 시 새 파일을 삭제하는 보상 로직
-- 파일 교체 이벤트를 트랜잭션 완료 이벤트로 처리
+파일 정리 실패는 이미 확정된 DB 트랜잭션 결과를 뒤집지 않도록 경고 로그로 남긴다. 운영 환경에서는 이 로그를 수집하고 미사용 파일 정리 작업을 별도로 둘 수 있다.
 
 ### 8.2 이미지 Content-Type 검증
 
@@ -1008,6 +1002,7 @@ src/test/java/com/cakeshop/domain/store/service/StoreServiceTests.java
 - 휴무일의 시작·종료 시간이 `null`로 저장되는지
 - 주말에 주말 영업시간이 사용되는지
 - 새 이미지를 저장하고 기존 이미지를 삭제하는지
+- DB 실패·롤백 시 새 이미지를 보상 삭제하고 기존 이미지를 유지하는지
 - 이미지가 아닌 업로드를 거부하는지
 - 중복된 특정 휴무일을 거부하는지
 
