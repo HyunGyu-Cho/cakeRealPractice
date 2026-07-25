@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
@@ -7,19 +7,44 @@
   <link rel="stylesheet" th:href="@{/css/app.css}">
   <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
   <script defer th:src="@{/js/app.js}"></script>
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
 </head>
 <body data-page-title="마이페이지">
   <header th:replace="~{fragments/common/header :: header}"></header>
   <main class="page-container ">
-    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
-    <h1>마이페이지</h1><div class="layout-sidebar"><aside class="panel"><strong>홍길동</strong><p class="text-muted">example@email.com</p><nav class="stack" style="margin-top:12px"><a class="btn btn--block" href="/orders/1">주문 내역</a><a class="btn btn--block" th:href="@{/chat}">1:1 문의</a><a class="btn btn--block" href="/mypage/coupons">보유 쿠폰</a><a class="btn btn--block" href="/reviews/new">작성할 후기</a><a class="btn btn--block" href="/mypage/profile">회원정보 수정</a></nav><hr class="divider"><a class="btn" href="/login">로그아웃</a></aside><div>
-      <section class="section"><h2 class="section-title">회원 정보</h2><div class="panel"><div class="data-row"><span class="data-row__label">이름</span><span>홍길동</span></div><div class="data-row"><span class="data-row__label">이메일</span><span>example@email.com</span></div><div class="data-row"><span class="data-row__label">전화번호</span><span>010-0000-0000</span></div><a class="btn" href="/mypage/profile" style="margin-top:8px">정보 수정</a></div></section>
-      <section class="section"><h2 class="section-title">진행 중인 주문</h2><div class="stack"><article class="panel cluster cluster--between"><div><strong>레터링 케이크</strong><p class="text-muted">픽업: 01.20 14:00 | ORD-001</p></div><div class="cluster"><span class="badge badge--warning">승인 대기</span><a class="btn" href="/orders/1">상세</a></div></article><article class="panel cluster cluster--between"><div><strong>딸기 케이크</strong><p class="text-muted">픽업: 01.22 15:00 | ORD-002</p></div><div class="cluster"><span class="badge badge--info">제작 중</span><a class="btn" href="/orders/1">상세</a></div></article></div></section>
-      <section class="section"><h2 class="section-title">최근 주문</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>주문번호</th><th>상품명</th><th>금액</th><th>상태</th><th>픽업일</th><th>상세</th></tr></thead><tbody><tr><td>ORD-003</td><td>초코 케이크</td><td>40,000원</td><td>픽업 완료</td><td>01.10</td><td><a class="btn" href="/orders/1">보기</a></td></tr><tr><td>ORD-004</td><td>마카롱 케이크</td><td>38,000원</td><td>픽업 완료</td><td>01.05</td><td><a class="btn" href="/orders/1">보기</a></td></tr></tbody></table></div></section>
+    <div th:replace="~{fragments/common/alert :: alert}"></div>
+    <h1>마이페이지</h1>
+    <div class="layout-sidebar">
+      <aside class="panel">
+        <strong th:text="${profile.nickname}">홍길동</strong>
+        <p class="text-muted" th:text="${profile.email}">example@email.com</p>
+        <nav class="stack" style="margin-top:12px">
+          <a class="btn btn--block" href="/orders/1">주문 내역</a>
+          <a class="btn btn--block" th:href="@{/chat}">1:1 문의</a>
+          <a class="btn btn--block" href="/mypage/coupons">보유 쿠폰</a>
+          <a class="btn btn--block" href="/reviews/new">작성할 후기</a>
+          <a class="btn btn--block" th:href="@{/mypage/profile}">회원정보 수정</a>
+        </nav>
+        <hr class="divider">
+        <!-- Spring Security 로그아웃은 CSRF 토큰이 필요한 POST다. th:action이 토큰을 자동 삽입한다. -->
+        <form th:action="@{/logout}" method="post">
+          <button class="btn" type="submit">로그아웃</button>
+        </form>
+      </aside>
+      <div>
+      <section class="section">
+        <h2 class="section-title">회원 정보</h2>
+        <div class="panel">
+          <div class="data-row"><span class="data-row__label">이름</span><span th:text="${profile.nickname}">홍길동</span></div>
+          <div class="data-row"><span class="data-row__label">이메일</span><span th:text="${profile.email}">example@email.com</span></div>
+          <div class="data-row"><span class="data-row__label">전화번호</span><span th:text="${profile.phone}">010-0000-0000</span></div>
+          <a class="btn" th:href="@{/mypage/profile}" style="margin-top:8px">정보 수정</a>
+        </div>
+      </section>
+      <!-- 아래 주문 블록은 order 도메인 구현 전 예시 데이터다. order 완성 시 공개 View로 교체한다. -->
+      <section class="section"><h2 class="section-title">진행 중인 주문 <span class="badge">예시 데이터</span></h2><div class="stack"><article class="panel cluster cluster--between"><div><strong>레터링 케이크</strong><p class="text-muted">픽업: 01.20 14:00 | ORD-001</p></div><div class="cluster"><span class="badge badge--warning">확인 중</span><a class="btn" href="/orders/1">상세</a></div></article><article class="panel cluster cluster--between"><div><strong>딸기 케이크</strong><p class="text-muted">픽업: 01.22 15:00 | ORD-002</p></div><div class="cluster"><span class="badge badge--info">제작 중</span><a class="btn" href="/orders/1">상세</a></div></article></div></section>
+      <section class="section"><h2 class="section-title">최근 주문 <span class="badge">예시 데이터</span></h2><div class="table-wrap"><table class="data-table"><thead><tr><th>주문번호</th><th>상품명</th><th>금액</th><th>상태</th><th>픽업일</th><th>상세</th></tr></thead><tbody><tr><td>ORD-003</td><td>초코 케이크</td><td>40,000원</td><td>픽업 완료</td><td>01.10</td><td><a class="btn" href="/orders/1">보기</a></td></tr><tr><td>ORD-004</td><td>마카롱 케이크</td><td>38,000원</td><td>픽업 완료</td><td>01.05</td><td><a class="btn" href="/orders/1">보기</a></td></tr></tbody></table></div></section>
     </div></div>
   </main>
   <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
 </html>
-

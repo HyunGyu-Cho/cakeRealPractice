@@ -34,12 +34,12 @@ class ScreenRenderingTests {
     void allDatabaseFreePreviewScreensRenderThroughThymeleaf() throws Exception {
         // 관리자 화면은 public-preview 에서도 열리지 않는다(SecurityConfig: /admin/** = ROLE_ADMIN).
         // 따라서 로그인 없이 렌더되는 고객 프리뷰 화면만 검증한다.
+        // /mypage·/mypage/profile 은 실구현 전환으로 로그인이 필요해져 프리뷰 대상에서 제외했다.
         String[] paths = {
             "/screens", "/login", "/signup", "/products", "/products/1", "/cart",
             "/orders/pickup", "/orders/custom/options", "/orders/custom/request",
-            "/orders/checkout", "/orders/1/payment", "/orders/complete", "/mypage",
-            "/orders/1", "/notifications", "/reviews/new", "/mypage/coupons",
-            "/mypage/profile"
+            "/orders/checkout", "/orders/1/payment", "/orders/complete",
+            "/orders/1", "/notifications", "/reviews/new", "/mypage/coupons"
         };
 
         for (String path : paths) {

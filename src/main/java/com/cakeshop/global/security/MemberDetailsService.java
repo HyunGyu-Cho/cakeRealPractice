@@ -2,7 +2,9 @@ package com.cakeshop.global.security;
 
 import com.cakeshop.domain.member.mapper.MemberMapper;
 import com.cakeshop.domain.member.entity.Member;
+import com.cakeshop.domain.member.entity.MemberStatus;
 import java.util.List;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +27,14 @@ public class MemberDetailsService implements UserDetailsService {
         Member member = memberMapper.findByEmail(normalizedEmail)
             // 계정 존재 여부를 로그인 화면에 노출하지 않도록 동일한 인증 실패로 처리한다.
             .orElseThrow(() -> new UsernameNotFoundException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
+        // 상태별 로그인 차단(스펙 docs/specs/member.md). 탈퇴는 계정 존재 여부를 숨기려 미존재와 동일하게 처리한다.
+        if (MemberStatus.WITHDRAWN.matches(member.getStatus())) {
+            throw new UsernameNotFoundException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+        if (MemberStatus.SUSPENDED.matches(member.getStatus())) {
+            throw new LockedException("이용이 제한된 계정입니다.");
+        }
 
         return new MemberDetails(
             member.getId(), member.getEmail(), member.getPassword(),

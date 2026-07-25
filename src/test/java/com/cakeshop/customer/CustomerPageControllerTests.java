@@ -10,8 +10,6 @@ import com.cakeshop.domain.coupon.controller.CouponController;
 import com.cakeshop.domain.cart.controller.CartController;
 import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
-import com.cakeshop.domain.member.controller.AuthController;
-import com.cakeshop.domain.member.controller.MyPageController;
 import com.cakeshop.domain.notification.controller.NotificationController;
 import com.cakeshop.domain.order.controller.OrderController;
 import com.cakeshop.domain.payment.controller.PaymentController;
@@ -34,16 +32,15 @@ class CustomerPageControllerTests {
 
     @BeforeEach
     void setUp() {
+        // member(로그인·가입·마이페이지) 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
-            new HomeController(mock(HomeService.class)), new AuthController(), new ProductController(),
+            new HomeController(mock(HomeService.class)), new ProductController(),
             new CartController(),
-            new OrderController(), new PaymentController(), new MyPageController(),
+            new OrderController(), new PaymentController(),
             new NotificationController(), new CouponController(), new ReviewController()
         ).build();
 
         pages.put("/screens", "home/screens");
-        pages.put("/login", "auth/login");
-        pages.put("/signup", "customer/member/signup");
         pages.put("/products", "customer/product/list");
         pages.put("/products/1", "customer/product/detail");
         pages.put("/cart", "customer/cart/list");
@@ -53,12 +50,10 @@ class CustomerPageControllerTests {
         pages.put("/orders/checkout", "customer/order/form");
         pages.put("/orders/1/payment", "customer/payment/form");
         pages.put("/orders/complete", "customer/order/complete");
-        pages.put("/mypage", "customer/member/mypage");
         pages.put("/orders/1", "customer/order/detail");
         pages.put("/notifications", "customer/notification/list");
         pages.put("/reviews/new", "customer/review/form");
         pages.put("/mypage/coupons", "customer/coupon/list");
-        pages.put("/mypage/profile", "customer/member/profile-edit");
     }
 
     @Test
