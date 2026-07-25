@@ -46,8 +46,6 @@ DROP TABLE IF EXISTS `order_item_images`;
 DROP TABLE IF EXISTS `order_item_options`;
 DROP TABLE IF EXISTS `order_items`;
 DROP TABLE IF EXISTS `orders`;
-DROP TABLE IF EXISTS `cart_item_images`;
-DROP TABLE IF EXISTS `cart_item_options`;
 DROP TABLE IF EXISTS `cart_items`;
 DROP TABLE IF EXISTS `carts`;
 DROP TABLE IF EXISTS `product_images`;
@@ -192,44 +190,20 @@ CREATE TABLE `carts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `cart_items` (
-    `id`           BIGINT NOT NULL AUTO_INCREMENT,
-    `cart_id`      BIGINT NOT NULL,
-    `product_id`   BIGINT NOT NULL,
-    `quantity`     INT UNSIGNED NOT NULL DEFAULT 1,
-    `requirements` TEXT NULL,
-    `created_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    `updated_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-                                   ON UPDATE CURRENT_TIMESTAMP(6),
+    `id`         BIGINT NOT NULL AUTO_INCREMENT,
+    `cart_id`    BIGINT NOT NULL,
+    `product_id` BIGINT NOT NULL,
+    `quantity`   INT UNSIGNED NOT NULL,
+    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                               ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    CONSTRAINT `uk_cart_items_cart_product` UNIQUE (`cart_id`, `product_id`),
+    CONSTRAINT `chk_cart_items_quantity` CHECK (`quantity` > 0),
     CONSTRAINT `fk_cart_items_cart`
         FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`),
     CONSTRAINT `fk_cart_items_product`
         FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `cart_item_options` (
-    `id`                BIGINT NOT NULL AUTO_INCREMENT,
-    `cart_item_id`      BIGINT NOT NULL,
-    `product_option_id` BIGINT NOT NULL,
-    `option_name`       VARCHAR(100) NOT NULL,
-    `additional_price`  DECIMAL(12, 0) NOT NULL DEFAULT 0,
-    PRIMARY KEY (`id`),
-    CONSTRAINT `uk_cart_item_options_item_option`
-        UNIQUE (`cart_item_id`, `product_option_id`),
-    CONSTRAINT `fk_cart_item_options_item`
-        FOREIGN KEY (`cart_item_id`) REFERENCES `cart_items` (`id`),
-    CONSTRAINT `fk_cart_item_options_product_option`
-        FOREIGN KEY (`product_option_id`) REFERENCES `product_options` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `cart_item_images` (
-    `id`           BIGINT NOT NULL AUTO_INCREMENT,
-    `cart_item_id` BIGINT NOT NULL,
-    `image_url`    VARCHAR(500) NOT NULL,
-    `sort_order`   INT NOT NULL DEFAULT 0,
-    PRIMARY KEY (`id`),
-    CONSTRAINT `fk_cart_item_images_item`
-        FOREIGN KEY (`cart_item_id`) REFERENCES `cart_items` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================

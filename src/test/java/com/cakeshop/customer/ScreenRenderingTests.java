@@ -37,7 +37,7 @@ class ScreenRenderingTests {
         // /mypage·/mypage/profile 은 실구현 전환으로 로그인이 필요해져 프리뷰 대상에서 제외했다.
         // /products/1 은 실구현 전환으로 DB에 해당 상품이 있어야 열려 목록만 남긴다(빈 목록도 200).
         String[] paths = {
-            "/screens", "/login", "/signup", "/products", "/cart",
+            "/screens", "/login", "/signup", "/products",
             "/orders/pickup", "/orders/custom/options", "/orders/custom/request",
             "/orders/checkout", "/orders/1/payment", "/orders/complete",
             "/orders/1", "/notifications", "/reviews/new", "/mypage/coupons"

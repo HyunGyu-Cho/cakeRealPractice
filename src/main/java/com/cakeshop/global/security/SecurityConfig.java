@@ -27,7 +27,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.ignoringRequestMatchers("/webhooks/toss"))
             .authorizeHttpRequests(auth -> {
                 // ① 공개 GET을 먼저 선언 (matcher 순서 = 우선순위)
-                auth.requestMatchers("/", "/login", "/signup", "/products/**", "/cart", "/screens",
+                auth.requestMatchers("/", "/login", "/signup", "/products/**", "/screens",
                         "/favicon.ico", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error").permitAll();
                 // 로드밸런서/헬스체크가 인증 없이 호출할 수 있도록 허용 (그 외 actuator 엔드포인트는 미노출)
                 auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();

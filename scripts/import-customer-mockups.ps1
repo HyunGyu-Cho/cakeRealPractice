@@ -10,10 +10,9 @@ $templateRoot = Join-Path $backendRoot "src\main\resources\templates"
 $staticRoot = Join-Path $backendRoot "src\main\resources\static"
 
 # Keep the DB-backed home page and Spring Security login page intact.
-# member 3개(signup·mypage·profile-edit)·product 2개(목록·상세) 화면은 실구현으로 전환되어 제외한다
+# member 3개(signup·mypage·profile-edit)·product 2개(목록·상세)·cart 화면은 실구현으로 전환되어 제외한다
 # — 덮어쓰면 백엔드 바인딩이 사라진다.
 $screenMap = [ordered]@{
-    "cart.html"          = "customer\cart\list.html"
     "pickup-setting.html" = "customer\order\pickup-setting.html"
     "custom-option.html" = "customer\order\custom-option.html"
     "custom-request.html" = "customer\order\custom-request.html"

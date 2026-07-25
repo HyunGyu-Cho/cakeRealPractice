@@ -15,7 +15,7 @@ approved-at: 2026-07-25
 - 이 도메인이 해결하는 문제 한 줄: 판매 상품의 등록·관리와 고객 노출(목록·상세), 타 도메인(cart·order·home)에 판매 정보 제공.
 - 주요 유스케이스:
   1. 고객 → 목록에서 유형·가격대·판매상태·픽업가능 필터 + 정렬(최신/가격↑↓/인기) + 상품명 검색 + 페이지 이동 → 조건에 맞는 상품 카드
-  2. 고객 → 상세 조회 → 이미지·가격·판매/재고 상태·픽업 가능일 표시 (구매 버튼은 cart/order 구현 전까지 목업 동작 유지)
+  2. 고객 → 상세 조회 → 이미지·가격·판매/재고 상태·픽업 가능일 표시 → 일반 판매 상품은 DB 장바구니에 담기
   3. 관리자 → 목록(검색·필터·페이징) → 등록/수정(대표 이미지 업로드 포함) → 판매 중지/재개
   4. 타 도메인 → `getSalesInfo(productId)` → 판매 가능 여부·가격·재고
 
@@ -40,7 +40,7 @@ approved-at: 2026-07-25
 ## 4. 도메인 간 인터페이스
 
 - 내가 제공할 공개 Service 메서드:
-  - `ProductService.getSalesInfo(Long productId)` → `ProductSalesInfo(onSale, price, stockQuantity)` — 1차 합의 계약(`ProductQueryService.getSalesInfo`)의 이행. cart·order가 사용 예정.
+  - `ProductService.getSalesInfo(Long productId)` → `ProductSalesInfo(onSale, price, stockQuantity)` — 1차 합의 계약(`ProductQueryService.getSalesInfo`)의 이행. cart가 사용 중이며 order가 사용 예정.
   - `ProductService.getLatestActiveProducts(int limit)` → home 메인 노출용.
 - 내가 사용할 다른 도메인의 공개 Service: 없음.
 
@@ -49,7 +49,7 @@ approved-at: 2026-07-25
 - URL·템플릿 유지: `GET /products`(목록), `GET /products/{id}`(상세), `GET/POST /admin/products`(목록/등록), `/admin/products/new`, `/admin/products/{id}/edit`.
 - 고객 목록 필터(목업 전체): `type`(4종), `minPrice`/`maxPrice`, `sale`(전체/판매중/품절/판매중지), `pickupToday`(픽업 가능 = `preparation_days = 0`), `keyword`(상품명), 정렬 `sort`(`latest`(기본)/`priceAsc`/`priceDesc`/`popular`(리뷰 수↓)). 페이지 번호 페이징(공용 pagination 프래그먼트).
 - 관리자 목록 필터: `keyword`/`type`/`status`/`stock`(전체/재고있음/품절) + 페이징.
-- 상세: 대표 이미지, 판매 상태·재고 상태(파생 라벨), 알레르기·후기 영역은 "예시 데이터" 배지로 목업 유지(review 차례에 교체). 장바구니·주문 버튼은 cart/order 구현 전까지 목업 JS 동작 유지.
+- 상세: 대표 이미지, 판매 상태·재고 상태(파생 라벨), 알레르기·후기 영역은 "예시 데이터" 배지로 목업 유지(review 차례에 교체). 일반 상품 장바구니 버튼은 서버 폼이며 주문제작 동선은 order(수제)에서 구현한다.
 - 고객 목록·상세 템플릿은 import 스크립트 덮어쓰기 목록에서 제외한다.
 - home 메인의 상품 목업 영역을 `getLatestActiveProducts`로 교체(각 도메인 완성 시 home 연결 규칙).
 
