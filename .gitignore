@@ -7,3 +7,4 @@ out/
 application-prod.yml
 .env
 uploads/
+.claude/settings.local.json

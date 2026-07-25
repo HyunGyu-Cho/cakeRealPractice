@@ -50,7 +50,7 @@
         `nickname`         VARCHAR(50) NOT NULL,
         `phone`            VARCHAR(30) NULL,
         `role`             VARCHAR(30) NOT NULL DEFAULT 'USER',
-        `status`           VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+        `status`           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
         `suspended_at`     DATETIME(6) NULL,
         `suspended_reason` VARCHAR(500) NULL,
         `created_at`       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -58,7 +58,9 @@
                                         ON UPDATE CURRENT_TIMESTAMP(6),
         `withdrawn_at`     DATETIME(6) NULL,
         PRIMARY KEY (`id`),
-        CONSTRAINT `uk_members_email` UNIQUE (`email`)
+        CONSTRAINT `uk_members_email` UNIQUE (`email`),
+        CONSTRAINT `chk_members_status`
+            CHECK (`status` IN ('ACTIVE', 'SUSPENDED', 'WITHDRAWN'))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     -- =========================================================
@@ -206,15 +208,11 @@
         `original_amount`         DECIMAL(12, 0) NOT NULL,
         `discount_amount`         DECIMAL(12, 0) NOT NULL DEFAULT 0,
         `final_amount`            DECIMAL(12, 0) NOT NULL,
-        `status`                  VARCHAR(30) NOT NULL,
+        `status`                  VARCHAR(20) NOT NULL,
         `pickup_at`               DATETIME(6) NOT NULL,
-        `cancellation_blocked_at` DATETIME(6) NULL,
-        `payment_expires_at`      DATETIME(6) NULL,
         `request_message`         TEXT NULL,
         `reject_reason`           TEXT NULL,
-        `approved_at`             DATETIME(6) NULL,
         `rejected_at`             DATETIME(6) NULL,
-        `accepted_at`             DATETIME(6) NULL,
         `ready_at`                DATETIME(6) NULL,
         `picked_up_at`            DATETIME(6) NULL,
         `completed_at`            DATETIME(6) NULL,
@@ -227,6 +225,9 @@
                                                 ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
         CONSTRAINT `uk_orders_order_number` UNIQUE (`order_number`),
+        CONSTRAINT `chk_orders_status`
+            CHECK (`status` IN ('UNDER_REVIEW', 'IN_PRODUCTION', 'REJECTED',
+                                'PAID', 'READY_FOR_PICKUP', 'PICKED_UP', 'CANCELED')),
         CONSTRAINT `fk_orders_member`
             FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -253,7 +254,7 @@
 
     -- =========================================================
     -- 결제 (주환)
-    -- 1차에는 Mock 결과 저장. active_paid_order_id 는 status=PAID 일 때만 order_id 를
+    -- 1차에는 Mock 결과 저장. active_paid_order_id 는 status=DONE 일 때만 order_id 를
     -- 갖는 생성 열이며, UNIQUE 와 결합해 주문당 활성 결제 1건을 보장한다.
     -- =========================================================
 
@@ -269,7 +270,7 @@
         `provider_status`      VARCHAR(50) NULL,
         `active_paid_order_id` BIGINT
             GENERATED ALWAYS AS (
-                CASE WHEN `status` = 'PAID' THEN `order_id` ELSE NULL END
+                CASE WHEN `status` = 'DONE' THEN `order_id` ELSE NULL END
             ) STORED,
         `failure_code`         VARCHAR(100) NULL,
         `failure_message`      VARCHAR(500) NULL,
@@ -366,7 +367,7 @@
         `content`        TEXT NOT NULL,
         `view_count`     BIGINT NOT NULL DEFAULT 0,
         `like_count`     BIGINT NOT NULL DEFAULT 0,
-        `status`         VARCHAR(30) NOT NULL DEFAULT 'PUBLISHED',
+        `status`         VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
         `blocked_at`     DATETIME(6) NULL,
         `blocked_reason` VARCHAR(500) NULL,
         `blocked_by`     BIGINT NULL,
@@ -374,6 +375,8 @@
         `updated_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                         ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
+        CONSTRAINT `chk_posts_status`
+            CHECK (`status` IN ('ACTIVE', 'DELETED', 'BLOCKED')),
         CONSTRAINT `fk_posts_member`
             FOREIGN KEY (`member_id`) REFERENCES `members` (`id`),
         CONSTRAINT `fk_posts_category`

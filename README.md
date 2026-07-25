@@ -128,7 +128,7 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 | 쿠폰 | `/admin/coupons` | 목업 |
 | 회원 | `/admin/members` | 목업 |
 | 후기 | `/admin/reviews` | 목업 |
-| 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 목업 |
+| 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
 | 알림 | `/admin/notifications` | 목업 |
 | 통계 | `/admin/statistics` | 목업 |
 
@@ -136,23 +136,24 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 
 ## 고객 화면 선이관
 
-프론트 원본 18개 화면 중 메인과 로그인은 각각 매장 조회와 Spring Security 연동을 유지한다. 나머지 16개 화면은 아래 import 스크립트로 도메인별 Thymeleaf 템플릿과 GET 경로에 먼저 연결했다. 커뮤니티 3개 화면은 프론트 원본에 없어 별도로 추가했으며, 이로써 `/screens` 기준 고객 화면은 총 21개다. 현재 목업 화면의 폼과 장바구니 동작은 브라우저 안에서만 실행되며 DB를 변경하지 않는다.
+프론트 원본 18개 화면 중 메인과 로그인은 각각 매장 조회와 Spring Security 연동을 유지한다. 나머지 화면은 아래 import 스크립트로 도메인별 Thymeleaf 템플릿과 GET 경로에 먼저 연결했다. 커뮤니티 3개 화면은 프론트 원본에 없어 별도로 추가했으며, 이로써 `/screens` 기준 고객 화면은 총 21개다. 커뮤니티(목록·상세·글쓰기)와 회원(가입·마이페이지·프로필)은 실제 DB 연동으로 전환됐고, 나머지 목업 화면의 폼과 장바구니 동작은 브라우저 안에서만 실행되며 DB를 변경하지 않는다.
 
 | 기능 | 경로 | 현재 상태 |
 |---|---|---|
 | 전체 화면 목록 | `/screens` | 고객·관리자 35개 경로 안내 |
-| 회원가입 | `/signup` | 목업 |
+| 회원가입 | `/signup` | 실제 가입 (검증·중복 확인) |
 | 상품 목록·상세 | `/products`, `/products/{id}` | 목업 |
 | 장바구니 | `/cart` | 목업 (브라우저 `localStorage`) |
 | 픽업 설정 | `/orders/pickup` | 목업 |
 | 주문 제작 | `/orders/custom/options`, `/orders/custom/request` | 목업 |
 | 주문서·완료·상세 | `/orders/checkout`, `/orders/complete`, `/orders/{id}` | 목업 |
 | 결제 | `/orders/{id}/payment` | 목업 |
-| 마이페이지·프로필·쿠폰 | `/mypage`, `/mypage/profile`, `/mypage/coupons` | 목업 |
+| 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
+| 쿠폰함 | `/mypage/coupons` | 목업 |
 | 알림·후기 | `/notifications`, `/reviews/new` | 목업 |
-| 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 목업 (별도 추가) |
+| 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 16개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인과 별도로 추가한 커뮤니티 화면은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 프론트 원본 기반 13개 목업 템플릿과 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티 화면, 실구현으로 전환된 회원 3개 화면(가입·마이페이지·프로필)은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1

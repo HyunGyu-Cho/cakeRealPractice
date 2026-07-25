@@ -1,5 +1,9 @@
 # 매장 정보 관리 유스케이스 코드 흐름
 
+> 이 문서는 2026-07 시점의 store 코드를 따라가며 작성한 스냅샷 해설이다.
+> 이후 코드 변경을 자동으로 따라가지 않으므로, 규칙의 정본은 `conventions.md`,
+> 실제 동작의 정본은 store 소스 코드를 기준으로 삼는다.
+
 ## 1. 문서 목적
 
 이 문서는 현재 프로젝트에서 **관리자가 매장 정보와 영업시간을 조회하고 수정하는 유스케이스**가 어떤 파일과 메서드를 거쳐 처리되는지 설명한다.
@@ -977,36 +981,14 @@ public static final long DEFAULT_STORE_ID = 1L;
 
 다중 지점으로 확장한다면 로그인한 관리자가 관리할 수 있는 `storeId`를 구하고 권한을 검증하는 과정이 필요하다.
 
-### 8.4 Controller 성공 메시지 상수 불일치
+### 8.4 Controller 성공 메시지 상수 불일치 (해결됨)
 
-Controller는 다음 문자열을 직접 사용한다.
+과거 `StoreAdminControllerTests`가 존재하지 않는 `com.cakeshop.global.web.FlashMessage`를
+import해 `compileTestJava` 단계에서 전체 테스트 컴파일이 실패했다.
 
-```java
-"successMessage"
-```
-
-하지만 `StoreAdminControllerTests`는 현재 존재하지 않는 다음 타입을 import한다.
-
-```java
-com.cakeshop.global.web.FlashMessage
-```
-
-따라서 현재 테스트는 `compileTestJava` 단계에서 실패한다.
-
-실행한 테스트 명령:
-
-```powershell
-.\gradlew.bat test --tests "com.cakeshop.domain.store.*"
-```
-
-실패 원인:
-
-```text
-package com.cakeshop.global.web does not exist
-import com.cakeshop.global.web.FlashMessage;
-```
-
-Controller와 테스트 중 한쪽을 기준으로 성공 메시지 키를 통일해야 한다.
+conventions.md가 정한 문자열 키(`"successMessage"` / `"errorMessage"`)가 정본이므로
+테스트를 문자열 키 기준으로 수정해 해결했다. 상수 클래스 도입이 필요해지면
+`global/*` 공통 코드 변경이므로 팀 합의를 거쳐 진행한다.
 
 ---
 
@@ -1043,6 +1025,4 @@ src/test/java/com/cakeshop/domain/store/controller/StoreAdminControllerTests.jav
 - 잘못된 입력에서 Service를 호출하지 않는지
 - 정상 수정 후 `/admin/store`로 리다이렉트하는지
 - 성공 메시지가 Flash Attribute에 저장되는지
-
-현재는 앞서 설명한 `FlashMessage` import 문제를 해결해야 테스트를 실행할 수 있다.
 
