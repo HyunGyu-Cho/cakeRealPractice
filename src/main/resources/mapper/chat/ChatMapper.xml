@@ -1,5 +1,245 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.chat.mapper.ChatMapper">
-    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <resultMap id="roomResultMap" type="com.cakeshop.domain.chat.entity.ChatRoom">
+        <id property="id" column="id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="status" column="status"/>
+        <result property="lastMessageAt" column="last_message_at"/>
+        <result property="closedAt" column="closed_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="messageResultMap" type="com.cakeshop.domain.chat.entity.ChatMessage">
+        <id property="id" column="id"/>
+        <result property="chatRoomId" column="chat_room_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="senderType" column="sender_type"/>
+        <result property="messageType" column="message_type"/>
+        <result property="content" column="content"/>
+        <result property="imageKey" column="image_key"/>
+        <result property="imageOriginalName" column="image_original_name"/>
+        <result property="imageContentType" column="image_content_type"/>
+        <result property="imageSize" column="image_size"/>
+        <result property="actionType" column="action_type"/>
+        <result property="actionUrl" column="action_url"/>
+        <result property="clientMessageId" column="client_message_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="read" column="is_read"/>
+    </resultMap>
+
+    <resultMap id="roomSummaryResultMap"
+               type="com.cakeshop.domain.chat.dto.view.ChatRoomSummaryRow">
+        <id property="roomId" column="room_id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="status" column="status"/>
+        <result property="lastMessageAt" column="last_message_at"/>
+        <result property="lastMessageId" column="last_message_id"/>
+        <result property="lastMessagePreview" column="last_message_preview"/>
+        <result property="unreadCount" column="unread_count"/>
+        <result property="unanswered" column="is_unanswered"/>
+    </resultMap>
+
+    <sql id="messageColumns">
+        m.id, m.chat_room_id, m.sender_id, m.sender_type, m.message_type,
+        m.content, m.image_key, m.image_original_name, m.image_content_type,
+        m.image_size, m.action_type, m.action_url, m.client_message_id, m.created_at,
+        CASE
+            WHEN m.sender_type = 'CUSTOMER' THEN EXISTS (
+                SELECT 1 FROM chat_message_reads customer_read
+                 WHERE customer_read.chat_message_id = m.id
+                   AND customer_read.member_id != m.sender_id
+            )
+            WHEN m.sender_type = 'ADMIN' THEN EXISTS (
+                SELECT 1 FROM chat_message_reads admin_read
+                JOIN chat_rooms read_room ON read_room.id = m.chat_room_id
+                 WHERE admin_read.chat_message_id = m.id
+                   AND admin_read.member_id = read_room.customer_id
+            )
+            ELSE 0
+        END AS is_read
+    </sql>
+
+    <select id="findRoomByCustomerId" resultMap="roomResultMap">
+        SELECT id, customer_id, status, last_message_at, closed_at, created_at, updated_at
+          FROM chat_rooms
+         WHERE customer_id = #{customerId}
+    </select>
+
+    <select id="findRoomById" resultMap="roomResultMap">
+        SELECT id, customer_id, status, last_message_at, closed_at, created_at, updated_at
+          FROM chat_rooms
+         WHERE id = #{roomId}
+    </select>
+
+    <insert id="insertRoom" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_rooms (customer_id)
+        VALUES (#{customerId})
+    </insert>
+
+    <update id="reopenRoom">
+        UPDATE chat_rooms
+           SET status = 'OPEN',
+               closed_at = NULL
+         WHERE id = #{roomId}
+           AND status = 'CLOSED'
+    </update>
+
+    <update id="closeRoom">
+        UPDATE chat_rooms
+           SET status = 'CLOSED',
+               closed_at = CURRENT_TIMESTAMP(6)
+         WHERE id = #{roomId}
+           AND status = 'OPEN'
+    </update>
+
+    <select id="findMessageByClientMessageId" resultMap="messageResultMap">
+        SELECT <include refid="messageColumns"/>
+          FROM chat_messages m
+         WHERE m.chat_room_id = #{roomId}
+           AND m.client_message_id = #{clientMessageId}
+    </select>
+
+    <select id="findMessageById" resultMap="messageResultMap">
+        SELECT <include refid="messageColumns"/>
+          FROM chat_messages m
+         WHERE m.id = #{messageId}
+    </select>
+
+    <insert id="insertMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_messages (
+            chat_room_id, sender_id, sender_type, message_type, content,
+            image_key, image_original_name, image_content_type, image_size,
+            action_type, action_url, client_message_id
+        ) VALUES (
+            #{chatRoomId}, #{senderId}, #{senderType}, #{messageType}, #{content},
+            #{imageKey}, #{imageOriginalName}, #{imageContentType}, #{imageSize},
+            #{actionType}, #{actionUrl}, #{clientMessageId}
+        )
+    </insert>
+
+    <update id="updateLastMessage">
+        UPDATE chat_rooms
+           SET last_message_at = (
+               SELECT created_at
+                 FROM chat_messages
+                WHERE chat_room_id = #{roomId}
+                ORDER BY id DESC
+                LIMIT 1
+           )
+         WHERE id = #{roomId}
+    </update>
+
+    <select id="findRecentMessages" resultMap="messageResultMap">
+        SELECT <include refid="messageColumns"/>
+          FROM chat_messages m
+         WHERE m.chat_room_id = #{roomId}
+         ORDER BY m.id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="findMessagesBefore" resultMap="messageResultMap">
+        SELECT <include refid="messageColumns"/>
+          FROM chat_messages m
+         WHERE m.chat_room_id = #{roomId}
+           AND m.id &lt; #{beforeId}
+         ORDER BY m.id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="findMessagesAfter" resultMap="messageResultMap">
+        SELECT <include refid="messageColumns"/>
+          FROM chat_messages m
+         WHERE m.chat_room_id = #{roomId}
+           AND m.id &gt; #{afterId}
+         ORDER BY m.id ASC
+         LIMIT #{limit}
+    </select>
+
+    <insert id="markMessagesRead">
+        INSERT IGNORE INTO chat_message_reads (chat_message_id, member_id)
+        SELECT m.id, #{readerId}
+          FROM chat_messages m
+         WHERE m.chat_room_id = #{roomId}
+           AND m.id &lt;= #{lastMessageId}
+           AND m.sender_type = #{senderType}
+    </insert>
+
+    <sql id="roomFilter">
+        <if test="customerIds != null">
+            AND r.customer_id IN
+            <foreach collection="customerIds" item="customerId" open="(" separator="," close=")">
+                #{customerId}
+            </foreach>
+        </if>
+        <if test="filter == 'CLOSED'">
+            AND r.status = 'CLOSED'
+        </if>
+        <if test="filter == 'UNANSWERED'">
+            AND (
+                SELECT ordinary.sender_type
+                  FROM chat_messages ordinary
+                 WHERE ordinary.chat_room_id = r.id
+                   AND ordinary.message_type IN ('TEXT', 'IMAGE')
+                 ORDER BY ordinary.id DESC
+                 LIMIT 1
+            ) = 'CUSTOMER'
+        </if>
+    </sql>
+
+    <select id="countRooms" resultType="int">
+        SELECT COUNT(*)
+          FROM chat_rooms r
+         WHERE 1 = 1
+        <include refid="roomFilter"/>
+    </select>
+
+    <select id="findRoomSummaries" resultMap="roomSummaryResultMap">
+        SELECT r.id AS room_id,
+               r.customer_id,
+               r.status,
+               r.last_message_at,
+               latest.id AS last_message_id,
+               CASE
+                   WHEN latest.message_type = 'IMAGE' AND NULLIF(latest.content, '') IS NULL
+                       THEN '이미지'
+                   WHEN latest.message_type = 'SYSTEM_CARD'
+                       THEN '주문제작 안내'
+                   ELSE LEFT(latest.content, 120)
+               END AS last_message_preview,
+               (
+                   SELECT COUNT(*)
+                     FROM chat_messages unread
+                    WHERE unread.chat_room_id = r.id
+                      AND unread.sender_type = 'CUSTOMER'
+                      AND NOT EXISTS (
+                          SELECT 1
+                            FROM chat_message_reads read_marker
+                           WHERE read_marker.chat_message_id = unread.id
+                      )
+               ) AS unread_count,
+               COALESCE((
+                   SELECT ordinary.sender_type = 'CUSTOMER'
+                     FROM chat_messages ordinary
+                    WHERE ordinary.chat_room_id = r.id
+                      AND ordinary.message_type IN ('TEXT', 'IMAGE')
+                    ORDER BY ordinary.id DESC
+                    LIMIT 1
+               ), 0) AS is_unanswered
+          FROM chat_rooms r
+          LEFT JOIN chat_messages latest
+            ON latest.id = (
+                SELECT last_message.id
+                  FROM chat_messages last_message
+                 WHERE last_message.chat_room_id = r.id
+                 ORDER BY last_message.id DESC
+                 LIMIT 1
+            )
+         WHERE 1 = 1
+        <include refid="roomFilter"/>
+         ORDER BY r.last_message_at DESC, r.id DESC
+         LIMIT #{limit} OFFSET #{offset}
+    </select>
 </mapper>

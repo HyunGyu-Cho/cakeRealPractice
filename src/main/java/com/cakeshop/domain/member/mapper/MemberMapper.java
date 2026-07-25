@@ -28,6 +28,9 @@ public interface MemberMapper {
     // 공개 계약(getNicknameMap)용 배치 조회 — id·nickname만 채워진다.
     List<Member> findNicknamesByIds(@Param("ids") Collection<Long> ids);
 
+    // 타 도메인 관리자 목록에 노출할 최소 프로필(id·nickname·email) 배치 조회.
+    List<Member> findProfilesByIds(@Param("ids") Collection<Long> ids);
+
     // 공개 계약(searchMemberIdsByNickname)용 — 닉네임 부분 일치로 id만 반환한다.
     List<Long> findIdsByNicknameLike(@Param("keyword") String keyword);
 

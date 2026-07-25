@@ -28,7 +28,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> {
                 // ① 공개 GET을 먼저 선언 (matcher 순서 = 우선순위)
                 auth.requestMatchers("/", "/login", "/signup", "/products/**", "/screens",
-                        "/favicon.ico", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error").permitAll();
+                        "/favicon.ico", "/css/**", "/js/**", "/images/**", "/uploads/**",
+                        "/webjars/**", "/error").permitAll();
                 // 로드밸런서/헬스체크가 인증 없이 호출할 수 있도록 허용 (그 외 actuator 엔드포인트는 미노출)
                 auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
                 auth.requestMatchers(HttpMethod.GET, "/community", "/community/{id:\\d+}",
@@ -41,9 +42,13 @@ public class SecurityConfig {
                     // /mypage·/mypage/profile은 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
                     // 쿠폰함(/mypage/coupons)은 아직 목업이라 경로를 좁혀 남긴다.
                     auth.requestMatchers(HttpMethod.GET,
-                        "/orders/**", "/mypage/coupons", "/notifications", "/reviews/**", "/community/new", "/chat").permitAll();
+                        "/orders/**", "/mypage/coupons", "/notifications", "/reviews/**", "/community/new").permitAll();
                 }
 
+                auth.requestMatchers(HttpMethod.GET, "/chat").hasRole("USER");
+                auth.requestMatchers(HttpMethod.GET, "/api/chat/messages").hasRole("USER");
+                auth.requestMatchers(HttpMethod.POST, "/api/chat/messages", "/api/chat/read").hasRole("USER");
+                auth.requestMatchers(HttpMethod.GET, "/api/chat/messages/{messageId:\\d+}/image").authenticated();
                 // ② 관리자. 모든 관리자 화면은 관리자 로그인을 요구한다.
                 auth.requestMatchers("/admin/**").hasRole("ADMIN");
                 // ③ 나머지는 로그인 회원

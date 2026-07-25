@@ -75,6 +75,15 @@
         </foreach>
     </select>
 
+    <select id="findProfilesByIds" resultMap="memberResultMap">
+        SELECT id, nickname, email, created_at
+          FROM members
+         WHERE id IN
+        <foreach collection="ids" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </select>
+
     <!-- 관리자 화면의 작성자 검색용 닉네임 부분 일치 조회 -->
     <select id="findIdsByNicknameLike" resultType="long">
         SELECT id

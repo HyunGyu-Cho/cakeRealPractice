@@ -169,7 +169,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `comments.status` | 현규 | (표기 없음) | `ACTIVE / DELETED` ? | ☐ 열림 |
 | `post_reports.status` | 현규 | (신고 처리) | `PENDING / ACCEPTED / REJECTED` | 거의 확정 |
 | `reviews.status` | 현규 | 숨김 | `VISIBLE / HIDDEN` ? | ☐ 열림 |
-| `chat_rooms.status` | 민정 | 상담가능 / 상담중 / 미답변 | `OPEN / CLOSED` ? (아래 함정 참고) | ☐ 열림 |
+| `chat_rooms.status` | 민정 | 상담 가능 / 상담 종료 | **`OPEN / CLOSED` (확정)** | ✅ 확정 (V9, 스펙 docs/specs/chat.md) |
 
 ### 이미 확정된 두 enum
 
@@ -208,7 +208,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 목업 표기 | 실제 | 담당 |
 |---|---|---|
 | 상품 `품절 / 재고 부족` | `stock_quantity`에서 계산(0이면 품절). **`products.status`(판매 on/off)와 별개** | 시은 |
-| 채팅 `미답변` | 마지막 메시지가 관리자 답이 아님 → 메시지에서 파생. 방 자체 `status`와 다름 | 민정 |
+| 채팅 `미답변` | 마지막 일반 메시지(`TEXT`/`IMAGE`) 발신자가 `CUSTOMER`인지로 파생. `SYSTEM_CARD`는 영향을 주지 않으며 방 자체 `status`와 다름 | 민정 |
 
 > 시은 주의: `products.status`(ACTIVE/INACTIVE = 판매 스위치)와 재고(품절/재고부족)는 **다른 축**이다. 하나의 컬럼으로 합치지 않는다.
 
@@ -243,7 +243,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
 | 정후 | `coupons.status`(캠페인 상태) 값 확정 |
 | 현규 | `comments.status` / `reviews.status`(숨김) 값 확정 |
-| 민정 | `chat_rooms.status` 정의 + **`NotificationType` enum 값 채우기**(현재 TODO) |
+| 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. **`NotificationType` enum 값 채우기**는 알림 도메인 후속 범위 |
 
 > ☐ 항목을 확정하면 인벤토리의 해당 행을 "확정"으로 갱신하고, enum + DDL을 함께 커밋한다.
 
