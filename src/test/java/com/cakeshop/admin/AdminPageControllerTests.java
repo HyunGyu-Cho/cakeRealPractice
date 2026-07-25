@@ -8,9 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cakeshop.domain.coupon.controller.CouponAdminController;
 import com.cakeshop.domain.member.controller.MemberAdminController;
 import com.cakeshop.domain.notification.controller.NotificationAdminController;
-import com.cakeshop.domain.order.controller.FulfillmentAdminController;
-import com.cakeshop.domain.order.controller.OrderAdminController;
-import com.cakeshop.domain.payment.controller.PaymentAdminController;
 import com.cakeshop.domain.review.controller.ReviewAdminController;
 import com.cakeshop.domain.statistics.controller.StatisticsAdminController;
 import java.util.LinkedHashMap;
@@ -29,24 +26,19 @@ class AdminPageControllerTests {
 
     @BeforeEach
     void setUp() {
-        // product 관리자 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
+        // 실제 구현된 store·product·order/payment·community·chat 관리자 화면은
+        // 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
-            new StatisticsAdminController(), new OrderAdminController(),
-            new FulfillmentAdminController(), new PaymentAdminController(), new CouponAdminController(),
+            new StatisticsAdminController(), new CouponAdminController(),
             new MemberAdminController(), new ReviewAdminController(), new NotificationAdminController()
         ).build();
 
         pages.put("/admin", "admin/dashboard");
         pages.put("/admin/statistics", "admin/statistics");
-        pages.put("/admin/orders", "admin/order/list");
-        pages.put("/admin/orders/1", "admin/order/detail");
-        pages.put("/admin/fulfillment", "admin/fulfillment/list");
-        pages.put("/admin/payments", "admin/payment/list");
         pages.put("/admin/coupons", "admin/coupon/list");
         pages.put("/admin/members", "admin/member/list");
         pages.put("/admin/reviews", "admin/review/list");
         pages.put("/admin/notifications", "admin/notification/list");
-        // community 관리자 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
     }
 
     @Test

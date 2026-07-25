@@ -11,7 +11,6 @@ import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
 import com.cakeshop.domain.notification.controller.NotificationController;
 import com.cakeshop.domain.order.controller.OrderController;
-import com.cakeshop.domain.payment.controller.PaymentController;
 import com.cakeshop.domain.review.controller.ReviewController;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,21 +29,17 @@ class CustomerPageControllerTests {
 
     @BeforeEach
     void setUp() {
-        // member(로그인·가입·마이페이지)·product(목록·상세) 화면은 실제 구현으로 전환되어 이 목업 스모크 테스트에서 제외한다.
+        // 실제 구현된 member·product·cart·일반 order/payment·chat 화면은
+        // 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
             new HomeController(mock(HomeService.class)),
-            new OrderController(), new PaymentController(),
+            new OrderController(),
             new NotificationController(), new CouponController(), new ReviewController()
         ).build();
 
         pages.put("/screens", "home/screens");
-        pages.put("/orders/pickup", "customer/order/pickup-setting");
         pages.put("/orders/custom/options", "customer/order/custom-option");
         pages.put("/orders/custom/request", "customer/order/custom-request");
-        pages.put("/orders/checkout", "customer/order/form");
-        pages.put("/orders/1/payment", "customer/payment/form");
-        pages.put("/orders/complete", "customer/order/complete");
-        pages.put("/orders/1", "customer/order/detail");
         pages.put("/notifications", "customer/notification/list");
         pages.put("/reviews/new", "customer/review/form");
         pages.put("/mypage/coupons", "customer/coupon/list");

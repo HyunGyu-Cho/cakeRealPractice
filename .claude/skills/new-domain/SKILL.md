@@ -43,7 +43,7 @@ entity(순수 POJO+Lombok) → Mapper 인터페이스+XML(`#{}`만, 컬럼 명�
 
 - URL·템플릿은 유지하고 하드코딩 본문만 `th:each`/`th:text` + Model 데이터로 교체한다.
 - 해당 화면의 mockup JS/CSS 의존(`customer-mockup.js`, `data-mock-form` 등)을 제거한다. 순수 UI 인터랙션은 유지.
-- 프론트 원본 기반 고객 목업 13개는 import 스크립트가 덮어쓰므로, 실구현 전환 시 그 목록에서 빠지는지 확인한다.
+- import 스크립트는 `$screenMap`에 남은 목업만 덮어쓰므로, 실구현 전환 시 해당 화면을 그 목록에서 먼저 제외한다.
 
 ## 5단계. 테스트
 
