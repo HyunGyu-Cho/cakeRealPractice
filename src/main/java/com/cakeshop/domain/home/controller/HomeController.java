@@ -17,6 +17,7 @@ public class HomeController {
     @GetMapping("/")
     public String home(Model model) {
         model.addAttribute("store", homeService.getStore());
+        model.addAttribute("latestProducts", homeService.getLatestProducts());
         return "home/main";
     }
 
