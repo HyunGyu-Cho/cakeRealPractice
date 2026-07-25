@@ -1,9 +1,24 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>주문 상세 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('orders')}"></aside><div class="admin-main">
-  <header th:replace="~{fragments/admin/header :: header('주문 상세')}"></header><main class="admin-content">
-  <div th:replace="~{fragments/admin/mock-notice :: notice}"></div>
-  <div class="cluster cluster--between section"><h1 class="admin-page-title">주문 상세 - ORD-20250115-001</h1><a class="btn" th:href="@{/admin/orders}">목록으로</a></div>
-  <div class="grid grid--2"><div class="stack"><section><h2 class="section-title">주문자 정보</h2><div class="panel"><div class="data-row"><span class="data-row__label">이름</span><span>홍길동</span></div><div class="data-row"><span class="data-row__label">이메일</span><span>hong@example.com</span></div><div class="data-row"><span class="data-row__label">전화번호</span><span>010-0000-0000</span></div></div></section><section><h2 class="section-title">주문 상품 및 제작 옵션</h2><div class="panel"><div class="cluster"><div class="placeholder-image placeholder-image--sm">상품 이미지</div><div><strong>레터링 주문 케이크</strong><p class="note">주문 제작 | 기본 55,000원</p></div></div><div class="data-row"><span class="data-row__label">크기</span><span>2호 (15cm) +5,000원</span></div><div class="data-row"><span class="data-row__label">맛</span><span>초코 +2,000원</span></div><div class="data-row"><span class="data-row__label">색상</span><span>핑크 +2,000원</span></div><div class="data-row"><span class="data-row__label">레터링</span><span>Happy Birthday!</span></div><div class="data-row"><span class="data-row__label">요청사항</span><span>장식 최소화</span></div></div></section><section><h2 class="section-title">참고 이미지</h2><div class="panel grid grid--3"><div class="placeholder-image">참고 이미지 1</div><div class="placeholder-image">참고 이미지 2</div></div></section><section><h2 class="section-title">픽업 및 결제 정보</h2><div class="panel"><div class="data-row"><span class="data-row__label">픽업 일시</span><span>2025.01.20 14:00</span></div><div class="data-row"><span class="data-row__label">픽업 장소</span><span>1층 카운터</span></div><div class="data-row"><span class="data-row__label">상품 금액</span><span>55,000원</span></div><div class="data-row"><span class="data-row__label">옵션 추가</span><span>+9,000원</span></div><div class="data-row"><span class="data-row__label">쿠폰 할인</span><span>-5,000원</span></div><div class="data-row"><span class="data-row__label">결제 금액</span><strong>59,000원</strong></div><div class="data-row"><span class="data-row__label">결제 수단</span><span>카카오페이</span></div><div class="data-row"><span class="data-row__label">결제 상태</span><span class="badge badge--warning">결제 대기</span></div></div></section></div><aside><section><h2 class="section-title">주문 처리</h2><div class="panel stack"><p>현재 상태: <span class="badge badge--warning" data-status-badge>승인 대기</span></p><div><p class="form-group">승인 처리</p><button class="btn btn--primary" type="button" data-set-status="승인 완료" data-status-class="badge badge--success">승인하기</button></div><div><label for="reject-reason">거절 처리</label><textarea class="form-control form-control--textarea" id="reject-reason" placeholder="거절 사유 입력 (필수)"></textarea><button class="btn btn--danger" type="button" data-set-status="거절됨" data-status-class="badge badge--danger" style="margin-top:8px">거절하기</button></div><hr><div><label for="order-status">주문 상태 변경</label><select class="form-control" id="order-status"><option>결제 완료</option><option>제작 중</option><option>픽업 준비</option><option>픽업 완료</option></select><button class="btn" type="button" data-set-status="상태 변경" style="margin-top:8px">상태 변경</button></div><hr><a class="btn btn--danger" th:href="@{/admin/payments}">취소·환불 처리</a></div></section></aside></div>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('주문 상세')}"></head>
+<body><div class="admin-layout">
+<aside th:replace="~{fragments/admin/sidebar :: sidebar('orders')}"></aside>
+<div class="admin-main"><header th:replace="~{fragments/admin/header :: header('주문 상세')}"></header>
+<main class="admin-content">
+  <div th:if="${order != null}">
+    <h1 class="admin-page-title" th:text="${order.orderNumber}">ORD-</h1>
+    <section class="panel grid grid--2">
+      <div class="data-row"><span class="data-row__label">상태</span><strong th:text="${order.status}">PAID</strong></div>
+      <div class="data-row"><span class="data-row__label">픽업 일시</span><span th:text="${#temporals.format(order.pickupAt, 'yyyy.MM.dd HH:mm')}">-</span></div>
+      <div class="data-row"><span class="data-row__label">주문자</span><span th:text="${order.ordererName + ' / ' + order.ordererPhone}">-</span></div>
+      <div class="data-row"><span class="data-row__label">픽업자</span><span th:text="${order.pickupName + ' / ' + order.pickupPhone}">-</span></div>
+      <div class="data-row"><span class="data-row__label">결제 금액</span><strong th:text="${#numbers.formatInteger(order.finalAmount, 0, 'COMMA') + '원'}">0원</strong></div>
+      <div class="data-row"><span class="data-row__label">요청사항</span><span th:text="${order.requestMessage ?: '-'}">-</span></div>
+    </section>
+    <section><h2 class="section-title">상품</h2><article class="panel" th:each="item : ${order.items}">
+      <strong th:text="${item.productName}">상품</strong>
+      <p th:text="${item.quantity + '개 / ' + #numbers.formatInteger(item.totalAmount, 0, 'COMMA') + '원'}">-</p>
+    </article></section>
+  </div>
+  <p class="panel" th:unless="${order != null}">주문 상세 데이터가 없습니다.</p>
 </main></div></div></body></html>

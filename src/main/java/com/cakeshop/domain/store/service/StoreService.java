@@ -12,9 +12,13 @@ import com.cakeshop.domain.store.entity.StoreBusinessHour;
 import com.cakeshop.domain.store.entity.StoreHoliday;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -22,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -42,10 +47,17 @@ public class StoreService {
 
     private final StoreMapper storeMapper;
     private final FileStorageClient fileStorageClient;
+    private final Clock clock;
 
+    @Autowired
     public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient) {
+        this(storeMapper, fileStorageClient, Clock.systemDefaultZone());
+    }
+
+    public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient, Clock clock) {
         this.storeMapper = storeMapper;
         this.fileStorageClient = fileStorageClient;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -97,6 +109,93 @@ public class StoreService {
             store.pickupPlace(), "%s ~ %s".formatted(
                 formatTime(store.pickupStartTime()), formatTime(store.pickupEndTime()))
         );
+    }
+
+    /**
+     * 주문 도메인이 사용하는 픽업 슬롯 공개 계약.
+     * 준비 기간 이후부터 오늘 기준 14일 이내의 영업일·운영시간 슬롯만 반환한다.
+     */
+    @Transactional(readOnly = true)
+    public List<LocalDateTime> getAvailablePickupSlots(LocalDate date, int preparationDays) {
+        if (date == null || preparationDays < 0 || !isDateInPickupWindow(date, preparationDays)) {
+            return List.of();
+        }
+
+        Store store = findDefaultStore();
+        StoreBusinessHour businessHour = storeMapper.findBusinessHours(DEFAULT_STORE_ID).stream()
+            .filter(hour -> hour.getDayOfWeek() == date.getDayOfWeek())
+            .findFirst()
+            .orElse(null);
+        if (businessHour == null || businessHour.isClosed()
+            || storeMapper.findHolidays(DEFAULT_STORE_ID).stream()
+                .anyMatch(holiday -> date.equals(holiday.getHolidayDate()))) {
+            return List.of();
+        }
+
+        LocalTime start = later(store.getPickupStartTime(), businessHour.getOpenTime());
+        LocalTime end = earlier(store.getPickupEndTime(), businessHour.getCloseTime());
+        Integer interval = store.getPickupIntervalMinutes();
+        if (start == null || end == null || interval == null || interval < 1 || !start.isBefore(end)) {
+            return List.of();
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<LocalDateTime> slots = new ArrayList<>();
+        LocalDateTime configuredEnd = LocalDateTime.of(date, store.getPickupEndTime());
+        for (LocalDateTime slot = LocalDateTime.of(date, store.getPickupStartTime());
+             slot.isBefore(configuredEnd);
+             slot = slot.plusMinutes(interval)) {
+            LocalTime time = slot.toLocalTime();
+            if (time.isBefore(start) || !time.isBefore(end)) {
+                continue;
+            }
+            if (date.equals(now.toLocalDate()) && !slot.isAfter(now)) {
+                continue;
+            }
+            slots.add(slot);
+        }
+        return List.copyOf(slots);
+    }
+
+    @Transactional(readOnly = true)
+    public void validatePickupAt(LocalDateTime pickupAt, int preparationDays) {
+        if (pickupAt == null
+            || !getAvailablePickupSlots(pickupAt.toLocalDate(), preparationDays).contains(pickupAt)) {
+            throw new BusinessException(StoreErrorCode.INVALID_PICKUP_AT);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isPickupAtAvailable(LocalDateTime pickupAt, int preparationDays) {
+        try {
+            validatePickupAt(pickupAt, preparationDays);
+            return true;
+        } catch (BusinessException exception) {
+            if (exception.getErrorCode() == StoreErrorCode.INVALID_PICKUP_AT) {
+                return false;
+            }
+            throw exception;
+        }
+    }
+
+    private boolean isDateInPickupWindow(LocalDate date, int preparationDays) {
+        LocalDate today = LocalDate.now(clock);
+        return !date.isBefore(today.plusDays(preparationDays))
+            && !date.isAfter(today.plusDays(14));
+    }
+
+    private LocalTime later(LocalTime left, LocalTime right) {
+        if (left == null || right == null) {
+            return null;
+        }
+        return left.isAfter(right) ? left : right;
+    }
+
+    private LocalTime earlier(LocalTime left, LocalTime right) {
+        if (left == null || right == null) {
+            return null;
+        }
+        return left.isBefore(right) ? left : right;
     }
 
     /** 기본 정보와 7개 요일을 한 트랜잭션으로 저장해 일부만 반영되는 상태를 막는다. */

@@ -1,5 +1,210 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.order.mapper.OrderMapper">
-    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+    <resultMap id="orderResultMap" type="com.cakeshop.domain.order.entity.Order">
+        <id property="id" column="id"/>
+        <result property="orderNumber" column="order_number"/>
+        <result property="memberId" column="member_id"/>
+        <result property="ordererName" column="orderer_name"/>
+        <result property="ordererPhone" column="orderer_phone"/>
+        <result property="pickupName" column="pickup_name"/>
+        <result property="pickupPhone" column="pickup_phone"/>
+        <result property="originalAmount" column="original_amount"/>
+        <result property="discountAmount" column="discount_amount"/>
+        <result property="finalAmount" column="final_amount"/>
+        <result property="status" column="status"/>
+        <result property="pickupAt" column="pickup_at"/>
+        <result property="requestMessage" column="request_message"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="rejectedAt" column="rejected_at"/>
+        <result property="readyAt" column="ready_at"/>
+        <result property="pickedUpAt" column="picked_up_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="canceledAt" column="canceled_at"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="canceledBy" column="canceled_by"/>
+        <result property="pickupReminderSentAt" column="pickup_reminder_sent_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="orderItemResultMap" type="com.cakeshop.domain.order.entity.OrderItem">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="productType" column="product_type"/>
+        <result property="quantity" column="quantity"/>
+        <result property="basePrice" column="base_price"/>
+        <result property="optionAmount" column="option_amount"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="requirements" column="requirements"/>
+        <result property="preparationDays" column="preparation_days"/>
+        <result property="cancellationLimitDays" column="cancellation_limit_days"/>
+    </resultMap>
+
+    <sql id="orderColumns">
+        id, order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
+        original_amount, discount_amount, final_amount, status, pickup_at, request_message,
+        reject_reason, rejected_at, ready_at, picked_up_at, completed_at, canceled_at,
+        cancel_reason, canceled_by, pickup_reminder_sent_at, created_at, updated_at
+    </sql>
+
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders
+            (order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
+             original_amount, discount_amount, final_amount, status, pickup_at, request_message)
+        VALUES
+            (#{orderNumber}, #{memberId}, #{ordererName}, #{ordererPhone}, #{pickupName}, #{pickupPhone},
+             #{originalAmount}, #{discountAmount}, #{finalAmount}, #{status}, #{pickupAt}, #{requestMessage})
+    </insert>
+
+    <insert id="insertOrderItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_items
+            (order_id, product_id, product_name, product_type, quantity, base_price,
+             option_amount, total_amount, requirements, preparation_days, cancellation_limit_days)
+        VALUES
+            (#{orderId}, #{productId}, #{productName}, #{productType}, #{quantity}, #{basePrice},
+             #{optionAmount}, #{totalAmount}, #{requirements}, #{preparationDays}, #{cancellationLimitDays})
+    </insert>
+
+    <select id="findById" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE id = #{orderId}
+    </select>
+
+    <select id="findByIdAndMemberId" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE id = #{orderId}
+           AND member_id = #{memberId}
+    </select>
+
+    <select id="findByIdForUpdate" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE id = #{orderId}
+         FOR UPDATE
+    </select>
+
+    <select id="findItemsByOrderId" resultMap="orderItemResultMap">
+        SELECT id, order_id, product_id, product_name, product_type, quantity, base_price,
+               option_amount, total_amount, requirements, preparation_days, cancellation_limit_days
+          FROM order_items
+         WHERE order_id = #{orderId}
+         ORDER BY id
+    </select>
+
+    <select id="findItemsByOrderIds" resultMap="orderItemResultMap">
+        SELECT id, order_id, product_id, product_name, product_type, quantity, base_price,
+               option_amount, total_amount, requirements, preparation_days, cancellation_limit_days
+          FROM order_items
+         WHERE order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+         ORDER BY order_id, id
+    </select>
+
+    <sql id="searchWhere">
+        <where>
+            <if test="cond.normalizedOrderNumber() != null">
+                AND order_number LIKE CONCAT('%', #{cond.normalizedOrderNumber}, '%')
+            </if>
+            <if test="cond.normalizedStatus() != null">
+                AND status = #{cond.normalizedStatus}
+            </if>
+            <if test="cond.orderedFrom != null">
+                AND created_at &gt;= #{cond.orderedFrom}
+            </if>
+            <if test="cond.orderedTo != null">
+                AND created_at &lt; DATE_ADD(#{cond.orderedTo}, INTERVAL 1 DAY)
+            </if>
+            <if test="cond.pickupDate != null">
+                AND pickup_at &gt;= #{cond.pickupDate}
+                AND pickup_at &lt; DATE_ADD(#{cond.pickupDate}, INTERVAL 1 DAY)
+            </if>
+            <if test="memberFilter">
+                <choose>
+                    <when test="memberIds != null and !memberIds.isEmpty()">
+                        AND member_id IN
+                        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+                            #{memberId}
+                        </foreach>
+                    </when>
+                    <otherwise>
+                        AND 1 = 0
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <select id="countOrders" resultType="long">
+        SELECT COUNT(*)
+          FROM orders
+        <include refid="searchWhere"/>
+    </select>
+
+    <select id="findOrderPage" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+        <include refid="searchWhere"/>
+         ORDER BY id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findByIds" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </select>
+
+    <select id="findGeneralOrdersByPickupDate" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders o
+         WHERE o.pickup_at &gt;= #{pickupDate}
+           AND o.pickup_at &lt; DATE_ADD(#{pickupDate}, INTERVAL 1 DAY)
+           AND o.status IN ('PAID', 'READY_FOR_PICKUP', 'PICKED_UP')
+           AND EXISTS (
+               SELECT 1
+                 FROM order_items oi
+                WHERE oi.order_id = o.id
+                  AND oi.product_type = 'NORMAL'
+           )
+           AND NOT EXISTS (
+               SELECT 1
+                 FROM order_items oi
+                WHERE oi.order_id = o.id
+                  AND oi.product_type &lt;&gt; 'NORMAL'
+           )
+         ORDER BY o.pickup_at, o.id
+    </select>
+
+    <update id="updateStatus">
+        UPDATE orders
+           SET status = #{nextStatus},
+               ready_at = CASE WHEN #{nextStatus} = 'READY_FOR_PICKUP'
+                               THEN CURRENT_TIMESTAMP(6) ELSE ready_at END,
+               picked_up_at = CASE WHEN #{nextStatus} = 'PICKED_UP'
+                                   THEN CURRENT_TIMESTAMP(6) ELSE picked_up_at END,
+               completed_at = CASE WHEN #{nextStatus} = 'PICKED_UP'
+                                   THEN CURRENT_TIMESTAMP(6) ELSE completed_at END
+         WHERE id = #{orderId}
+           AND status = #{currentStatus}
+    </update>
+
+    <update id="cancelOrder">
+        UPDATE orders
+           SET status = 'CANCELED',
+               canceled_at = CURRENT_TIMESTAMP(6),
+               cancel_reason = #{reason},
+               canceled_by = #{canceledBy}
+         WHERE id = #{orderId}
+           AND status = #{currentStatus}
+    </update>
 </mapper>

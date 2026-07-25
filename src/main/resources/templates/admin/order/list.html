@@ -1,14 +1,41 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>주문 관리 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('orders')}"></aside><div class="admin-main">
-  <header th:replace="~{fragments/admin/header :: header('주문 관리')}"></header><main class="admin-content">
-  <div th:replace="~{fragments/admin/mock-notice :: notice}"></div>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('주문 관리')}"></head>
+<body><div class="admin-layout">
+<aside th:replace="~{fragments/admin/sidebar :: sidebar('orders')}"></aside>
+<div class="admin-main"><header th:replace="~{fragments/admin/header :: header('주문 관리')}"></header>
+<main class="admin-content"><div th:replace="~{fragments/common/alert :: alert}"></div>
   <h1 class="admin-page-title">주문 목록</h1>
-  <form class="admin-toolbar" method="get" th:action="@{/admin/orders}"><input class="form-control" name="orderNo" aria-label="주문번호" placeholder="주문번호 검색"><input class="form-control" name="keyword" aria-label="회원 검색" placeholder="회원 이름/이메일"><input class="form-control" name="startDate" aria-label="주문 시작일" type="date"><span>~</span><input class="form-control" name="endDate" aria-label="주문 종료일" type="date"><input class="form-control" name="pickupDate" aria-label="픽업일" type="date"><select class="form-control" name="status" aria-label="주문 상태"><option>상태 전체</option><option>승인 대기</option><option>제작 중</option></select><button class="btn" type="submit">조회</button></form>
-  <div class="table-wrap"><table class="data-table"><thead><tr><th>주문번호</th><th>회원</th><th>상품명</th><th>금액</th><th>결제 상태</th><th>주문 상태</th><th>픽업 일시</th><th>관리</th></tr></thead><tbody>
-    <tr><td>ORD-001</td><td>홍길동</td><td>레터링 케이크</td><td>64,000원</td><td><span class="badge badge--warning">결제 대기</span></td><td><span class="badge badge--warning">승인 대기</span></td><td>01.20 14:00</td><td><a class="btn" th:href="@{/admin/orders/1}">상세</a></td></tr>
-    <tr><td>ORD-002</td><td>이영희</td><td>딸기 케이크</td><td>35,000원</td><td><span class="badge badge--success">결제 완료</span></td><td><span class="badge badge--info">제작 중</span></td><td>01.22 15:00</td><td><a class="btn" th:href="@{/admin/orders/2}">상세</a></td></tr>
-    <tr><td>ORD-003</td><td>박민수</td><td>초코 케이크</td><td>40,000원</td><td><span class="badge badge--success">결제 완료</span></td><td><span class="badge badge--success">픽업 준비</span></td><td>01.25 11:00</td><td><a class="btn" th:href="@{/admin/orders/3}">상세</a></td></tr>
+  <form class="admin-toolbar" method="get" th:action="@{/admin/orders}" th:object="${cond}">
+    <input class="form-control" th:field="*{orderNumber}" placeholder="주문번호">
+    <input class="form-control" th:field="*{memberKeyword}" placeholder="회원 닉네임·이메일">
+    <input class="form-control" th:field="*{orderedFrom}" type="date">
+    <input class="form-control" th:field="*{orderedTo}" type="date">
+    <input class="form-control" th:field="*{pickupDate}" type="date">
+    <select class="form-control" th:field="*{status}">
+      <option value="">상태 전체</option><option value="PAID">결제 완료</option>
+      <option value="READY_FOR_PICKUP">픽업 준비</option><option value="PICKED_UP">픽업 완료</option>
+      <option value="CANCELED">취소</option>
+    </select><button class="btn" type="submit">조회</button>
+  </form>
+  <div class="table-wrap"><table class="data-table"><thead><tr>
+    <th>주문번호</th><th>회원</th><th>상품</th><th>금액</th><th>상태</th><th>픽업 일시</th><th></th>
+  </tr></thead><tbody th:if="${orders != null}">
+    <tr th:each="order : ${orders.content}">
+      <td th:text="${order.orderNumber}">ORD-</td><td th:text="${order.memberName}">회원</td>
+      <td th:text="${order.productSummary}">상품</td>
+      <td><span th:text="${#numbers.formatInteger(order.finalAmount, 0, 'COMMA')}">0</span>원</td>
+      <td><span class="badge" th:text="${order.status}">PAID</span></td>
+      <td th:text="${#temporals.format(order.pickupAt, 'yyyy.MM.dd HH:mm')}">-</td>
+      <td><a class="btn" th:href="@{/admin/orders/{id}(id=${order.id})}">상세</a></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(orders.content)}"><td colspan="7">조회된 주문이 없습니다.</td></tr>
   </tbody></table></div>
+  <nav class="cluster" th:if="${orders != null and orders.totalPages > 1}" aria-label="주문 페이지">
+    <a class="btn" th:if="${orders.page > 1}"
+       th:href="@{/admin/orders(page=${orders.page - 1},size=${orders.size},orderNumber=${cond.orderNumber},memberKeyword=${cond.memberKeyword},status=${cond.status},orderedFrom=${cond.orderedFrom},orderedTo=${cond.orderedTo},pickupDate=${cond.pickupDate})}">이전</a>
+    <span th:text="${orders.page + ' / ' + orders.totalPages}">1 / 1</span>
+    <a class="btn" th:if="${orders.page < orders.totalPages}"
+       th:href="@{/admin/orders(page=${orders.page + 1},size=${orders.size},orderNumber=${cond.orderNumber},memberKeyword=${cond.memberKeyword},status=${cond.status},orderedFrom=${cond.orderedFrom},orderedTo=${cond.orderedTo},pickupDate=${cond.pickupDate})}">다음</a>
+  </nav>
 </main></div></div></body></html>

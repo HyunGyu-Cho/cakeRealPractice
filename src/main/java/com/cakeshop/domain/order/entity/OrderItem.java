@@ -1,6 +1,21 @@
 package com.cakeshop.domain.order.entity;
 
-// DB 조회 결과·도메인 상태
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class OrderItem {
-    // TODO: 필드 정의 (ERD 확정 후)
+    private Long id;
+    private Long orderId;
+    private Long productId;
+    private String productName;
+    private String productType;
+    private Integer quantity;
+    private Long basePrice;
+    private Long optionAmount;
+    private Long totalAmount;
+    private String requirements;
+    private Integer preparationDays;
+    private Integer cancellationLimitDays;
 }

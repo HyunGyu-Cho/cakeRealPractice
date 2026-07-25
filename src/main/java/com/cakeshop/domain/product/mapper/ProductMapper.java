@@ -38,6 +38,10 @@ public interface ProductMapper {
 
     int updateStatus(@Param("id") Long id, @Param("status") String status);
 
+    int decreaseStockIfAvailable(@Param("id") Long id, @Param("quantity") int quantity);
+
+    int increaseStock(@Param("id") Long id, @Param("quantity") int quantity);
+
     // ---- 카테고리 (1차: product_type과 코드 1:1) ----
     Optional<Category> findCategoryByCode(@Param("code") String code);
 

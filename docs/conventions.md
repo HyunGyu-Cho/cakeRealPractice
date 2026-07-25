@@ -162,7 +162,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `product_options.status` | 시은 | (표기 없음) | `ACTIVE / INACTIVE` ? | ☐ 열림 |
 | `orders.status` | 주환 | 결제완료/확인중/제작중/픽업대기/픽업완료/취소/반려 | **`OrderStatus` 7개 (확정)** | ✅ 코드 확정 |
 | `payments.status` | 주환 | 결제 완료 / 결제 대기 | **`PaymentStatus` 6개 (확정)** | ✅ 코드 확정 |
-| `payment_cancellations.status` | 주환 | 취소 요청 | `REQUESTED / DONE / REJECTED` ? | ☐ 열림 |
+| `payment_cancellations.status` | 주환 | 취소 요청·완료·거절 | **`REQUESTED / DONE / REJECTED` (확정)** | ✅ 확정 (V8, 스펙 docs/specs/order-payment.md) |
 | `coupons.status` | 정후 | 발급 중 | `ACTIVE / INACTIVE / ENDED` ? | ☐ 열림 |
 | `member_coupons.status` | 정후 | 사용 가능 / 사용 완료 | `ISSUED / USED / EXPIRED` | 거의 확정 |
 | `posts.status` | 현규 | 정상 / 제재 | `ACTIVE / DELETED / BLOCKED` | 거의 확정 |
@@ -240,7 +240,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 담당 | 채울 것 |
 |---|---|
 | 시은 | `product_options.status` 필요 여부 확정 |
-| 주환 | `payment_cancellations.status` 값 확정 |
+| 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
 | 정후 | `coupons.status`(캠페인 상태) 값 확정 |
 | 현규 | `comments.status` / `reviews.status`(숨김) 값 확정 |
 | 민정 | `chat_rooms.status` 정의 + **`NotificationType` enum 값 채우기**(현재 TODO) |

@@ -132,6 +132,16 @@ public class CartService {
         return ids.stream().map(validated::get).toList();
     }
 
+    /** order 결제 성공 트랜잭션에서만 호출하는 선택 항목 삭제 계약. */
+    @Transactional
+    public void removeCheckoutItems(Long memberId, List<Long> cartItemIds) {
+        List<Long> ids = normalizeSelection(cartItemIds);
+        verifyOwnership(memberId, ids);
+        if (cartMapper.deleteItemsByIdsAndMemberId(memberId, ids) != ids.size()) {
+            throw new BusinessException(CartErrorCode.ITEM_NOT_FOUND);
+        }
+    }
+
     private CartItemView toView(CartItem item) {
         ProductDetailView product = productService.getProductDetail(item.getProductId());
         ProductSalesInfo salesInfo = productService.getSalesInfo(item.getProductId());
