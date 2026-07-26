@@ -33,13 +33,17 @@ ALTER TABLE `coupons`
         CHECK (`discount_type` IN ('PERCENTAGE', 'FIXED_AMOUNT'));
 
 -- 고객 다운로드 목록은 "지금 유효한 ACTIVE 쿠폰"을 기간으로 훑는다.
-CREATE INDEX `idx_coupons_status_period` ON `coupons` (`status`, `starts_at`, `expires_at`);
+CREATE INDEX IF NOT EXISTS `idx_coupons_status_period`
+    ON `coupons` (`status`, `starts_at`, `expires_at`);
 
 -- =========================================================
 -- 2. member_coupons
 -- =========================================================
+--
+-- IF NOT EXISTS 인 이유: V1은 이 테이블을 만들지 않았지만, V0_ERD.sql을 통째로 적용해 둔
+-- 로컬 DB에는 CHECK·인덱스 없이 이미 존재한다. 아래 ALTER가 두 경우를 같은 모양으로 맞춘다.
 
-CREATE TABLE `member_coupons` (
+CREATE TABLE IF NOT EXISTS `member_coupons` (
     `id`               BIGINT NOT NULL AUTO_INCREMENT,
     `coupon_id`        BIGINT NOT NULL,
     `member_id`        BIGINT NOT NULL,
@@ -64,8 +68,17 @@ CREATE TABLE `member_coupons` (
         FOREIGN KEY (`applied_order_id`) REFERENCES `orders` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- V0_ERD로 먼저 만들어진 테이블을 위 정의와 같은 모양으로 맞춘다(새로 만든 경우엔 변화 없음).
+ALTER TABLE `member_coupons`
+    MODIFY COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE';
+
+ALTER TABLE `member_coupons`
+    DROP CONSTRAINT IF EXISTS `chk_member_coupons_status`,
+    ADD CONSTRAINT `chk_member_coupons_status`
+        CHECK (`status` IN ('AVAILABLE', 'USED'));
+
 -- 쿠폰함·체크아웃 적용 가능 목록 조회
-CREATE INDEX `idx_member_coupons_member_status`
+CREATE INDEX IF NOT EXISTS `idx_member_coupons_member_status`
     ON `member_coupons` (`member_id`, `status`);
 
 -- =========================================================
