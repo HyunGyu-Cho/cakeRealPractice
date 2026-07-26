@@ -204,4 +204,23 @@
            SET image_url = #{imageUrl}
          WHERE id = #{id}
     </update>
+
+    <!-- 옵션: order(수제) 요청서가 ProductService.getOptionGroups로 사용한다 -->
+    <select id="findOptionGroups" resultType="com.cakeshop.domain.product.entity.ProductOptionGroup">
+        SELECT id, product_id, name, required, selection_type, sort_order
+          FROM product_option_groups
+         WHERE product_id = #{productId}
+         ORDER BY sort_order, id
+    </select>
+
+    <select id="findActiveOptionsByGroupIds" resultType="com.cakeshop.domain.product.entity.ProductOption">
+        SELECT id, option_group_id, name, additional_price, status, sort_order
+          FROM product_options
+         WHERE status = 'ACTIVE'
+           AND option_group_id IN
+        <foreach collection="groupIds" item="groupId" open="(" separator="," close=")">
+            #{groupId}
+        </foreach>
+         ORDER BY option_group_id, sort_order, id
+    </select>
 </mapper>

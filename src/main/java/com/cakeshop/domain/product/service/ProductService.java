@@ -2,9 +2,13 @@ package com.cakeshop.domain.product.service;
 
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
+import com.cakeshop.domain.product.dto.view.ProductOptionGroupView;
+import com.cakeshop.domain.product.dto.view.ProductOptionView;
 import com.cakeshop.domain.product.dto.view.ProductSalesInfo;
 import com.cakeshop.domain.product.dto.view.ProductSummaryView;
 import com.cakeshop.domain.product.entity.Product;
+import com.cakeshop.domain.product.entity.ProductOption;
+import com.cakeshop.domain.product.entity.ProductOptionGroup;
 import com.cakeshop.domain.product.entity.ProductStatus;
 import com.cakeshop.domain.product.entity.ProductType;
 import com.cakeshop.domain.product.error.ProductErrorCode;
@@ -12,7 +16,10 @@ import com.cakeshop.domain.product.mapper.ProductMapper;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,6 +91,34 @@ public class ProductService {
         if (quantity < 1 || productMapper.increaseStock(productId, quantity) != 1) {
             throw new BusinessException(ProductErrorCode.STOCK_UPDATE_FAILED);
         }
+    }
+
+    /**
+     * [공개 계약] 상품의 옵션 그룹과 판매 중인 옵션을 함께 반환한다.
+     * order(수제)가 요청서 화면을 그리고 선택값·추가 금액을 검증할 때 사용한다 —
+     * 시그니처 변경 시 사용처(시은↔주환) 합의 필요.
+     * 옵션이 없는 상품은 빈 목록이며, 값이 모두 INACTIVE인 그룹은 빈 options로 남는다.
+     */
+    @Transactional(readOnly = true)
+    public List<ProductOptionGroupView> getOptionGroups(Long productId) {
+        List<ProductOptionGroup> groups = productMapper.findOptionGroups(productId);
+        if (groups.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<ProductOptionView>> optionsByGroup = productMapper
+            .findActiveOptionsByGroupIds(groups.stream().map(ProductOptionGroup::getId).toList())
+            .stream()
+            .collect(Collectors.groupingBy(ProductOption::getOptionGroupId, LinkedHashMap::new,
+                Collectors.mapping(
+                    option -> new ProductOptionView(
+                        option.getId(), option.getName(), option.getAdditionalPrice()),
+                    Collectors.toList())));
+        return groups.stream()
+            .map(group -> new ProductOptionGroupView(
+                group.getId(), group.getName(),
+                Boolean.TRUE.equals(group.getRequired()), group.getSelectionType(),
+                optionsByGroup.getOrDefault(group.getId(), List.of())))
+            .toList();
     }
 
     /** [공개 계약] 홈 메인 노출용 — 판매 가능 상품 최신순. */

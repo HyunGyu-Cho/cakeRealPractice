@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cakeshop.domain.order.mapper.CustomOrderMapper">
+    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <sql id="quoteColumns">
+        id, order_id, version, quoted_amount, producible_date, admin_note, issued_by,
+        status, sent_at, accepted_at, created_at, updated_at
+    </sql>
+
+    <sql id="linkColumns">
+        id, quote_id, token, amount, expires_at, used_at, revoked_at, status, created_at
+    </sql>
+
+    <!-- ================= 요청서 하위 행 ================= -->
+
+    <insert id="insertOrderItemOption" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_item_options
+            (order_item_id, product_option_id, option_group_name, option_name, additional_price)
+        VALUES
+            (#{orderItemId}, #{productOptionId}, #{optionGroupName}, #{optionName}, #{additionalPrice})
+    </insert>
+
+    <insert id="insertOrderItemImage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_item_images (order_item_id, image_url, sort_order)
+        VALUES (#{orderItemId}, #{imageUrl}, #{sortOrder})
+    </insert>
+
+    <select id="findOptionsByOrderItemId" resultType="com.cakeshop.domain.order.entity.OrderItemOption">
+        SELECT id, order_item_id, product_option_id, option_group_name, option_name, additional_price
+          FROM order_item_options
+         WHERE order_item_id = #{orderItemId}
+         ORDER BY id
+    </select>
+
+    <select id="findImagesByOrderItemId" resultType="com.cakeshop.domain.order.entity.OrderItemImage">
+        SELECT id, order_item_id, image_url, sort_order
+          FROM order_item_images
+         WHERE order_item_id = #{orderItemId}
+         ORDER BY sort_order, id
+    </select>
+
+    <!-- ================= 견적 ================= -->
+
+    <insert id="insertQuote" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO custom_order_quotes
+            (order_id, version, quoted_amount, producible_date, admin_note, issued_by, status, sent_at)
+        VALUES
+            (#{orderId}, #{version}, #{quotedAmount}, #{producibleDate}, #{adminNote},
+             #{issuedBy}, #{status}, #{sentAt})
+    </insert>
+
+    <select id="findQuotesByOrderId" resultType="com.cakeshop.domain.order.entity.CustomOrderQuote">
+        SELECT <include refid="quoteColumns"/>
+          FROM custom_order_quotes
+         WHERE order_id = #{orderId}
+         ORDER BY version DESC
+    </select>
+
+    <select id="findQuoteById" resultType="com.cakeshop.domain.order.entity.CustomOrderQuote">
+        SELECT <include refid="quoteColumns"/>
+          FROM custom_order_quotes
+         WHERE id = #{quoteId}
+    </select>
+
+    <select id="findLatestQuote" resultType="com.cakeshop.domain.order.entity.CustomOrderQuote">
+        SELECT <include refid="quoteColumns"/>
+          FROM custom_order_quotes
+         WHERE order_id = #{orderId}
+         ORDER BY version DESC
+         LIMIT 1
+    </select>
+
+    <select id="findLatestQuoteForUpdate" resultType="com.cakeshop.domain.order.entity.CustomOrderQuote">
+        SELECT <include refid="quoteColumns"/>
+          FROM custom_order_quotes
+         WHERE order_id = #{orderId}
+         ORDER BY version DESC
+         LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <!-- 목록 화면용: 주문별 최신 회차 한 건씩 -->
+    <select id="findLatestQuotesByOrderIds" resultType="com.cakeshop.domain.order.entity.CustomOrderQuote">
+        SELECT <include refid="quoteColumns"/>
+          FROM custom_order_quotes q
+         WHERE q.order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+           AND q.version = (SELECT MAX(v.version)
+                              FROM custom_order_quotes v
+                             WHERE v.order_id = q.order_id)
+    </select>
+
+    <update id="updateQuoteStatus">
+        UPDATE custom_order_quotes
+           SET status = #{nextStatus},
+               accepted_at = #{acceptedAt}
+         WHERE id = #{quoteId}
+           AND status = #{currentStatus}
+    </update>
+
+    <update id="supersedeSentQuotes">
+        UPDATE custom_order_quotes
+           SET status = 'SUPERSEDED'
+         WHERE order_id = #{orderId}
+           AND status = 'SENT'
+    </update>
+
+    <!-- ================= 결제 링크 ================= -->
+
+    <insert id="insertPaymentLink" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO custom_order_payment_links
+            (quote_id, token, amount, expires_at, status)
+        VALUES
+            (#{quoteId}, #{token}, #{amount}, #{expiresAt}, #{status})
+    </insert>
+
+    <select id="findLinkByToken" resultType="com.cakeshop.domain.order.entity.CustomOrderPaymentLink">
+        SELECT <include refid="linkColumns"/>
+          FROM custom_order_payment_links
+         WHERE token = #{token}
+    </select>
+
+    <select id="findLinkByTokenForUpdate" resultType="com.cakeshop.domain.order.entity.CustomOrderPaymentLink">
+        SELECT <include refid="linkColumns"/>
+          FROM custom_order_payment_links
+         WHERE token = #{token}
+        FOR UPDATE
+    </select>
+
+    <select id="findLinkByQuoteId" resultType="com.cakeshop.domain.order.entity.CustomOrderPaymentLink">
+        SELECT <include refid="linkColumns"/>
+          FROM custom_order_payment_links
+         WHERE quote_id = #{quoteId}
+    </select>
+
+    <update id="updateLinkStatus">
+        UPDATE custom_order_payment_links
+           SET status = #{nextStatus},
+               used_at = CASE WHEN #{nextStatus} = 'USED' THEN #{at} ELSE used_at END,
+               revoked_at = CASE WHEN #{nextStatus} = 'REVOKED' THEN #{at} ELSE revoked_at END
+         WHERE id = #{linkId}
+           AND status = #{currentStatus}
+    </update>
+
+    <update id="revokeIssuedLinks">
+        UPDATE custom_order_payment_links l
+          JOIN custom_order_quotes q ON q.id = l.quote_id
+           SET l.status = 'REVOKED',
+               l.revoked_at = #{at}
+         WHERE q.order_id = #{orderId}
+           AND l.status = 'ISSUED'
+    </update>
+
+    <!-- ================= 관리자 목록 ================= -->
+    <!-- 주문제작 = order_items.product_type = 'CUSTOM'. 상품 테이블을 JOIN하지 않고
+         주문 시점 스냅샷으로 판정한다(상품 유형이 나중에 바뀌어도 과거 요청은 그대로다). -->
+
+    <sql id="customOrderWhere">
+        WHERE EXISTS (SELECT 1 FROM order_items oi
+                       WHERE oi.order_id = o.id AND oi.product_type = 'CUSTOM')
+        <if test="status != null">
+            AND o.status = #{status}
+        </if>
+    </sql>
+
+    <select id="countCustomOrders" resultType="long">
+        SELECT COUNT(*)
+          FROM orders o
+        <include refid="customOrderWhere"/>
+    </select>
+
+    <select id="findCustomOrderIdPage" resultType="long">
+        SELECT o.id
+          FROM orders o
+        <include refid="customOrderWhere"/>
+         ORDER BY o.id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- ================= 고객 진입점 ================= -->
+
+    <select id="findLatestOrderIdByMemberId" resultType="long">
+        SELECT o.id
+          FROM orders o
+         WHERE o.member_id = #{memberId}
+           AND EXISTS (SELECT 1 FROM order_items oi
+                        WHERE oi.order_id = o.id AND oi.product_type = 'CUSTOM')
+         ORDER BY o.id DESC
+         LIMIT 1
+    </select>
+
+    <select id="findCustomOrderItemId" resultType="long">
+        SELECT id
+          FROM order_items
+         WHERE order_id = #{orderId}
+         ORDER BY id
+         LIMIT 1
+    </select>
+
+    <update id="updateFinalAmount">
+        UPDATE orders
+           SET final_amount = #{finalAmount}
+         WHERE id = #{orderId}
+    </update>
+
+    <update id="updatePickupAt">
+        UPDATE orders
+           SET pickup_at = #{pickupAt}
+         WHERE id = #{orderId}
+    </update>
+
+    <update id="reject">
+        UPDATE orders
+           SET status = 'REJECTED',
+               reject_reason = #{reason},
+               rejected_at = NOW(6)
+         WHERE id = #{orderId}
+           AND status = #{currentStatus}
+    </update>
+</mapper>

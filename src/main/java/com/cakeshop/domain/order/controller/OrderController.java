@@ -172,15 +172,7 @@ public class OrderController {
         return "redirect:/orders/" + orderId;
     }
 
-    @GetMapping("/custom/options")
-    public String customOptions() {
-        return "customer/order/custom-option";
-    }
-
-    @GetMapping("/custom/request")
-    public String customRequest() {
-        return "customer/order/custom-request";
-    }
+    // 주문제작(/orders/custom/**)은 CustomOrderController가 실구현으로 담당한다.
 
     private void addPickupModel(Long memberId, CheckoutDraft draft, LocalDate requestedDate, Model model) {
         CheckoutView checkout = orderService.getCheckoutView(memberId, draft);

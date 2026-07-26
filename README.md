@@ -168,7 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 일반 상품 DB 장바구니 담기) |
 | 장바구니 | `/cart` | 실제 DB 구현 (조회·합산·수량 변경·단건/선택/전체 삭제·선택 주문 인계·최신 판매 정보 검증) |
 | 픽업 설정 | `/orders/pickup` | 실제 준비일·영업일·휴무일·운영시간 기반 슬롯 선택 |
-| 주문 제작 | `/orders/custom/options`, `/orders/custom/request` | 목업 |
+| 주문 제작 | `/orders/custom/options`, `/orders/custom/{id}`, `/orders/custom/pay/{token}` | 실제 구현 (요청서 제출·견적 확인·수락·일회성 링크 모의 결제) |
 | 주문서·완료·상세 | `/orders/checkout`, `/orders/complete`, `/orders/{id}` | 실제 세션 초안·소유권 검증·전액 취소 |
 | 결제 | `/orders/payment` | 실제 UUID 멱등 모의 결제 (`DONE`, 결제 성공 시 `PAID` 주문 생성) |
 | 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
@@ -178,7 +178,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 후기 | `/reviews/new` | 목업 |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 4개(주문제작 2개·후기·쿠폰)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림 화면은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 2개(후기·쿠폰)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림·주문제작 화면은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1

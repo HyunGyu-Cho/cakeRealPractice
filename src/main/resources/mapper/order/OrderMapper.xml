@@ -12,6 +12,7 @@
         <result property="originalAmount" column="original_amount"/>
         <result property="discountAmount" column="discount_amount"/>
         <result property="finalAmount" column="final_amount"/>
+        <result property="desiredBudget" column="desired_budget"/>
         <result property="status" column="status"/>
         <result property="pickupAt" column="pickup_at"/>
         <result property="requestMessage" column="request_message"/>
@@ -45,7 +46,7 @@
 
     <sql id="orderColumns">
         id, order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
-        original_amount, discount_amount, final_amount, status, pickup_at, request_message,
+        original_amount, discount_amount, final_amount, desired_budget, status, pickup_at, request_message,
         reject_reason, rejected_at, ready_at, picked_up_at, completed_at, canceled_at,
         cancel_reason, canceled_by, pickup_reminder_sent_at, created_at, updated_at
     </sql>
@@ -53,10 +54,11 @@
     <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO orders
             (order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
-             original_amount, discount_amount, final_amount, status, pickup_at, request_message)
+             original_amount, discount_amount, final_amount, desired_budget, status, pickup_at, request_message)
         VALUES
             (#{orderNumber}, #{memberId}, #{ordererName}, #{ordererPhone}, #{pickupName}, #{pickupPhone},
-             #{originalAmount}, #{discountAmount}, #{finalAmount}, #{status}, #{pickupAt}, #{requestMessage})
+             #{originalAmount}, #{discountAmount}, #{finalAmount}, #{desiredBudget}, #{status}, #{pickupAt},
+             #{requestMessage})
     </insert>
 
     <insert id="insertOrderItem" useGeneratedKeys="true" keyProperty="id">
