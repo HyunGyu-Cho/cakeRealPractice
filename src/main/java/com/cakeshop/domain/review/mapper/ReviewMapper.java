@@ -4,9 +4,11 @@ import com.cakeshop.domain.review.dto.form.AdminReviewSearchForm;
 import com.cakeshop.domain.review.dto.view.AdminReviewRow;
 import com.cakeshop.domain.review.dto.view.RatingStatsRow;
 import com.cakeshop.domain.review.dto.view.ReviewRow;
+import com.cakeshop.domain.review.dto.view.ReviewStatsView;
 import com.cakeshop.domain.review.entity.Review;
 import com.cakeshop.domain.review.entity.ReviewImage;
 import com.cakeshop.domain.review.entity.ReviewReply;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -78,4 +80,12 @@ public interface ReviewMapper {
     Optional<ReviewReply> findReplyByReviewId(@Param("reviewId") Long reviewId);
 
     int deleteReplyByReviewId(@Param("reviewId") Long reviewId);
+
+    // ==================== 통계 집계 (statistics가 공개 계약으로 사용한다) ====================
+
+    ReviewStatsView aggregateReviewStats(@Param("from") LocalDateTime from,
+                                         @Param("to") LocalDateTime to);
+
+    /** 답글이 없는 노출 후기 수. 미답변은 저장하지 않는 파생값이다. */
+    long countUnansweredVisible();
 }

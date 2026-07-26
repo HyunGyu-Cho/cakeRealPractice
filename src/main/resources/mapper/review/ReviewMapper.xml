@@ -214,4 +214,25 @@
     <delete id="deleteReplyByReviewId">
         DELETE FROM review_replies WHERE review_id = #{reviewId}
     </delete>
+
+    <!-- ==================== 통계 집계 ====================
+         작성 수는 기간 내 쓰인 노출 후기, 평균은 그 후기들의 종합 평점이다. -->
+    <select id="aggregateReviewStats"
+            resultType="com.cakeshop.domain.review.dto.view.ReviewStatsView">
+        SELECT COUNT(*)                                     AS review_count,
+               COALESCE(ROUND(AVG(overall_rating), 1), 0)   AS average_rating
+          FROM reviews
+         WHERE status = 'VISIBLE'
+           AND created_at &gt;= #{from}
+           AND created_at &lt; #{to}
+    </select>
+
+    <select id="countUnansweredVisible" resultType="long">
+        SELECT COUNT(*)
+          FROM reviews r
+         WHERE r.status = 'VISIBLE'
+           AND NOT EXISTS (
+               SELECT 1 FROM review_replies rr WHERE rr.review_id = r.id
+           )
+    </select>
 </mapper>

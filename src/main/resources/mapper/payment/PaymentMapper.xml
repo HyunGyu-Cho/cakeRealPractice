@@ -140,4 +140,55 @@
          ORDER BY id DESC
          LIMIT #{size} OFFSET #{offset}
     </select>
+
+    <!-- ================= 통계 집계 =================
+         순매출 = 승인된 결제 금액 - 완료된 취소 금액.
+         승인 여부는 approved_at으로 판단한다 — 전액 취소돼 status가 CANCELED가 된 결제도
+         그 시점 매출로 잡히고 취소 금액이 따로 차감돼야 이중 계산이 안 생긴다. -->
+    <select id="aggregatePaymentStats"
+            resultType="com.cakeshop.domain.payment.dto.view.PaymentStatsView">
+        SELECT (SELECT COUNT(*) FROM payments
+                 WHERE approved_at &gt;= #{from} AND approved_at &lt; #{to})    AS payment_count,
+               (SELECT COALESCE(SUM(amount), 0) FROM payments
+                 WHERE approved_at &gt;= #{from} AND approved_at &lt; #{to})    AS paid_amount,
+               (SELECT COALESCE(SUM(cancel_amount), 0) FROM payment_cancellations
+                 WHERE status = 'DONE'
+                   AND canceled_at &gt;= #{from} AND canceled_at &lt; #{to})    AS refunded_amount
+    </select>
+
+    <!-- 라벨 포맷은 ${} 금지 규칙 때문에 choose 분기의 리터럴로 둔다.
+         결제·취소를 (시각, 부호 있는 금액) 파생 테이블로 합친 뒤 한 번만 포맷한다. -->
+    <sql id="salesTrendLabel">
+        <choose>
+            <when test="period.name() == 'MONTH'">DATE_FORMAT(t.occurred_at, '%Y-%m')</when>
+            <when test="period.name() == 'WEEK'">DATE_FORMAT(t.occurred_at, '%x-W%v')</when>
+            <otherwise>DATE_FORMAT(t.occurred_at, '%m-%d')</otherwise>
+        </choose>
+    </sql>
+
+    <select id="aggregateSalesTrend"
+            resultType="com.cakeshop.domain.payment.dto.view.SalesTrendPointView">
+        SELECT <include refid="salesTrendLabel"/>    AS label,
+               COALESCE(SUM(t.signed_amount), 0)     AS net_sales_amount
+          FROM (
+                SELECT approved_at AS occurred_at, amount AS signed_amount
+                  FROM payments
+                 WHERE approved_at &gt;= #{from}
+                   AND approved_at &lt; #{to}
+                 UNION ALL
+                SELECT canceled_at AS occurred_at, -cancel_amount AS signed_amount
+                  FROM payment_cancellations
+                 WHERE status = 'DONE'
+                   AND canceled_at &gt;= #{from}
+                   AND canceled_at &lt; #{to}
+               ) t
+         GROUP BY <include refid="salesTrendLabel"/>
+         ORDER BY MIN(t.occurred_at)
+    </select>
+
+    <select id="countPendingCancellations" resultType="long">
+        SELECT COUNT(*)
+          FROM payment_cancellations
+         WHERE status = 'REQUESTED'
+    </select>
 </mapper>

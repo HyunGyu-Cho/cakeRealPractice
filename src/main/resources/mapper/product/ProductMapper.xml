@@ -252,4 +252,17 @@
         </foreach>
          ORDER BY option_group_id, sort_order, id
     </select>
+
+    <!-- 재고 부족: 재고를 관리하는(NOT NULL) 판매 중 상품만 대상이다 -->
+    <select id="findLowStockProducts"
+            resultType="com.cakeshop.domain.product.dto.view.LowStockProductView">
+        SELECT id   AS product_id,
+               name AS product_name,
+               stock_quantity
+          FROM products
+         WHERE status = 'ACTIVE'
+           AND stock_quantity IS NOT NULL
+           AND stock_quantity &lt;= #{threshold}
+         ORDER BY stock_quantity, id
+    </select>
 </mapper>

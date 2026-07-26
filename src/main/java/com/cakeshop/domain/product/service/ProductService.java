@@ -2,6 +2,7 @@ package com.cakeshop.domain.product.service;
 
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
 import com.cakeshop.domain.product.dto.view.CategorySummaryView;
+import com.cakeshop.domain.product.dto.view.LowStockProductView;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
 import com.cakeshop.domain.product.dto.view.ProductOptionGroupView;
 import com.cakeshop.domain.product.dto.view.ProductOptionView;
@@ -167,6 +168,15 @@ public class ProductService {
                     type.name(), type.label(), "판매 중 " + count + "개", count);
             })
             .toList();
+    }
+
+    /**
+     * [공개 계약] 재고가 임계값 이하인 판매 중 상품. statistics 대시보드가 첫 사용처다.
+     * 임계값은 호출자가 정한다 — product는 "몇 개부터 부족인지"를 소유하지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public List<LowStockProductView> getLowStockProducts(int threshold) {
+        return productMapper.findLowStockProducts(threshold);
     }
 
     private Product findProduct(Long productId) {
