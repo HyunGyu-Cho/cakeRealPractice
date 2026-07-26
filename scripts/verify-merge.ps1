@@ -405,17 +405,32 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
             }
         }
 
+        # 상품 상세 경로는 목록 화면에서 실제 id를 뽑아 쓴다.
+        # id를 하드코딩하면 시드를 다시 깔 때마다(AUTO_INCREMENT 재발급) 깨지는
+        # 로컬 DB 데이터 의존이 된다 — 확인하려는 건 id가 아니라 상세 화면의 렌더다.
+        $productDetailPath = $null
+        $productList = Test-Page "/products" $null
+        if ($productList.Ok) {
+            $m = ([regex]'href="/products/(\d+)"').Match($productList.Content)
+            if ($m.Success) { $productDetailPath = "/products/$($m.Groups[1].Value)" }
+        }
+        if (-not $productDetailPath) {
+            Fail "상품 목록에 상세 링크가 없어 상품 상세를 스모크할 수 없습니다 (products 시드 확인)."
+            $failures.Add("product detail path")
+        }
+
         # 관리자 화면은 테스트 커버리지가 거의 없어 목업 화면까지 렌더를 확인한다.
         try {
             $adminSess = New-LoggedInSession "admin@cakeshop.local"
-            Test-AuthedPages $adminSess @(
+            $adminPaths = @(
                 "/admin", "/admin/store", "/admin/products", "/admin/products/new",
                 "/admin/community", "/admin/orders", "/admin/payments", "/admin/fulfillment",
                 "/admin/custom-orders", "/admin/chat", "/admin/notifications", "/admin/members",
-                "/admin/coupons", "/admin/coupons/new", "/admin/reviews", "/admin/statistics",
-                # 상품 상세 — 후기 블록이 붙어 reviews 조회까지 함께 탄다
-                "/products/8"
-            ) "관리자"
+                "/admin/coupons", "/admin/coupons/new", "/admin/reviews", "/admin/statistics"
+            )
+            # 상품 상세 — 후기 블록이 붙어 reviews 조회까지 함께 탄다
+            if ($productDetailPath) { $adminPaths += $productDetailPath }
+            Test-AuthedPages $adminSess $adminPaths "관리자"
         } catch {
             Fail "관리자 로그인 실패: $($_.Exception.Message)"; $failures.Add("admin login")
         }
