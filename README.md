@@ -196,6 +196,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 
 고객 화면은 후기를 마지막으로 **전부 실구현으로 전환**됐다. 따라서 `$screenMap`은 비어 있고, 아래 명령은 이제 전용 CSS·JavaScript만 다시 가져온다. 새 목업 화면을 이관할 때만 `$screenMap`에 항목을 추가하고, 실구현 전환 시 다시 제외한다.
 
+### 목업 JS 번들 취급
+
+`customer-mockup.js`·`admin-mockup.js`는 **파일로 남기되 어떤 화면도 로드하지 않는다**. 새 목업을 들여올 때 다시 쓰는 자산이라 지우지 않지만, 실구현 화면이 끌어다 쓰면 안 된다. 두 번들 모두 `[data-confirm]` 확인창 핸들러를 갖고 있어 `app.js`와 함께 로드되면 **확인창이 두 번 뜨기 때문이다.** `CustomerPageControllerTests`가 참조 0을 고정한다.
+
+`app.js`는 화면마다 붙이지 않고 공통 프래그먼트에서만 로드한다 — 고객은 `fragments/common/head`, 관리자는 `fragments/admin/header`다. 같은 스크립트를 두 번 붙이면 클릭 핸들러가 두 번 등록돼 같은 증상이 난다(테스트가 함께 고정한다).
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1
 ```

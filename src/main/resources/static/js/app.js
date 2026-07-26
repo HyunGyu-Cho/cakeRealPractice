@@ -41,13 +41,10 @@ document.addEventListener("click", (event) => {
     const modal = button.closest(".modal");
     if (modal) modal.hidden = true;
   }
-  // 되돌릴 수 없는 동작(탈퇴 등)의 확인창. 취소하면 제출 자체를 막는다.
-  // admin-mockup.js에도 같은 핸들러가 있어, 먼저 도는 쪽만 띄우도록 이벤트에 표시를 남긴다
-  // (관리자 화면은 두 스크립트를 함께 로드하고 순서도 화면마다 다르다).
-  if (button.dataset.confirm && !event.cakeshopConfirmHandled) {
-    event.cakeshopConfirmHandled = true;
-    if (!window.confirm(button.dataset.confirm)) event.preventDefault();
-  }
+  // 되돌릴 수 없는 동작(탈퇴·제재·판매 중지 등)의 확인창. 취소하면 제출 자체를 막는다.
+  // 목업 번들에도 같은 핸들러가 남아 있으므로 그 번들을 다시 로드하면 확인창이 두 번 뜬다.
+  // 현재 이 핸들러가 [data-confirm]의 유일한 주인이며, 테스트가 목업 번들 의존 0을 고정한다.
+  if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) event.preventDefault();
 });
 
 document.addEventListener("change", (event) => {
