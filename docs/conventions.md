@@ -159,7 +159,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 |---|---|---|---|---|
 | `members.status` | 수민 | 정상 / 이용 제한 | **`ACTIVE / SUSPENDED / WITHDRAWN` (확정)** | ✅ 확정 (V5, 스펙 docs/specs/member.md) |
 | `products.status` | 시은 | 판매 중 / 판매 중지 | **`ACTIVE / INACTIVE` (확정)** | ✅ 확정 (V6, 스펙 docs/specs/product.md) |
-| `product_options.status` | 시은 | (표기 없음) | `ACTIVE / INACTIVE` ? | ☐ 열림 |
+| `product_options.status` | 시은 | (표기 없음) | **`ACTIVE / INACTIVE` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md — product 스펙이 order(수제) 차례로 넘긴 항목) |
 | `orders.status` | 주환 | 결제완료/확인중/제작중/픽업대기/픽업완료/취소/반려 | **`OrderStatus` 7개 (확정)** | ✅ 코드 확정 |
 | `payments.status` | 주환 | 결제 완료 / 결제 대기 | **`PaymentStatus` 6개 (확정)** | ✅ 코드 확정 |
 | `payment_cancellations.status` | 주환 | 취소 요청·완료·거절 | **`REQUESTED / DONE / REJECTED` (확정)** | ✅ 확정 (V8, 스펙 docs/specs/order-payment.md) |
@@ -171,6 +171,8 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `reviews.status` | 현규 | 숨김 | `VISIBLE / HIDDEN` ? | ☐ 열림 |
 | `chat_rooms.status` | 민정 | 상담 가능 / 상담 종료 | **`OPEN / CLOSED` (확정)** | ✅ 확정 (V9, 스펙 docs/specs/chat.md) |
 | `notification_deliveries.status` | 민정 | (화면 표기 없음 — 내부 전달 이력) | **`REQUESTED / SENT / FAILED / ABANDONED` (확정)** | ✅ 확정 (V12, 스펙 docs/specs/notification.md) |
+| `custom_order_quotes.status` | 주환 | 승인 대기 / 승인됨 / 거절됨 | **`SENT / ACCEPTED / SUPERSEDED` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md). 주문 상태가 아니라 **견적 회차의 상태**다 — `orders.status`는 확정 7개 그대로 |
+| `custom_order_payment_links.status` | 주환 | (화면 표기 없음 — 내부 링크 상태) | **`ISSUED / USED / EXPIRED / REVOKED` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md) |
 
 ### 이미 확정된 두 enum
 

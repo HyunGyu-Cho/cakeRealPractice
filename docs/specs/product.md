@@ -27,7 +27,8 @@ approved-at: 2026-07-25
 
 - **status가 아닌 것**: 품절·재고 부족은 `stock_quantity` 파생값(품절 = 0, 재고 부족 = 1~4). 절대 status에 합치지 않는다.
 - `product_type`은 상태가 아니라 종류: `NORMAL / CUSTOM / SAME_DAY / SEASON` (저장 규칙은 status와 동일 — 영문 enum 이름).
-- `product_options.status`(☐)는 이번 범위 밖 — 옵션 관리 착수 시 확정.
+- `product_options.status`는 이번 범위 밖이었고 **order(수제) 차례에 `ACTIVE / INACTIVE`로 확정됐다**
+  (V13, 스펙 `docs/specs/order-custom.md`). 옵션 그룹·옵션 조회 공개 계약 `ProductService.getOptionGroups`도 거기서 정의한다.
 
 ## 3. DB (V6_products_catalog.sql + V0/V1 소급)
 
