@@ -7,7 +7,9 @@
 ```html
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/common/head :: head('화면명 | 케이크 쇼핑몰')}"></head>
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('화면명 | 케이크 쇼핑몰')}"></th:block>
+</head>
 <body>
   <header th:replace="~{fragments/common/header :: header}"></header>
 
@@ -27,7 +29,9 @@
 ```html
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/common/head :: head('화면명 | 관리자')}"></head>
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('화면명 | 관리자')}"></th:block>
+</head>
 <body>
 <div class="admin-layout">
   <aside th:replace="~{fragments/admin/sidebar :: sidebar('activeMenu')}"></aside>
@@ -54,6 +58,35 @@
 - 색 변형자: `btn--primary`, `btn--danger`, `badge--success/--warning/--danger/--info`, `panel--soft/--danger/--success/--dashed`, `alert--success/--error`
 
 공통 스타일은 `static/css/app.css`, 공통 스크립트는 `static/js/app.js`에만 둔다. 화면 전용 스타일이나 스크립트가 필요하면 기능별 파일을 추가하되 공통 파일에 특정 화면 로직을 넣지 않는다.
+
+## head — 공통 프래그먼트 하나로
+
+모든 화면은 `<head>`를 직접 쓰지 않고 `fragments/common/head`를 부른다. 프래그먼트가 charset·viewport·CSRF meta·title·favicon·`app.css`·`app.js`를 소유하고, 화면은 **자기만 쓰는 CSS·JS만** 호출 뒤에 이어 쓴다.
+
+```html
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('장바구니 | 케이크 쇼핑몰')}"></th:block>
+  <script defer th:src="@{/js/cart.js}"></script>
+</head>
+```
+
+title이 데이터에 따라 달라지면 인자로 표현식을 그대로 넘긴다 — `head(${post.title} + ' | 케이크 쇼핑몰')`.
+
+- **`app.js`를 화면이나 다른 프래그먼트에서 또 로드하지 않는다.** 같은 파일이 두 번 실행되면 `app.js`가 document에 거는 click/change/submit 리스너가 2벌 등록돼 `[data-confirm]` 확인창이 두 번 뜬다. 관리자 화면은 예전에 `admin/header`가 따로 로드해 이 상태였다.
+- 화면이 `<head>`를 직접 쓰면 favicon·viewport처럼 조용히 빠지는 항목이 생긴다.
+- 두 규칙 모두 `CustomerPageControllerTests`가 고정한다(`everyScreenUsesTheSharedHeadFragment`, `appScriptIsLoadedByTheHeadFragmentOnly`).
+
+검사 명령:
+
+```powershell
+# head 프래그먼트를 부르지 않는 화면 (0줄이어야 한다)
+Get-ChildItem -Recurse src\main\resources\templates -Filter *.html |
+  Where-Object { $_.FullName -notmatch '\\fragments\\' } |
+  Where-Object { -not (Select-String -Path $_.FullName -Pattern 'common/head :: head\(' -Quiet) }
+
+# app.js를 로드하는 파일 (common/head.html 하나여야 한다)
+Select-String -Path src\main\resources\templates\*\*\*.html,src\main\resources\templates\*\*.html -Pattern '/js/app\.js' -List
+```
 
 ## 디자인 토큰
 

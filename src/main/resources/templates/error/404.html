@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"><title>404</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('404')}"></th:block>
+</head>
 <body>
 <h1 th:text="${message} ?: '페이지를 찾을 수 없습니다'">페이지를 찾을 수 없습니다</h1>
 </body>

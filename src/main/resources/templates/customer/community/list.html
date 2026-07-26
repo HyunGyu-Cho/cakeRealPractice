@@ -1,11 +1,7 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>커뮤니티 | 케이크 쇼핑몰</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
-  <script defer th:src="@{/js/app.js}"></script>
+  <th:block th:replace="~{fragments/common/head :: head('커뮤니티 | 케이크 쇼핑몰')}"></th:block>
 </head>
 <body data-page-title="커뮤니티">
   <header th:replace="~{fragments/common/header :: header}"></header>

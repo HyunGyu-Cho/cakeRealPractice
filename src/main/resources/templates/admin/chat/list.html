@@ -1,12 +1,7 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="_csrf" th:content="${_csrf.token}">
-  <meta name="_csrf_header" th:content="${_csrf.headerName}">
-  <title>채팅 관리 | 관리자</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <th:block th:replace="~{fragments/common/head :: head('채팅 관리 | 관리자')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/chat.css}">
   <script defer th:src="@{/webjars/stomp__stompjs/7.3.0/bundles/stomp.umd.min.js}"></script>
   <script defer th:src="@{/js/admin-chat.js}"></script>

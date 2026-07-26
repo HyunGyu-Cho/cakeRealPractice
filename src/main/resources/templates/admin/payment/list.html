@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/common/head :: head('결제·환불 관리')}"></head>
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('결제·환불 관리')}"></th:block>
+</head>
 <body><div class="admin-layout">
 <aside th:replace="~{fragments/admin/sidebar :: sidebar('payments')}"></aside>
 <div class="admin-main"><header th:replace="~{fragments/admin/header :: header('결제·환불 관리')}"></header>
