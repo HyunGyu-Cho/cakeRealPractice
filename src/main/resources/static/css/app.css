@@ -25,37 +25,10 @@ html{font-size:16px}body{min-width:320px;background:var(--color-background);colo
 
 /* ---------- customer.css ---------- */
 .customer-header{background:var(--color-background-faint);border-bottom:1px solid var(--color-border)}.customer-header__inner{align-items:center;display:flex;justify-content:space-between;margin:auto;max-width:var(--content-width);padding:10px 20px}.customer-header__brand{border:1px solid var(--color-primary);border-radius:var(--radius-sm);color:var(--color-primary);font-size:14px;font-weight:700;padding:2px 8px}.customer-header__left,.customer-header__nav,.customer-header__actions{align-items:center;display:flex;gap:16px}.customer-header__nav a{font-size:var(--font-xs)}.customer-header__nav a:hover{text-decoration:underline}.customer-header__actions{gap:6px}.customer-footer{background:var(--color-background-faint);border-top:1px solid var(--color-border);color:var(--color-text-sub);font-size:var(--font-xs);margin-top:var(--space-6);padding:16px 20px}.customer-footer__inner{margin:auto;max-width:var(--content-width)}.hero-placeholder{align-items:center;background:var(--color-background-soft);border:1px solid var(--color-border-light);border-radius:var(--radius-md);color:var(--color-muted);display:flex;height:144px;justify-content:center}.category-card{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:16px;text-align:center}.category-card:hover{box-shadow:var(--shadow-md)}.category-card__name{font-size:14px;font-weight:600}.category-card__desc{color:var(--color-muted);font-size:var(--font-xs);margin-top:4px}.filter-panel{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--space-3)}.filter-options{align-items:flex-start;display:flex;flex-direction:column;gap:var(--space-2)}.terms-panel>.choice{display:flex}.product-gallery__thumbnails.grid--4{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:var(--space-2)}.product-gallery__thumbnails .placeholder-image{width:100%}.quantity-control{align-items:center;display:flex;gap:12px}.quantity-control .btn{border-radius:var(--radius-xs);height:40px;min-height:40px;padding:0;width:44px}.quantity-control__value{align-items:center;background:var(--color-surface);display:flex;height:40px;justify-content:center;padding:0;width:60px}.order-summary{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--space-4);position:sticky;top:16px}.notification-item{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);display:flex;justify-content:space-between;padding:var(--space-3)}.notification-item.is-unread{background:var(--color-background-faint)}.notification-dot{background:var(--color-dark);border-radius:50%;height:7px;margin-top:6px;width:7px}.coupon-card{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--space-3)}
-.chat-room{display:flex;flex-direction:column;gap:12px;background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:16px}
-.chat-room__header{padding-bottom:12px;border-bottom:1px solid var(--color-border-light)}
-.chat-messages{display:flex;flex-direction:column;gap:16px;max-height:480px;overflow-y:auto;padding:12px;background:var(--color-background-faint);border:1px solid var(--color-border-light)}
-.chat-date-divider{text-align:center;margin:8px 0;position:relative}
-.chat-date-divider span{background:var(--color-surface-muted);color:var(--color-muted);font-size:var(--font-xs);padding:2px 10px;border-radius:var(--radius-pill)}
-.chat-msg{display:flex;flex-direction:column;max-width:75%}
-.chat-msg--system{align-self:center;max-width:90%;margin:4px 0}
-.chat-msg--system .chat-msg__content{background:var(--color-surface);border:1px solid var(--color-border);padding:10px 14px;font-size:var(--font-xs);color:var(--color-text);text-align:center;line-height:1.4}
-.chat-msg--me{align-self:flex-end;flex-direction:row-reverse;align-items:flex-end;gap:6px}
-.chat-msg--me .chat-msg__body{display:flex;flex-direction:column;align-items:flex-end}
-.chat-msg--me .chat-msg__content{background:var(--color-dark);color:var(--color-on-primary);border:1px solid var(--color-dark);padding:8px 12px;font-size:var(--font-sm);border-radius:8px 0 8px 8px}
-.chat-msg--me .chat-msg__meta{text-align:right}
-.chat-msg--other{align-self:flex-start;flex-direction:column;align-items:flex-start}
-.chat-msg--other .chat-msg__sender{font-size:var(--font-xs);color:var(--color-muted);margin-bottom:2px;font-weight:600;text-align:left}
-.chat-msg--other__content-wrap{display:flex;flex-direction:row;align-items:flex-end;gap:6px}
-.chat-msg--other .chat-msg__body{display:flex;flex-direction:column;align-items:flex-start}
-.chat-msg--other .chat-msg__content{background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);padding:8px 12px;font-size:var(--font-sm);border-radius:0 8px 8px 8px}
-.chat-msg__meta{display:flex;flex-direction:column;font-size:11px;color:var(--color-muted);line-height:1.2;margin-bottom:2px;text-align:left}
-.chat-msg--other .chat-msg__meta{text-align:left}
-.chat-msg__read{font-weight:600}
-
-
-.chat-input-area{border-top:1px solid var(--color-border);padding-top:12px}
-.chat-input-toolbar{margin-bottom:8px}
-.chat-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
-
-.chat-sidebar{position:sticky;top:16px}
-.chat-order-item:hover{background:var(--color-background-soft)}
-.chat-input-row{display:flex;align-items:stretch;gap:8px}
-
-.chat-input-row .form-control{flex:1}
+/* 채팅 화면 스타일은 chat.css가 단일 출처다. app.css는 전 화면에 실리는데
+   .chat-* 를 쓰는 화면은 chat.css를 함께 싣는 채팅 2개뿐이라, 여기 두면
+   나중에 로드된 chat.css가 이기는 사문 규칙이 된다. 추가하지 말 것.
+   (CustomerPageControllerTests.chatStylesLiveOnlyInChatCss 가 고정한다) */
 
 
 .quantity-control{gap:8px}.quantity-control .btn{height:32px;min-height:32px;width:36px}.quantity-control__value{height:32px;width:48px}
@@ -72,14 +45,13 @@ body{display:flex;flex-direction:column;min-height:100vh}body>main{flex:1 0 auto
 .admin-layout{display:flex;min-height:100vh}.admin-sidebar{background:var(--color-background-faint);border-right:1px solid var(--color-border);flex:0 0 160px}.admin-sidebar__brand{border-bottom:1px solid var(--color-border);padding:10px 12px}.admin-sidebar__eyebrow{color:var(--color-muted);font-size:var(--font-xs)}.admin-sidebar__title{font-size:14px;font-weight:700}.admin-sidebar__nav{padding:6px}.admin-sidebar__link{border-radius:var(--radius-sm);display:block;font-size:var(--font-xs);padding:7px 8px}.admin-sidebar__link:hover{background:var(--color-primary-soft);color:var(--color-primary-strong)}.admin-sidebar__link.is-current{background:var(--color-primary);color:var(--color-on-primary)}.admin-main{min-width:0;flex:1}.admin-header{align-items:center;background:var(--color-background-faint);border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;min-height:48px;padding:8px 16px}.admin-header__title{font-size:14px;font-weight:700}.admin-content{padding:20px}.admin-page-title{font-size:var(--font-md);font-weight:700;margin-bottom:var(--space-4)}.admin-toolbar{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-4)}.admin-toolbar .form-control{width:auto;min-width:130px}.admin-action-panel{background:var(--color-surface);border:1px solid transparent;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:var(--space-3)}
 .admin-sidebar-slot{display:flex;flex:0 0 160px}.admin-sidebar-slot .admin-sidebar{flex:1 1 auto}
 
-.admin-chat-layout{display:grid;grid-template-columns:260px minmax(0,1fr) 260px;gap:16px;align-items:start}
-.admin-chat-room-item:hover,.admin-chat-room-item.is-selected{background:var(--color-background-soft);border-color:var(--color-dark)}
+/* 관리자 채팅 스타일도 chat.css가 단일 출처다(위 채팅 블록의 주석 참고). */
 
 
 
 /* ---------- responsive.css ---------- */
 @media (max-width:1199px){.grid--4{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-header__inner{align-items:flex-start;gap:10px}.customer-header__left{align-items:flex-start;flex-direction:column;gap:8px}.customer-header__nav{flex-wrap:wrap}.grid--3.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:767px){.page-container{width:min(calc(100% - 24px),var(--content-width));padding:12px 0}.grid--2,.grid--3,.grid--4,.layout-sidebar,.layout-main-aside,.cart-layout,.chat-layout{grid-template-columns:1fr}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-header__inner{flex-direction:column;padding:10px 12px}.customer-header__left,.customer-header__actions{width:100%}.customer-header__nav{gap:8px 14px}.customer-header__actions{justify-content:flex-end;overflow-x:auto}.filter-panel{margin-bottom:12px}.order-summary{position:static}.cart-toolbar{align-items:flex-start;gap:8px}.cart-item{grid-template-columns:auto 72px minmax(0,1fr)}.cart-item__image{min-width:72px;width:72px}.admin-layout{display:block}.admin-sidebar{border-bottom:1px solid var(--color-border);border-right:0;width:100%}.admin-sidebar__nav{display:flex;overflow-x:auto;white-space:nowrap}.admin-sidebar__link{flex:0 0 auto}.admin-content{padding:12px}.admin-header{align-items:flex-start;gap:8px}.data-row{grid-template-columns:96px minmax(0,1fr)}.screen-list{grid-template-columns:1fr}}
+@media (max-width:767px){.page-container{width:min(calc(100% - 24px),var(--content-width));padding:12px 0}.grid--2,.grid--3,.grid--4,.layout-sidebar,.layout-main-aside,.cart-layout{grid-template-columns:1fr}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-header__inner{flex-direction:column;padding:10px 12px}.customer-header__left,.customer-header__actions{width:100%}.customer-header__nav{gap:8px 14px}.customer-header__actions{justify-content:flex-end;overflow-x:auto}.filter-panel{margin-bottom:12px}.order-summary{position:static}.cart-toolbar{align-items:flex-start;gap:8px}.cart-item{grid-template-columns:auto 72px minmax(0,1fr)}.cart-item__image{min-width:72px;width:72px}.admin-layout{display:block}.admin-sidebar{border-bottom:1px solid var(--color-border);border-right:0;width:100%}.admin-sidebar__nav{display:flex;overflow-x:auto;white-space:nowrap}.admin-sidebar__link{flex:0 0 auto}.admin-content{padding:12px}.admin-header{align-items:flex-start;gap:8px}.data-row{grid-template-columns:96px minmax(0,1fr)}.screen-list{grid-template-columns:1fr}}
 
 /* =============================================================
    서버 전용 보조 클래스 — 프론트 디자인 시스템에 없는 기능만 담고,

@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +95,52 @@ class CustomerPageControllerTests {
                 .as("관리자 화면은 app.js를 직접 로드하지 않는다 — fragments/admin/header가 담당한다")
                 .isEmpty();
         }
+    }
+
+    /**
+     * 채팅 스타일의 단일 출처는 chat.css다. app.css는 전 화면에 실리지만 .chat-* 를 쓰는 화면은
+     * chat.css를 함께 싣는 채팅 2개뿐이라, app.css에 두면 나중에 로드된 chat.css가 이기는
+     * 사문 규칙이 된다. 실제로 두 파일의 말풍선 최대폭·메시지 영역 높이 값이 서로 어긋난 채
+     * 방치됐었다. 양방향으로 고정한다 — app.css에 채팅 규칙이 없을 것, 그리고
+     * .chat-* 를 쓰는 화면은 chat.css를 반드시 링크할 것.
+     */
+    @Test
+    void chatStylesLiveOnlyInChatCss() throws IOException {
+        String appCss = new ClassPathResource("static/css/app.css")
+            .getContentAsString(StandardCharsets.UTF_8)
+            .replaceAll("(?s)/\\*.*?\\*/", "");
+
+        assertThat(appCss)
+            .as("채팅 스타일은 chat.css가 단일 출처다 — app.css에 .chat-* 규칙을 두지 않는다")
+            .doesNotContain(".chat-", ".admin-chat-");
+
+        Path templateRoot = Path.of("src", "main", "resources", "templates");
+        try (Stream<Path> templates = Files.walk(templateRoot)) {
+            List<String> offenders = templates
+                .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> {
+                    String html = readTemplate(path);
+                    return usesChatClass(html) && !html.contains("/css/chat.css");
+                })
+                .map(templateRoot::relativize)
+                .map(Path::toString)
+                .toList();
+
+            assertThat(offenders)
+                .as(".chat-* 클래스를 쓰는 화면은 chat.css를 함께 링크해야 한다")
+                .isEmpty();
+        }
+    }
+
+    /** class·th:classappend 값에 chat-/admin-chat- 으로 시작하는 클래스가 있는지 본다. */
+    private boolean usesChatClass(String html) {
+        Matcher attributes = Pattern.compile("(?:th:classappend|class)=\"([^\"]*)\"").matcher(html);
+        while (attributes.find()) {
+            if (Pattern.compile("(?:^|[\\s'])(?:admin-)?chat-[a-z]").matcher(attributes.group(1)).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void assertNoTemplateReferences(String script) throws IOException {
