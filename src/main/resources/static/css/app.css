@@ -117,6 +117,25 @@ body{display:flex;flex-direction:column;min-height:100vh}body>main{flex:1 0 auto
 /* 통계 차트 자리표시자 (프론트 .placeholder-chart 와 동일) */
 .chart-placeholder{align-items:center;background:var(--color-background-soft);border:1px solid var(--color-border);color:var(--color-muted);display:flex;font-size:var(--font-xs);height:176px;justify-content:center;text-align:center}
 
+/* 통계 차트: 외부 라이브러리 없이 서버 데이터로 그리는 인라인 SVG 꺾은선 + 막대.
+   좌표는 StatisticsService가 0~100으로 정규화해 넘기므로 여기서는 비율만 유지한다. */
+.chart{background:var(--color-background-soft);border:1px solid var(--color-border);padding:var(--space-2)}
+.chart__canvas{display:block;height:176px;width:100%}
+.chart__grid{stroke:var(--color-border);stroke-width:.4;vector-effect:non-scaling-stroke}
+.chart__line{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.chart__line--orders{stroke:var(--color-info)}
+.chart__line--sales{stroke:var(--color-dark)}
+.chart__dot--orders{fill:var(--color-info)}
+.chart__dot--sales{fill:var(--color-dark)}
+.chart__legend{color:var(--color-muted);display:flex;font-size:var(--font-xs);gap:var(--space-3);margin-top:var(--space-1)}
+.chart__legend-key{border-top:3px solid var(--color-info);display:inline-block;margin-right:4px;width:14px}
+.chart__legend-key--sales{border-color:var(--color-dark)}
+.chart__axis{color:var(--color-muted);display:flex;font-size:10px;justify-content:space-between;margin-top:2px}
+.bar-chart{align-items:flex-end;display:flex;gap:2px;height:176px;padding:var(--space-2) 0 0}
+.bar-chart__item{display:flex;flex:1;flex-direction:column;height:100%;justify-content:flex-end;min-width:0;text-align:center}
+.bar-chart__bar{background:var(--color-info);min-height:1px}
+.bar-chart__label{color:var(--color-muted);font-size:10px;margin-top:2px}
+
 /* 관리자 폼 래퍼: 폼 가독성을 위해 너비 제한 (프론트는 인라인 style 사용) */
 .admin-form{max-width:720px}
 

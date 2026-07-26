@@ -142,7 +142,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 
 | 기능 | 경로 | 현재 상태 |
 |---|---|---|
-| 대시보드 | `/admin` | 목업 |
+| 대시보드 | `/admin` | 실제 오늘 주문·순매출·대기 건수·최근 주문·오늘 픽업 일정·재고 부족·처리할 작업 |
 | 매장 | `/admin/store` | 실제 조회·수정·휴무일 관리 |
 | 상품 | `/admin/products`, `/admin/products/new`, `/admin/products/{id}/edit` | 실제 CRUD·검색·페이징·대표 이미지·판매 중지/재개 |
 | 주문 | `/admin/orders`, `/admin/orders/{id}` | 실제 조회·검색·상태/주문일/픽업일 필터·페이징 |
@@ -154,7 +154,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
 | 채팅 | `/admin/chat` | 실제 고객별 1:1 상담·검색/필터·읽음·종료·STOMP 실시간 이벤트 |
 | 알림 | `/admin/notifications` | 실제 내 알림·읽음 처리 + 전체 발송 내역(유형·읽음 필터·페이징) |
-| 통계 | `/admin/statistics` | 목업 |
+| 통계 | `/admin/statistics` | 실제 기간·집계 단위(일/주/월) 조회·요약 지표·추이(인라인 SVG)·상품별/인기 상품·시간대별 픽업·기타 지표 |
 
 각 목업 화면은 해당 `domain/*/controller/*AdminController`가 소유한다. 백엔드를 구현할 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 명령 버튼만 실제 기능으로 교체한다.
 
