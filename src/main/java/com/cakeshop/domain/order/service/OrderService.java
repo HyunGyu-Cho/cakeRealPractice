@@ -13,6 +13,9 @@ import com.cakeshop.domain.order.entity.OrderItem;
 import com.cakeshop.domain.order.entity.OrderStatus;
 import com.cakeshop.domain.order.error.OrderErrorCode;
 import com.cakeshop.domain.order.mapper.OrderMapper;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.store.service.StoreService;
@@ -38,20 +41,25 @@ public class OrderService {
     private final CartService cartService;
     private final ProductService productService;
     private final StoreService storeService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Autowired
     public OrderService(OrderMapper orderMapper, CartService cartService,
-                        ProductService productService, StoreService storeService) {
-        this(orderMapper, cartService, productService, storeService, Clock.systemDefaultZone());
+                        ProductService productService, StoreService storeService,
+                        NotificationService notificationService) {
+        this(orderMapper, cartService, productService, storeService, notificationService,
+            Clock.systemDefaultZone());
     }
 
     public OrderService(OrderMapper orderMapper, CartService cartService,
-                        ProductService productService, StoreService storeService, Clock clock) {
+                        ProductService productService, StoreService storeService,
+                        NotificationService notificationService, Clock clock) {
         this.orderMapper = orderMapper;
         this.cartService = cartService;
         this.productService = productService;
         this.storeService = storeService;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
@@ -194,6 +202,24 @@ public class OrderService {
             || orderMapper.updateStatus(orderId, current.name(), next.name()) != 1) {
             throw new BusinessException(OrderErrorCode.INVALID_STATUS_TRANSITION);
         }
+        notifyStatusChanged(order, next);
+    }
+
+    /** 상태 전이를 주문 고객에게 알린다. 대응하는 알림 종류가 없는 전이는 넘어간다. */
+    private void notifyStatusChanged(Order order, OrderStatus next) {
+        NotificationType type = switch (next) {
+            case IN_PRODUCTION -> NotificationType.ORDER_IN_PRODUCTION;
+            case READY_FOR_PICKUP -> NotificationType.ORDER_READY_FOR_PICKUP;
+            case PICKED_UP -> NotificationType.ORDER_PICKED_UP;
+            case REJECTED -> NotificationType.ORDER_REJECTED;
+            default -> null;
+        };
+        if (type == null) {
+            return;
+        }
+        notificationService.notify(NotificationCommand.forOrder(
+            order.getMemberId(), type, order.getId(), type.label(),
+            "주문 " + order.getOrderNumber() + " · " + type.label()));
     }
 
     private void validateDraft(Long memberId, CheckoutDraft draft) {

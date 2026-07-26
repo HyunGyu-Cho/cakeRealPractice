@@ -41,14 +41,19 @@ public class SecurityConfig {
                     // 관리자 화면은 preview에서도 열지 않는다 — 아래 /admin/** 규칙에 따라 관리자 로그인이 필요하다.
                     // /mypage·/mypage/profile은 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
                     // 쿠폰함(/mypage/coupons)은 아직 목업이라 경로를 좁혀 남긴다.
+                    // /notifications는 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
                     auth.requestMatchers(HttpMethod.GET,
-                        "/orders/**", "/mypage/coupons", "/notifications", "/reviews/**", "/community/new").permitAll();
+                        "/orders/**", "/mypage/coupons", "/reviews/**", "/community/new").permitAll();
                 }
 
                 auth.requestMatchers(HttpMethod.GET, "/chat").hasRole("USER");
                 auth.requestMatchers(HttpMethod.GET, "/api/chat/messages").hasRole("USER");
                 auth.requestMatchers(HttpMethod.POST, "/api/chat/messages", "/api/chat/read").hasRole("USER");
                 auth.requestMatchers(HttpMethod.GET, "/api/chat/messages/{messageId:\\d+}/image").authenticated();
+                // 알림은 고객·관리자 공통이라 역할이 아닌 로그인 여부로 판정한다(수신자는 항상 본인).
+                auth.requestMatchers(HttpMethod.GET, "/notifications", "/api/notifications").authenticated();
+                auth.requestMatchers(HttpMethod.POST,
+                    "/api/notifications/{notificationId:\\d+}/read", "/api/notifications/read-all").authenticated();
                 // ② 관리자. 모든 관리자 화면은 관리자 로그인을 요구한다.
                 auth.requestMatchers("/admin/**").hasRole("ADMIN");
                 // ③ 나머지는 로그인 회원

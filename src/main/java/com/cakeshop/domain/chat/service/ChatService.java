@@ -19,6 +19,9 @@ import com.cakeshop.domain.chat.infra.ChatImageStorage;
 import com.cakeshop.domain.chat.mapper.ChatMapper;
 import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.service.MemberService;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.global.error.BusinessException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,13 +55,16 @@ public class ChatService {
     private final MemberService memberService;
     private final ChatImageStorage imageStorage;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     public ChatService(ChatMapper chatMapper, MemberService memberService,
-                       ChatImageStorage imageStorage, ApplicationEventPublisher eventPublisher) {
+                       ChatImageStorage imageStorage, ApplicationEventPublisher eventPublisher,
+                       NotificationService notificationService) {
         this.chatMapper = chatMapper;
         this.memberService = memberService;
         this.imageStorage = imageStorage;
         this.eventPublisher = eventPublisher;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -150,6 +156,7 @@ public class ChatService {
                 room.getId(), customerId, customer.email(), ChatRoomStatus.OPEN.name()));
         }
         publishMessageEvents(room, customer, created);
+        notifyAdminsOfCustomerMessage(customer, created);
         return created;
     }
 
@@ -176,6 +183,7 @@ public class ChatService {
         }
         ChatMessageView created = stored.view();
         publishMessageEvents(room, customer, created);
+        notifyCustomerOfAdminMessage(room.getCustomerId(), created);
         return created;
     }
 
@@ -446,6 +454,36 @@ public class ChatService {
             room.getId(), room.getCustomerId(), customer.email(), message));
         eventPublisher.publishEvent(ChatEvent.summary(
             room.getId(), room.getCustomerId(), customer.email()));
+    }
+
+    /** 알림 발행은 종단 도메인의 공개 계약만 호출한다(역참조 금지). SYSTEM_CARD는 알리지 않는다. */
+    private void notifyCustomerOfAdminMessage(Long customerId, ChatMessageView message) {
+        if (ChatMessageType.SYSTEM_CARD.name().equals(message.messageType())) {
+            return;
+        }
+        notificationService.notify(NotificationCommand.forChat(
+            customerId, NotificationType.CHAT_MESSAGE, message.id(),
+            NotificationType.CHAT_MESSAGE.label(), preview(message), "/chat"));
+    }
+
+    private void notifyAdminsOfCustomerMessage(MemberProfileView customer,
+                                               ChatMessageView message) {
+        if (ChatMessageType.SYSTEM_CARD.name().equals(message.messageType())) {
+            return;
+        }
+        notificationService.notifyAdmins(NotificationCommand.toAdmins(
+            NotificationType.ADMIN_CHAT_MESSAGE,
+            customer.nickname() + "님의 문의", preview(message),
+            "/admin/chat?roomId=" + message.roomId(), null, message.id()));
+    }
+
+    private String preview(ChatMessageView message) {
+        if (ChatMessageType.IMAGE.name().equals(message.messageType())
+            && !StringUtils.hasText(message.content())) {
+            return "이미지를 보냈습니다.";
+        }
+        String content = message.content();
+        return content.length() <= 50 ? content : content.substring(0, 50) + "…";
     }
 
     private void registerRollbackDelete(String key) {

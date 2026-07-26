@@ -11,6 +11,9 @@ import com.cakeshop.domain.payment.entity.PaymentCancellationStatus;
 import com.cakeshop.domain.payment.entity.PaymentStatus;
 import com.cakeshop.domain.payment.error.PaymentErrorCode;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
@@ -26,19 +29,23 @@ public class RefundService {
     private final OrderService orderService;
     private final PaymentMapper paymentMapper;
     private final ProductService productService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Autowired
     public RefundService(OrderService orderService, PaymentMapper paymentMapper,
-                         ProductService productService) {
-        this(orderService, paymentMapper, productService, Clock.systemDefaultZone());
+                         ProductService productService, NotificationService notificationService) {
+        this(orderService, paymentMapper, productService, notificationService,
+            Clock.systemDefaultZone());
     }
 
     public RefundService(OrderService orderService, PaymentMapper paymentMapper,
-                         ProductService productService, Clock clock) {
+                         ProductService productService, NotificationService notificationService,
+                         Clock clock) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.productService = productService;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
@@ -102,5 +109,21 @@ public class RefundService {
             throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
         }
         orderService.markCanceled(order, reason.trim(), admin ? "ADMIN" : "MEMBER:" + memberId);
+        notifyCanceled(order, admin);
+    }
+
+    /** 취소·환불 완료를 고객에게 알리고, 고객이 직접 취소한 경우 관리자에게도 알린다. */
+    private void notifyCanceled(Order order, boolean admin) {
+        notificationService.notify(NotificationCommand.forOrder(
+            order.getMemberId(), NotificationType.ORDER_CANCELED, order.getId(),
+            NotificationType.ORDER_CANCELED.label(),
+            "주문 " + order.getOrderNumber() + " 취소 및 환불이 처리되었습니다."));
+        if (!admin) {
+            notificationService.notifyAdmins(NotificationCommand.toAdmins(
+                NotificationType.ADMIN_ORDER_CANCELED,
+                NotificationType.ADMIN_ORDER_CANCELED.label(),
+                "고객이 주문 " + order.getOrderNumber() + "을 취소했습니다.",
+                "/admin/orders/" + order.getId(), order.getId(), null));
+        }
     }
 }
