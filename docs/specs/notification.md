@@ -70,7 +70,7 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
   - `chk_notification_deliveries_status` / `chk_notification_deliveries_channel` CHECK, `idx_notification_deliveries_retry (status, next_retry_at)` — 재시도 대상 스캔
   - `recipient`는 **NULL 허용**이다. 수신자 이메일을 업무 트랜잭션에서 조회하지 않기 위해(6장 규칙 2·3) 전송 시점에 채운다.
   - `requested_at`/`created_at`은 DDL DEFAULT에 위임한다. `next_retry_at`은 업무 컬럼이라 서비스가 계산해 세팅한다.
-- 범위 밖: 관리자 알림은 전달 이력을 남기지 않는다(6장 규칙 1 참조).
+  - 전달 이력은 고객·관리자 알림 모두에 남긴다(6장 규칙 1).
 
 ## 4. 도메인 간 인터페이스
 
@@ -92,7 +92,7 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
   - 고객 API `GET /api/notifications?cursor=&size=`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all`
   - 관리자 `GET /admin/notifications?type=&read=&page=` → `admin/notification/list.html` (상단 "내 알림" + 하단 "전체 발송 내역")
   - 관리자 API `POST /admin/api/notifications/{id}/read`, `POST /admin/api/notifications/read-all`
-  - 실시간: STOMP 엔드포인트는 chat과 공유(`/ws/chat`). 고객 구독 `/user/queue/notifications`, 관리자 구독 `/topic/admin/notifications`(관리자 전원 공통 브로드캐스트)
+  - 실시간: STOMP 엔드포인트는 chat과 공유(`/ws/chat`). **고객·관리자 모두 자기 개인 큐 `/user/queue/notifications`를 구독한다.** 관리자 공용 토픽은 두지 않는다(6장 규칙 1)
 - 목업 JS가 시연하는 임시 동작 중 규칙으로 확정할 것:
   - `data-read-all` "전체 읽음" 버튼(`customer-mockup.js`)의 클래스 토글 → 실제 `POST /api/notifications/read-all` 호출로 대체하고 미읽음 0이면 버튼을 비활성화한다.
   - `.notification-item.is-unread` + `.notification-dot` 표시는 `is_read = false`에 대응한다.
@@ -103,9 +103,9 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 
 - team-plan.md 8장에서 이 도메인과 관련된 항목: "알림 생성 범위와 읽음 처리 방식" (미결)
 - 확정한 규칙 (확정 후 team-plan 8장 표 갱신):
-  1. 알림 수신자는 **고객과 관리자 모두**다. 관리자 알림은 발행 시점의 전체 ACTIVE ADMIN 회원에게 각각 한 건씩 저장(팬아웃)하고, 실시간 푸시는 `/topic/admin/notifications` 한 번으로 처리한다. 이 토픽 브로드캐스트는 수신자별 성공·실패를 판정할 수 없으므로 **관리자 알림에는 전달 이력(`notification_deliveries`)을 만들지 않고 재시도도 하지 않는다.** 관리자 경로를 개인 큐로 통일하는 작업은 `global/security` 변경이 필요해 별도 후속 과제로 둔다.
+  1. 알림 수신자는 **고객과 관리자 모두**이며 전달 경로는 하나다. 관리자 알림은 발행 시점의 전체 ACTIVE ADMIN 회원에게 각각 한 건씩 저장(팬아웃)하고, 실시간 푸시도 **수신자별 개인 큐로 각각** 보낸다. 공용 토픽 브로드캐스트는 수신자별 성공·실패를 판정할 수 없어 전달 이력·재시도를 걸 수 없으므로 쓰지 않는다. 관리자 수만큼 푸시가 늘지만 관리자 수가 적어 실질 비용은 작고, 그 대가로 고객·관리자의 상태 모델이 완전히 같아진다.
   2. 알림은 업무 트랜잭션과 **같은 트랜잭션**에서 저장한다. 알림 저장 실패는 업무 트랜잭션을 롤백시킨다(누락 방지). 단 업무 트랜잭션에 남기는 것은 **INSERT뿐**이다 — `notifications` 1건과 (고객 알림이면) `notification_deliveries` 1건. 회원 조회와 STOMP 전송은 전부 커밋 후로 뺀다.
-  3. 실시간 푸시는 `@TransactionalEventListener(AFTER_COMMIT)`에서 수행하며 **푸시 실패는 롤백하지 않는다**. 고객 알림은 전달 결과를 `notification_deliveries`에 기록하고(`SENT` / `FAILED`), 실패분은 `@Scheduled` 잡이 **최대 3회**(백오프 1·2·4분) 재시도한 뒤 소진되면 `ABANDONED`로 남긴다. 재시도가 모두 실패해도 알림 행 자체는 남아 있으므로 클라이언트는 기존대로 REST 조회로 복구한다.
+  3. 실시간 푸시는 `@TransactionalEventListener(AFTER_COMMIT)`에서 수행하며 **푸시 실패는 롤백하지 않는다**. 전달 결과는 수신자와 무관하게 `notification_deliveries`에 기록하고(`SENT` / `FAILED`), 실패분은 `@Scheduled` 잡이 **최대 3회**(백오프 1·2·4분) 재시도한 뒤 소진되면 `ABANDONED`로 남긴다. 재시도가 모두 실패해도 알림 행 자체는 남아 있으므로 클라이언트는 기존대로 REST 조회로 복구한다.
      - `SENT`는 "전송 시도 성공"이지 **수신 확인이 아니다.** 접속하지 않은 수신자에게 `convertAndSendToUser`는 예외 없이 조용히 버려지므로 `delivered_at`은 쓰지 않는다. 재시도가 실제로 구제하는 것은 브로커 장애·회원 조회 실패이지 오프라인 사용자가 아니다.
   4. 채팅 알림은 발신자의 반대편에게 발행한다. 관리자→고객 메시지는 `CHAT_MESSAGE`(고객 수신), 고객→관리자 메시지는 `ADMIN_CHAT_MESSAGE`(관리자 수신). `SYSTEM_CARD`는 발행하지 않으며, 재전송 멱등 처리로 기존 메시지를 반환하는 경우에도 발행하지 않는다.
   5. 알림은 수정·삭제하지 않는다. 조회·읽음 처리는 **수신자 본인만** 가능하며, 타인 알림 접근은 `NOTIFICATION_002 FORBIDDEN`이다.

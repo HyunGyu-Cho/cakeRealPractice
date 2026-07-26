@@ -42,7 +42,7 @@ class ChatWebSocketSecurityTests {
     }
 
     @Test
-    void notificationQueueIsOpenToBothRolesButAdminTopicIsNot() {
+    void notificationQueueIsOpenToBothRolesAndAdminTopicIsGone() {
         Authentication customer = authentication("ROLE_USER");
         Authentication admin = authentication("ROLE_ADMIN");
 
@@ -50,10 +50,9 @@ class ChatWebSocketSecurityTests {
             message(SimpMessageType.SUBSCRIBE, "/user/queue/notifications"))).isTrue();
         assertThat(authorized(admin,
             message(SimpMessageType.SUBSCRIBE, "/user/queue/notifications"))).isTrue();
-        assertThat(authorized(customer,
-            message(SimpMessageType.SUBSCRIBE, "/topic/admin/notifications"))).isFalse();
+        // 관리자 공용 알림 토픽은 폐기했다 — 관리자도 개인 큐로만 받는다.
         assertThat(authorized(admin,
-            message(SimpMessageType.SUBSCRIBE, "/topic/admin/notifications"))).isTrue();
+            message(SimpMessageType.SUBSCRIBE, "/topic/admin/notifications"))).isFalse();
         assertThat(authorized(admin,
             message(SimpMessageType.MESSAGE, "/user/queue/notifications"))).isFalse();
     }

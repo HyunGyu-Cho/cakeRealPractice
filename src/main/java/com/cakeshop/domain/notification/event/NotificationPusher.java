@@ -29,9 +29,4 @@ public class NotificationPusher {
         messagingTemplate.convertAndSendToUser(username, "/queue/notifications", event);
         return username;
     }
-
-    /** 관리자 공용 토픽. 수신자별 성공·실패를 판정할 수 없어 전달 이력을 남기지 않는다. */
-    public void pushToAdminTopic(NotificationEvent event) {
-        messagingTemplate.convertAndSend("/topic/admin/notifications", event);
-    }
 }

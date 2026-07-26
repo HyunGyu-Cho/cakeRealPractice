@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.cakeshop.domain.notification.dto.view.NotificationView;
@@ -66,34 +65,23 @@ class NotificationBroadcasterTests {
         assertThatCode(() -> broadcaster.broadcast(event)).doesNotThrowAnyException();
     }
 
+    /** 관리자 알림도 같은 경로를 탄다 — 전달 이력과 재시도가 동일하게 걸린다. */
     @Test
-    void adminBroadcastGoesToTopicWithoutTouchingDeliveries() {
-        NotificationEvent event = NotificationEvent.toAdmins(preview());
+    void adminNotificationTakesTheSamePersonalQueuePath() {
+        NotificationEvent event = NotificationEvent.toMember(2L, 501L, new NotificationView(
+            101L, NotificationType.ADMIN_ORDER_PLACED.name(),
+            NotificationType.ADMIN_ORDER_PLACED.label(), "신규 주문", "내용", false,
+            "/admin/orders", LocalDateTime.now()));
+        when(pusher.pushToMember(event)).thenReturn("admin@cakeshop.local");
 
         broadcaster.broadcast(event);
 
-        verify(pusher).pushToAdminTopic(event);
-        verify(pusher, never()).pushToMember(any());
-        verifyNoInteractions(deliveryService);
-    }
-
-    @Test
-    void adminBroadcastFailureIsSwallowed() {
-        NotificationEvent event = NotificationEvent.toAdmins(preview());
-        doThrow(new IllegalStateException("broker down")).when(pusher).pushToAdminTopic(event);
-
-        assertThatCode(() -> broadcaster.broadcast(event)).doesNotThrowAnyException();
+        verify(deliveryService).markSent(501L, DeliveryStatus.REQUESTED, "admin@cakeshop.local");
     }
 
     private NotificationEvent memberEvent() {
         return NotificationEvent.toMember(1L, 500L, new NotificationView(
             100L, NotificationType.ORDER_PAID.name(), NotificationType.ORDER_PAID.label(),
             "결제 완료", "결제가 완료되었습니다.", false, "/orders/9", LocalDateTime.now()));
-    }
-
-    private NotificationView preview() {
-        return new NotificationView(null, NotificationType.ADMIN_ORDER_PLACED.name(),
-            NotificationType.ADMIN_ORDER_PLACED.label(), "신규 주문", "내용", false,
-            "/admin/orders", null);
     }
 }
