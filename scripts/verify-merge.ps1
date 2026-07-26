@@ -377,22 +377,48 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
             if ($t.Ok) { Ok "GET $r2" } else { Fail "GET $r2 — $($t.Why)"; $failures.Add("GET $r2") }
         }
 
-        # 관리자 화면은 테스트 커버리지가 거의 없어 실제 로그인해서 렌더까지 확인한다.
-        try {
-            $login = Invoke-WebRequest -Uri "$baseUrl/login" -UseBasicParsing -SessionVariable sess -TimeoutSec 20
+        # 로그인이 필요한 화면은 실제 로그인해서 렌더까지 확인한다.
+        # V1 시드 계정을 쓰며, 비밀번호는 둘 다 'Admin1234!'다.
+        function New-LoggedInSession([string]$email) {
+            $login = Invoke-WebRequest -Uri "$baseUrl/login" -UseBasicParsing -SessionVariable s -TimeoutSec 20
             $token = ([regex]'name="_csrf"\s+value="([^"]+)"').Match($login.Content).Groups[1].Value
-            $null = Invoke-WebRequest -Uri "$baseUrl/login" -Method Post -UseBasicParsing -WebSession $sess -TimeoutSec 20 `
-                -Body @{ _csrf = $token; email = "admin@cakeshop.local"; password = "Admin1234!" }
+            $null = Invoke-WebRequest -Uri "$baseUrl/login" -Method Post -UseBasicParsing -WebSession $s -TimeoutSec 20 `
+                -Body @{ _csrf = $token; email = $email; password = "Admin1234!" }
+            return $s
+        }
 
-            foreach ($r2 in @("/admin", "/admin/store", "/admin/products", "/admin/products/new", "/admin/community", "/admin/orders", "/admin/members", "/mypage")) {
-                $t = Test-Page $r2 $sess
+        function Test-AuthedPages($session, [string[]]$paths, [string]$label) {
+            foreach ($r2 in $paths) {
+                $t = Test-Page $r2 $session
                 if (-not $t.Ok) { Fail "GET $r2 — $($t.Why)"; $failures.Add("GET $r2") }
                 # 로그인이 풀리면 로그인 화면이 200으로 돌아오므로 내용으로 구분한다.
-                elseif ($t.Content -match 'autocomplete="current-password"') { Fail "GET $r2 — 로그인 화면으로 돌아옴"; $failures.Add("GET $r2 (auth)") }
-                else { Ok "GET $r2 (로그인 상태)" }
+                # 비밀번호 입력란만 보면 안 된다 — /mypage/profile에도 현재 비밀번호 칸이 있어 오탐이 난다.
+                elseif ($t.Content -match '(?i)<form[^>]*action="[^"]*/login"') { Fail "GET $r2 — 로그인 화면으로 돌아옴"; $failures.Add("GET $r2 (auth)") }
+                else { Ok "GET $r2 ($label)" }
             }
+        }
+
+        # 관리자 화면은 테스트 커버리지가 거의 없어 목업 화면까지 렌더를 확인한다.
+        try {
+            $adminSess = New-LoggedInSession "admin@cakeshop.local"
+            Test-AuthedPages $adminSess @(
+                "/admin", "/admin/store", "/admin/products", "/admin/products/new",
+                "/admin/community", "/admin/orders", "/admin/payments", "/admin/fulfillment",
+                "/admin/chat", "/admin/notifications", "/admin/members",
+                "/admin/coupons", "/admin/reviews", "/admin/statistics"
+            ) "관리자"
         } catch {
             Fail "관리자 로그인 실패: $($_.Exception.Message)"; $failures.Add("admin login")
+        }
+
+        # 로그인 필수로 전환된 고객 화면은 익명 요청이면 302라 위 목록으로는 덮이지 않는다.
+        try {
+            $userSess = New-LoggedInSession "user@cakeshop.local"
+            Test-AuthedPages $userSess @(
+                "/mypage", "/mypage/profile", "/cart", "/chat", "/notifications", "/community/new"
+            ) "고객"
+        } catch {
+            Fail "고객 로그인 실패: $($_.Exception.Message)"; $failures.Add("user login")
         }
     }
 
