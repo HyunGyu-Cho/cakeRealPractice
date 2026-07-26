@@ -22,6 +22,7 @@ import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.store.service.StoreService;
+import com.cakeshop.global.common.stats.MemberCountRow;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -212,6 +213,19 @@ public class OrderService {
         return orderMapper.findByIds(orderIds).stream().collect(Collectors.toMap(
             Order::getId,
             order -> new OrderReferenceView(order.getId(), order.getOrderNumber(), order.getMemberId())));
+    }
+
+    /**
+     * 회원별 주문 건수 배치 조회 공개 계약 — member 관리자 목록·상세가 사용한다.
+     * 상대 도메인이 orders를 JOIN하지 않도록 집계는 여기서 끝낸다. 취소·반려는 세지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Long> getOrderCountMap(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return orderMapper.countOrdersByMemberIds(memberIds).stream()
+            .collect(Collectors.toMap(MemberCountRow::memberId, MemberCountRow::count));
     }
 
     @Transactional

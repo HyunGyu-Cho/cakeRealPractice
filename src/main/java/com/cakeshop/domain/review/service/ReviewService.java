@@ -20,6 +20,7 @@ import com.cakeshop.domain.review.error.ReviewErrorCode;
 import com.cakeshop.domain.review.mapper.ReviewMapper;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
+import com.cakeshop.global.common.stats.MemberCountRow;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
 import java.math.BigDecimal;
@@ -156,6 +157,19 @@ public class ReviewService {
             return ReviewSummaryView.empty();
         }
         return new ReviewSummaryView(stats.reviewCount(), stats.averageRating());
+    }
+
+    /**
+     * [공개 계약] 회원별 작성 후기 수 배치 조회. member 관리자 상세가 첫 사용처다.
+     * 상대 도메인이 reviews를 JOIN하지 않도록 집계는 여기서 끝낸다.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Long> getReviewCountMap(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return reviewMapper.countReviewsByMemberIds(memberIds).stream()
+            .collect(Collectors.toMap(MemberCountRow::memberId, MemberCountRow::count));
     }
 
     /**

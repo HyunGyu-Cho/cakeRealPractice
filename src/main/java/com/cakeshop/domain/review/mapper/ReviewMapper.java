@@ -8,6 +8,7 @@ import com.cakeshop.domain.review.dto.view.ReviewStatsView;
 import com.cakeshop.domain.review.entity.Review;
 import com.cakeshop.domain.review.entity.ReviewImage;
 import com.cakeshop.domain.review.entity.ReviewReply;
+import com.cakeshop.global.common.stats.MemberCountRow;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -88,4 +89,7 @@ public interface ReviewMapper {
 
     /** 답글이 없는 노출 후기 수. 미답변은 저장하지 않는 파생값이다. */
     long countUnansweredVisible();
+
+    // 회원별 작성 후기 수 배치 집계 (member 관리자 화면이 공개 계약으로 사용한다). 숨김 여부는 따지지 않는다.
+    List<MemberCountRow> countReviewsByMemberIds(@Param("memberIds") Collection<Long> memberIds);
 }

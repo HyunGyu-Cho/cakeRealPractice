@@ -1,5 +1,6 @@
 package com.cakeshop.domain.member.mapper;
 
+import com.cakeshop.domain.member.dto.form.AdminMemberSearchForm;
 import com.cakeshop.domain.member.entity.Member;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -42,4 +43,18 @@ public interface MemberMapper {
 
     // 공개 계약(countNewMembers)용 — statistics 신규 가입 집계.
     long countCreatedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // ==================== 관리자 회원 관리 ====================
+
+    long countAdminMembers(@Param("cond") AdminMemberSearchForm cond);
+
+    List<Member> findAdminMemberPage(@Param("cond") AdminMemberSearchForm cond,
+                                     @Param("size") int size,
+                                     @Param("offset") int offset);
+
+    // 상태 전이는 service가 검증한 뒤 현재 상태를 건 조건부 UPDATE로만 반영한다(동시 요청 방어).
+    // suspended_at은 업무 시각이라 SQL에서 세팅한다(withdraw와 같은 예외).
+    int suspend(@Param("id") Long id, @Param("reason") String reason);
+
+    int unsuspend(@Param("id") Long id);
 }

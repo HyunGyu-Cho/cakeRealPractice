@@ -21,9 +21,11 @@ import com.cakeshop.domain.community.mapper.CommunityMapper;
 import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
+import com.cakeshop.global.common.stats.MemberCountRow;
 import com.cakeshop.global.error.BusinessException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +95,19 @@ public class CommunityService {
         }
         Long nextCursor = (hasNext && !rows.isEmpty()) ? rows.get(rows.size() - 1).getId() : null;
         return new PostSliceView(toViews(rows), hasNext, nextCursor);
+    }
+
+    /**
+     * [공개 계약] 회원별 작성 글 수 배치 조회. member 관리자 상세가 첫 사용처다.
+     * 상대 도메인이 posts를 JOIN하지 않도록 집계는 여기서 끝낸다(삭제·차단 글 제외).
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Long> getPostCountMap(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return communityMapper.countActivePostsByMemberIds(memberIds).stream()
+            .collect(Collectors.toMap(MemberCountRow::memberId, MemberCountRow::count));
     }
 
     /** [공개 계약] 홈 메인 노출용 — 공개 글 중 좋아요가 많은 순 상위 N건. */

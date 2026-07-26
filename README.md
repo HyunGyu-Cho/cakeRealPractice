@@ -138,7 +138,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 
 ## 관리자 화면 경로
 
-로그인 성공 시 저장된 요청이 없으면 `/admin`으로 이동한다. 실제 구현으로 전환된 화면과 아직 브라우저 목업인 화면은 아래 표를 정본으로 삼는다. 목업 화면의 변경 버튼은 백엔드가 연결될 때까지 비활성화한다.
+로그인 성공 시 저장된 요청이 없으면 `/admin`으로 이동한다. **관리자 화면은 전부 실구현으로 전환됐다** — 아래 표를 정본으로 삼는다.
 
 | 기능 | 경로 | 현재 상태 |
 |---|---|---|
@@ -149,14 +149,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 제작·픽업 | `/admin/fulfillment` | 실제 픽업일 조회·`PAID → READY_FOR_PICKUP → PICKED_UP` 처리 |
 | 결제·환불 | `/admin/payments` | 실제 모의 결제·전액 취소/환불 내역 조회 및 관리자 취소 |
 | 쿠폰 | `/admin/coupons`, `/admin/coupons/new`, `/admin/coupons/{id}/edit`, `/admin/coupons/{id}/issue` | 실제 CRUD·페이징·발급 중지/재개/종료·회원 지정 발급 |
-| 회원 | `/admin/members` | 목업 |
+| 회원 | `/admin/members`, `/admin/members/{id}` | 실제 목록·검색(이름·이메일·상태)·페이징·상세(활동 요약)·이용 제한/해제 |
 | 후기 | `/admin/reviews` | 실제 목록·검색(상품명·노출·평점)·숨김/복구·답글 등록/수정 |
 | 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
 | 채팅 | `/admin/chat` | 실제 고객별 1:1 상담·검색/필터·읽음·종료·STOMP 실시간 이벤트 |
 | 알림 | `/admin/notifications` | 실제 내 알림·읽음 처리 + 전체 발송 내역(유형·읽음 필터·페이징) |
 | 통계 | `/admin/statistics` | 실제 기간·집계 단위(일/주/월) 조회·요약 지표·추이(인라인 SVG)·상품별/인기 상품·시간대별 픽업·기타 지표 |
 
-각 목업 화면은 해당 `domain/*/controller/*AdminController`가 소유한다. 백엔드를 구현할 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 명령 버튼만 실제 기능으로 교체한다.
+각 화면은 해당 `domain/*/controller/*AdminController`가 소유한다. 목업이 남아 있지 않으므로 목업 스모크 테스트(`AdminPageControllerTests`)와 `fragments/admin/mock-notice`는 삭제했고, 화면마다 전용 테스트(`StoreAdminControllerTests` 패턴)가 담당한다.
 
 ## 고객 화면 선이관
 
