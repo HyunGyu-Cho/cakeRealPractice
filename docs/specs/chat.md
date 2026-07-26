@@ -2,7 +2,7 @@
 domain: chat
 status: approved
 owner: 민정
-updated: 2026-07-26
+approved-at: 2026-07-26
 ---
 
 # 채팅 도메인 명세
