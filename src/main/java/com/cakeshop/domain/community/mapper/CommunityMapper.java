@@ -9,6 +9,8 @@ import com.cakeshop.domain.community.dto.view.ReportRow;
 import com.cakeshop.domain.community.entity.Comment;
 import com.cakeshop.domain.community.entity.Post;
 import com.cakeshop.domain.community.entity.PostCategory;
+import com.cakeshop.global.common.stats.MemberCountRow;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
@@ -102,4 +104,7 @@ public interface CommunityMapper {
                   @Param("adminId") long adminId);
 
     int unblockPost(@Param("postId") long postId);
+
+    // 회원별 작성 글 수 배치 집계 (member 관리자 화면이 공개 계약으로 사용한다). 삭제·차단 글은 제외한다.
+    List<MemberCountRow> countActivePostsByMemberIds(@Param("memberIds") Collection<Long> memberIds);
 }

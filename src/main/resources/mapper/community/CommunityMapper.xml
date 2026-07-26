@@ -298,4 +298,16 @@
                blocked_by = NULL
          WHERE id = #{postId}
     </update>
+
+    <!-- 회원별 작성 글 수. 삭제·차단 글은 제외한다(고객 목록에 보이는 글 기준). -->
+    <select id="countActivePostsByMemberIds" resultType="com.cakeshop.global.common.stats.MemberCountRow">
+        SELECT member_id AS memberId, COUNT(*) AS count
+          FROM posts
+         WHERE status = 'ACTIVE'
+           AND member_id IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+         GROUP BY member_id
+    </select>
 </mapper>

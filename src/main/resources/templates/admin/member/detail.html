@@ -1,0 +1,87 @@
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원 상세 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
+<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('members')}"></aside><div class="admin-main">
+  <header th:replace="~{fragments/admin/header :: header('회원 상세')}"></header><main class="admin-content">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <div class="cluster cluster--between">
+    <h1 class="admin-page-title" th:text="${member.nickname}">회원</h1>
+    <a class="btn" th:href="@{/admin/members}">목록으로</a>
+  </div>
+
+  <section class="panel section">
+    <h2 class="section-title">계정 정보</h2>
+    <dl class="admin-detail-list">
+      <dt>이메일</dt><dd th:text="${member.email}">이메일</dd>
+      <dt>닉네임</dt><dd th:text="${member.nickname}">닉네임</dd>
+      <dt>전화번호</dt><dd th:text="${member.phone} ?: '-'">전화번호</dd>
+      <dt>역할</dt><dd th:text="${member.role}">USER</dd>
+      <dt>가입일</dt>
+      <dd th:text="${#temporals.format(member.createdAt, 'yyyy.MM.dd HH:mm')}">가입일</dd>
+      <dt>상태</dt>
+      <dd>
+        <span class="badge"
+              th:classappend="${member.status == 'ACTIVE'} ? 'badge--success'
+                              : (${member.status == 'SUSPENDED'} ? 'badge--danger' : 'badge--info')"
+              th:text="${member.statusLabel}">정상</span>
+      </dd>
+      <dt th:if="${member.withdrawnAt != null}">탈퇴일</dt>
+      <dd th:if="${member.withdrawnAt != null}"
+          th:text="${#temporals.format(member.withdrawnAt, 'yyyy.MM.dd HH:mm')}">탈퇴일</dd>
+    </dl>
+  </section>
+
+  <!-- 활동 지표 3종은 각 도메인 공개 계약으로 받는다(테이블 직접 JOIN 금지). -->
+  <section class="panel section">
+    <h2 class="section-title">활동 요약</h2>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-card__label">주문</span>
+        <strong class="stat-card__value" th:text="|${member.orderCount}건|">0건</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__label">작성 후기</span>
+        <strong class="stat-card__value" th:text="|${member.reviewCount}건|">0건</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__label">작성 글</span>
+        <strong class="stat-card__value" th:text="|${member.postCount}건|">0건</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel section">
+    <h2 class="section-title">이용 제한</h2>
+
+    <div th:if="${member.status == 'SUSPENDED'}" class="stack">
+      <p>
+        <strong>제한 일시</strong>
+        <span th:text="${#temporals.format(member.suspendedAt, 'yyyy.MM.dd HH:mm')}">일시</span>
+      </p>
+      <p><strong>사유</strong> <span th:text="${member.suspendedReason}">사유</span></p>
+    </div>
+
+    <!-- 제재 사유는 필수라 폼 검증 실패 시 리다이렉트 없이 이 화면을 재렌더한다. -->
+    <form th:if="${member.suspendable}" th:action="@{|/admin/members/${member.id}/suspend|}"
+          method="post" th:object="${suspendForm}" class="stack">
+      <div class="form-group">
+        <label class="form-label" for="reason">제한 사유</label>
+        <textarea class="form-control form-control--textarea" id="reason" rows="3"
+                  th:field="*{reason}" placeholder="제한 사유를 입력하세요"></textarea>
+        <p class="form-error" th:if="${#fields.hasErrors('reason')}" th:errors="*{reason}">오류</p>
+      </div>
+      <button class="btn btn--danger" type="submit"
+              data-confirm="이용을 제한하시겠습니까? 다음 로그인부터 차단됩니다.">이용 제한</button>
+    </form>
+
+    <form th:if="${member.releasable}" th:action="@{|/admin/members/${member.id}/unsuspend|}"
+          method="post">
+      <button class="btn" type="submit" data-confirm="제한을 해제하시겠습니까?">제한 해제</button>
+    </form>
+
+    <p class="text-muted" th:if="${!member.suspendable and !member.releasable}">
+      이 계정은 상태를 변경할 수 없습니다. (관리자 계정이거나 탈퇴한 회원입니다)
+    </p>
+  </section>
+  </main></div></div>
+</body></html>

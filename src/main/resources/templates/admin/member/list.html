@@ -1,8 +1,53 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>회원 관리 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('members')}"></aside><div class="admin-main"><header th:replace="~{fragments/admin/header :: header('회원 관리')}"></header><main class="admin-content">
-<div th:replace="~{fragments/admin/mock-notice :: notice}"></div><h1 class="admin-page-title">회원 관리</h1><form class="admin-toolbar" method="get" th:action="@{/admin/members}"><input class="form-control" name="name" aria-label="이름 검색" placeholder="이름 검색"><input class="form-control" name="email" aria-label="이메일 검색" placeholder="이메일 검색"><select class="form-control" name="status" aria-label="회원 상태"><option>상태 전체</option><option>정상</option><option>이용 제한</option></select><button class="btn" type="submit">검색</button></form>
-<div class="table-wrap"><table class="data-table"><thead><tr><th>이름</th><th>이메일</th><th>전화번호</th><th>가입일</th><th>주문 횟수</th><th>회원 상태</th><th>관리</th></tr></thead><tbody>
-<tr><td>홍길동</td><td>hong@example.com</td><td>010-0000-0000</td><td>2024.01.15</td><td>12회</td><td><span class="badge badge--success">정상</span></td><td><div class="cluster"><button class="btn" type="button">상세</button><button class="btn btn--danger" type="button" data-confirm="이용을 제한하시겠습니까?">이용 제한</button></div></td></tr>
-<tr><td>이영희</td><td>lee@example.com</td><td>010-1111-1111</td><td>2024.02.20</td><td>5회</td><td><span class="badge badge--success">정상</span></td><td><div class="cluster"><button class="btn" type="button">상세</button><button class="btn btn--danger" type="button">이용 제한</button></div></td></tr>
-<tr><td>박민수</td><td>park@example.com</td><td>010-2222-2222</td><td>2024.03.10</td><td>2회</td><td><span class="badge badge--danger">이용 제한</span></td><td><div class="cluster"><button class="btn" type="button">상세</button><button class="btn btn--danger" type="button">제한 해제</button></div></td></tr>
-</tbody></table></div></main></div></div></body></html>
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원 관리 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
+<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('members')}"></aside><div class="admin-main">
+  <header th:replace="~{fragments/admin/header :: header('회원 관리')}"></header><main class="admin-content">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1 class="admin-page-title">회원 관리</h1>
+  <form class="admin-toolbar filter-form" method="get" th:action="@{/admin/members}">
+    <input class="form-control" name="name" aria-label="이름 검색" placeholder="이름 검색"
+           th:value="${search.name}">
+    <input class="form-control" name="email" aria-label="이메일 검색" placeholder="이메일 검색"
+           th:value="${search.email}">
+    <select class="form-control" name="status" aria-label="회원 상태">
+      <option value="">상태 전체</option>
+      <!-- value는 enum 이름, 화면에 보이는 것만 한글 라벨이다(상태값 공통 규칙). -->
+      <option th:each="option : ${memberStatuses}" th:value="${option}"
+              th:text="${option.label()}"
+              th:selected="${search.normalizedStatus == option.name()}">정상</option>
+    </select>
+    <button class="btn" type="submit">검색</button>
+  </form>
+
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>이름</th><th>이메일</th><th>전화번호</th><th>가입일</th>
+      <th>주문 횟수</th><th>회원 상태</th><th>관리</th></tr></thead>
+    <tbody>
+    <tr th:each="member : ${pageResult.content}">
+      <td th:text="${member.nickname}">이름</td>
+      <td th:text="${member.email}">이메일</td>
+      <td th:text="${member.phone} ?: '-'">전화번호</td>
+      <td th:text="${#temporals.format(member.createdAt, 'yyyy.MM.dd')}">가입일</td>
+      <!-- 주문 횟수는 orders를 JOIN하지 않고 order 공개 계약으로 받은 값이다(취소·반려 제외). -->
+      <td th:text="|${member.orderCount}회|">0회</td>
+      <td>
+        <span class="badge"
+              th:classappend="${member.status == 'ACTIVE'} ? 'badge--success'
+                              : (${member.status == 'SUSPENDED'} ? 'badge--danger' : 'badge--info')"
+              th:text="${member.statusLabel}">정상</span>
+        <span class="badge badge--info" th:if="${member.admin}">관리자</span>
+      </td>
+      <td>
+        <!-- 제재는 사유 입력이 필수라 목록에서 즉시 처리하지 않고 상세로 보낸다(스펙 8.5). -->
+        <a class="btn" th:href="@{|/admin/members/${member.id}|}">상세</a>
+      </td>
+    </tr>
+    <tr th:if="${pageResult.content.isEmpty()}">
+      <td colspan="7" class="text-muted" style="text-align:center">조건에 맞는 회원이 없습니다.</td>
+    </tr>
+    </tbody>
+  </table></div>
+  <nav th:replace="~{fragments/common/pagination :: pagination(${pageResult}, '/admin/members', ${extraQuery})}"></nav>
+  </main></div></div>
+</body></html>

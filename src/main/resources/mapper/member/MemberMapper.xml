@@ -24,8 +24,10 @@
          WHERE email = #{email}
     </select>
 
+    <!-- 제재 컬럼 3개는 관리자 상세가 사용한다(고객 화면은 읽지 않는다). -->
     <select id="findById" resultMap="memberResultMap">
-        SELECT id, email, password, nickname, phone, role, status, created_at, updated_at
+        SELECT id, email, password, nickname, phone, role, status, created_at, updated_at,
+               suspended_at, suspended_reason, withdrawn_at
           FROM members
          WHERE id = #{id}
     </select>
@@ -116,4 +118,55 @@
            AND created_at &gt;= #{from}
            AND created_at &lt; #{to}
     </select>
+
+    <!-- ==================== 관리자 회원 관리 ==================== -->
+
+    <!-- 검색 조건은 form이 trim·enum 검증을 끝낸 정규화 값만 쓴다. LIKE 값도 #{}로 바인딩한다. -->
+    <sql id="adminSearchWhere">
+        <where>
+            <if test="cond.normalizedName != null">
+                AND nickname LIKE CONCAT('%', #{cond.normalizedName}, '%')
+            </if>
+            <if test="cond.normalizedEmail != null">
+                AND email LIKE CONCAT('%', #{cond.normalizedEmail}, '%')
+            </if>
+            <if test="cond.normalizedStatus != null">
+                AND status = #{cond.normalizedStatus}
+            </if>
+        </where>
+    </sql>
+
+    <select id="countAdminMembers" resultType="long">
+        SELECT COUNT(*)
+          FROM members
+        <include refid="adminSearchWhere"/>
+    </select>
+
+    <select id="findAdminMemberPage" resultMap="memberResultMap">
+        SELECT id, email, nickname, phone, role, status, created_at,
+               suspended_at, suspended_reason, withdrawn_at
+          FROM members
+        <include refid="adminSearchWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 현재 상태를 조건에 걸어 동시 요청이 겹쳐도 한 번만 반영되게 한다. -->
+    <update id="suspend">
+        UPDATE members
+           SET status = 'SUSPENDED',
+               suspended_at = CURRENT_TIMESTAMP(6),
+               suspended_reason = #{reason}
+         WHERE id = #{id}
+           AND status = 'ACTIVE'
+    </update>
+
+    <update id="unsuspend">
+        UPDATE members
+           SET status = 'ACTIVE',
+               suspended_at = NULL,
+               suspended_reason = NULL
+         WHERE id = #{id}
+           AND status = 'SUSPENDED'
+    </update>
 </mapper>

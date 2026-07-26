@@ -235,4 +235,15 @@
                SELECT 1 FROM review_replies rr WHERE rr.review_id = r.id
            )
     </select>
+
+    <!-- 회원별 작성 후기 수. 숨김 후기도 "작성했다"는 사실은 남으므로 상태를 따지지 않는다. -->
+    <select id="countReviewsByMemberIds" resultType="com.cakeshop.global.common.stats.MemberCountRow">
+        SELECT member_id AS memberId, COUNT(*) AS count
+          FROM reviews
+         WHERE member_id IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+         GROUP BY member_id
+    </select>
 </mapper>

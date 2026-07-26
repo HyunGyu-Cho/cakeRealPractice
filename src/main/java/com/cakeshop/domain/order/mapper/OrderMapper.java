@@ -8,6 +8,7 @@ import com.cakeshop.domain.order.dto.view.ProductSalesStatsView;
 import com.cakeshop.domain.order.dto.view.ReviewableItemView;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
+import com.cakeshop.global.common.stats.MemberCountRow;
 import com.cakeshop.global.common.stats.StatsPeriod;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -91,4 +92,8 @@ public interface OrderMapper {
                     @Param("currentStatus") String currentStatus,
                     @Param("reason") String reason,
                     @Param("canceledBy") String canceledBy);
+
+    // 회원별 주문 건수 배치 집계 (member 관리자 화면이 공개 계약으로 사용한다).
+    // 취소·반려는 제외한다 — statistics 상품별 집계와 같은 기준이다.
+    List<MemberCountRow> countOrdersByMemberIds(@Param("memberIds") Collection<Long> memberIds);
 }

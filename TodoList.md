@@ -95,9 +95,20 @@
     핸들러가 있어 `app.js`와 함께 로드되면 확인창이 두 번 뜨므로, 참조 0을 테스트로 고정했다.
   - `app.js`는 화면마다 붙이지 않고 공통 프래그먼트에서만 로드한다(고객 `common/head`, 관리자 `admin/header`).
     관리자 header에 있던 목업 번들을 `app.js`로 교체하고 개별 화면 8곳의 중복 태그를 걷어냈다.
-  - 남은 목업은 관리자 회원 관리(`/admin/members`) 하나뿐이며 이는 별도 항목이다(아래).
 
-- [ ] **member(관리자)** — 관리자 회원 관리 실구현 (목록·검색·상세·상태 변경). 현재 유일하게 남은 목업 화면이다.
+- [x] **member(관리자)** — 관리자 회원 관리 실구현 (스펙 `docs/specs/member.md` 8장, **스키마 변경 없음**)
+  - 저장소의 **마지막 목업 화면**이었다. 이로써 고객·관리자 화면이 전부 실구현이 됐고
+    `AdminPageControllerTests`·`fragments/*/mock-notice`를 삭제했다.
+  - 확정: `MemberStatus` 3개를 바꾸지 않고 관리자 전이는 `ACTIVE ↔ SUSPENDED`만. 관리자 계정(`role=ADMIN`)
+    제재 금지, 탈퇴 회원 상태 변경 금지, 중복 전이 차단. 전이 검증은 `MemberAdminService`가 소유한다.
+  - `suspended_at`·`suspended_reason`은 V0/V1에 이미 있고 그동안 안 쓰이던 컬럼이라 적용할 V파일이 없다.
+  - 활동 지표는 타 도메인 공개 계약 3개로 받는다(테이블 JOIN 금지): `OrderService.getOrderCountMap`(취소·반려 제외),
+    `ReviewService.getReviewCountMap`, `CommunityService.getPostCountMap`. 한 페이지 id를 모아 배치 조회한다.
+    공통 운반 타입 `MemberCountRow`는 `global/common/stats`에 뒀다(⚠️ global 추가 — `StatsPeriod`와 같은 자리).
+  - 상세 화면(`/admin/members/{id}`)은 신규다 — 목업의 "상세" 버튼에 이동할 화면이 없었다.
+  - 범위 밖: 관리자의 회원 정보 직접 수정, 강제 탈퇴, 제재 이력 테이블, 제재 알림, 로그인된 세션 즉시 만료.
+  - `admin-mockup.js`는 이 화면이 마지막 사용처였다. 삭제하지 않고 `customer-mockup.js`와 같은 원칙으로
+    **"파일은 남기고 의존 0"** 으로 맞췄다(위 통합 점검 항목과 한 세트).
 
 ---
 

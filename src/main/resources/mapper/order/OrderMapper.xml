@@ -347,4 +347,16 @@
           FROM orders
          WHERE status = #{status}
     </select>
+
+    <!-- 회원별 주문 건수. 취소·반려는 "주문한 적 있음"으로 세지 않는다. -->
+    <select id="countOrdersByMemberIds" resultType="com.cakeshop.global.common.stats.MemberCountRow">
+        SELECT member_id AS memberId, COUNT(*) AS count
+          FROM orders
+         WHERE status NOT IN ('CANCELED', 'REJECTED')
+           AND member_id IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+         GROUP BY member_id
+    </select>
 </mapper>
