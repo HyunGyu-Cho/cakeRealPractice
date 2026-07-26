@@ -78,7 +78,7 @@ class CartServiceTests {
 
     @Test
     void inactiveOrSoldOutProductCannotBeAdded() {
-        when(productService.getProductDetail(7L)).thenReturn(detail(7L, "NORMAL", "ACTIVE", 0, true));
+        when(productService.getProductDetail(7L)).thenReturn(detail(7L, "GENERAL", "ACTIVE", 0, true));
         when(productService.getSalesInfo(7L)).thenReturn(new ProductSalesInfo(7L, false, 35000L, 0));
 
         assertThatCartError(() -> cartService.addItem(1L, 7L, 1), CartErrorCode.PRODUCT_NOT_ON_SALE);
@@ -98,7 +98,7 @@ class CartServiceTests {
     void cartViewUsesLatestPriceAndMarksInsufficientStockInactive() {
         when(cartMapper.findItemsByMemberId(1L)).thenReturn(List.of(item(3L, 7L, 4)));
         when(productService.getProductDetail(7L))
-            .thenReturn(detail(7L, "NORMAL", "ACTIVE", 3, true));
+            .thenReturn(detail(7L, "GENERAL", "ACTIVE", 3, true));
         when(productService.getSalesInfo(7L))
             .thenReturn(new ProductSalesInfo(7L, true, 42000L, 3));
 
@@ -143,7 +143,7 @@ class CartServiceTests {
         CartItem item = item(4L, 8L, 1);
         when(cartMapper.findItemsByIdsAndMemberId(1L, List.of(4L))).thenReturn(List.of(item));
         when(productService.getProductDetail(8L))
-            .thenReturn(detail(8L, "NORMAL", "INACTIVE", 5, false));
+            .thenReturn(detail(8L, "GENERAL", "INACTIVE", 5, false));
         when(productService.getSalesInfo(8L))
             .thenReturn(new ProductSalesInfo(8L, false, 35000L, 5));
 
@@ -159,7 +159,7 @@ class CartServiceTests {
 
     private void givenNormalProduct(Long productId, int stock, long price, boolean onSale) {
         when(productService.getProductDetail(productId))
-            .thenReturn(detail(productId, "NORMAL", "ACTIVE", stock, onSale));
+            .thenReturn(detail(productId, "GENERAL", "ACTIVE", stock, onSale));
         when(productService.getSalesInfo(productId))
             .thenReturn(new ProductSalesInfo(productId, onSale, price, stock));
     }

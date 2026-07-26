@@ -174,13 +174,13 @@
                SELECT 1
                  FROM order_items oi
                 WHERE oi.order_id = o.id
-                  AND oi.product_type = 'NORMAL'
+                  AND oi.product_type = 'GENERAL'
            )
            AND NOT EXISTS (
                SELECT 1
                  FROM order_items oi
                 WHERE oi.order_id = o.id
-                  AND oi.product_type &lt;&gt; 'NORMAL'
+                  AND oi.product_type &lt;&gt; 'GENERAL'
            )
          ORDER BY o.pickup_at, o.id
     </select>

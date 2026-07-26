@@ -51,7 +51,7 @@ class CheckoutPaymentProcessorTests {
         CheckoutDraft draft = new CheckoutDraft(1L, List.of(11L));
         draft.setPickupAt(LocalDateTime.of(2026, 7, 27, 14, 0));
         CheckoutItemView item = new CheckoutItemView(
-            11L, 7L, "딸기 케이크", "NORMAL", null, 2, 41_000L, 82_000L, 2, 3);
+            11L, 7L, "딸기 케이크", "GENERAL", null, 2, 41_000L, 82_000L, 2, 3);
         CheckoutView checkout =
             new CheckoutView(draft.getCheckoutId(), List.of(item), 82_000L, 2, draft.getPickupAt());
         when(orderService.getCheckoutView(1L, draft)).thenReturn(checkout);
@@ -80,7 +80,7 @@ class CheckoutPaymentProcessorTests {
         CheckoutDraft draft = new CheckoutDraft(1L, List.of(11L));
         draft.setPickupAt(LocalDateTime.of(2026, 7, 27, 14, 0));
         CheckoutItemView item = new CheckoutItemView(
-            11L, 7L, "딸기 케이크", "NORMAL", null, 2, 41_000L, 82_000L, 2, 3);
+            11L, 7L, "딸기 케이크", "GENERAL", null, 2, 41_000L, 82_000L, 2, 3);
         CheckoutView checkout =
             new CheckoutView(draft.getCheckoutId(), List.of(item), 82_000L, 2, draft.getPickupAt());
         when(orderService.getCheckoutView(1L, draft)).thenReturn(checkout);

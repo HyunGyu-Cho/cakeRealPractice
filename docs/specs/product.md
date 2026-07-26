@@ -26,7 +26,7 @@ approved-at: 2026-07-25
 | `products.status` | `ACTIVE / INACTIVE` | `ACTIVE` (DEFAULT) | 없음 | `ACTIVE ↔ INACTIVE` (관리자 판매 스위치, 자유 전환) |
 
 - **status가 아닌 것**: 품절·재고 부족은 `stock_quantity` 파생값(품절 = 0, 재고 부족 = 1~4). 절대 status에 합치지 않는다.
-- `product_type`은 상태가 아니라 종류: `NORMAL / CUSTOM / SAME_DAY / SEASON` (저장 규칙은 status와 동일 — 영문 enum 이름).
+- `product_type`은 상태가 아니라 종류: `GENERAL / CUSTOM / SAME_DAY / SEASON` (저장 규칙은 status와 동일 — 영문 enum 이름).
 - `product_options.status`는 이번 범위 밖이었고 **order(수제) 차례에 `ACTIVE / INACTIVE`로 확정됐다**
   (V13, 스펙 `docs/specs/order-custom.md`). 옵션 그룹·옵션 조회 공개 계약 `ProductService.getOptionGroups`도 거기서 정의한다.
 
@@ -35,7 +35,7 @@ approved-at: 2026-07-25
 - `products.status`: `VARCHAR(20)` + `chk_products_status CHECK (ACTIVE/INACTIVE)` 표준화.
 - `products.stock_quantity INT UNSIGNED NULL` 추가 — **NULL = 재고 관리 안 함**(주문제작 상품), 숫자 = 재고 수량.
 - `product_images` 테이블 추가(V0 정의 재사용) — 1차에서는 상품당 대표 1행만 사용.
-- `categories` 시드 4행: `NORMAL(일반 케이크) / CUSTOM(주문 제작) / SAME_DAY(당일 픽업) / SEASON(시즌 상품)`.
+- `categories` 시드 4행: `GENERAL(일반 케이크) / CUSTOM(주문 제작) / SAME_DAY(당일 픽업) / SEASON(시즌 상품)`.
   1차에서는 category와 product_type이 1:1(코드 동일)이며, 관리자 폼의 유형 선택이 둘 다 결정한다(시즌 세분화 등 확장 대비 컬럼은 분리 유지).
 
 ## 4. 도메인 간 인터페이스

@@ -4,7 +4,7 @@ package com.cakeshop.domain.product.entity;
 // 1차에서는 categories.code와 1:1이며, 주문제작(CUSTOM)만 재고를 관리하지 않는다.
 public enum ProductType {
 
-    NORMAL("일반 케이크"),
+    GENERAL("일반 케이크"),
     CUSTOM("주문 제작"),
     SAME_DAY("당일 픽업"),
     SEASON("시즌 상품");

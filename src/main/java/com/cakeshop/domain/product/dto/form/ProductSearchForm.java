@@ -12,7 +12,7 @@ import lombok.Setter;
 @Setter
 public class ProductSearchForm {
 
-    private static final Set<String> TYPES = Set.of("NORMAL", "CUSTOM", "SAME_DAY", "SEASON");
+    private static final Set<String> TYPES = Set.of("GENERAL", "CUSTOM", "SAME_DAY", "SEASON");
     private static final Set<String> SALES = Set.of("ON_SALE", "SOLD_OUT", "INACTIVE");
     private static final Set<String> SORTS = Set.of("latest", "priceAsc", "priceDesc", "popular");
 

@@ -41,12 +41,12 @@ class ProductControllerTests {
         when(productService.getProductPage(any(ProductSearchForm.class), any(PageRequest.class)))
             .thenReturn(new PageResult<>(List.of(), new PageRequest(1, 9), 0));
 
-        mockMvc.perform(get("/products").param("type", "normal").param("keyword", "cake"))
+        mockMvc.perform(get("/products").param("type", "general").param("keyword", "cake"))
             .andExpect(status().isOk())
             .andExpect(view().name("customer/product/list"))
             .andExpect(model().attributeExists("pageResult", "filterQuery", "extraQuery", "currentSort"))
-            // 소문자 type 쿼리(normal)는 대문자 enum 이름으로 정규화되어 링크에 유지된다
-            .andExpect(model().attribute("filterQuery", "&type=NORMAL&keyword=cake"))
+            // 소문자 type 쿼리(general)는 대문자 enum 이름으로 정규화되어 링크에 유지된다
+            .andExpect(model().attribute("filterQuery", "&type=GENERAL&keyword=cake"))
             .andExpect(model().attribute("currentSort", "latest"));
     }
 
@@ -68,7 +68,7 @@ class ProductControllerTests {
 
     private ProductDetailView detailView() {
         return new ProductDetailView(5L, "딸기 생크림 케이크", "설명", 35000L,
-            "NORMAL", "일반 케이크", "ACTIVE", "판매 중", 12, "재고 있음",
+            "GENERAL", "일반 케이크", "ACTIVE", "판매 중", 12, "재고 있음",
             0, 0, null, new BigDecimal("0.00"), 0, true);
     }
 }

@@ -10,7 +10,7 @@
       <input class="form-control" name="keyword" placeholder="상품명 검색" th:value="${search.keyword}">
       <select class="form-control" name="type">
         <option value="">유형 전체</option>
-        <option value="NORMAL" th:selected="${search.normalizedType == 'NORMAL'}">일반 케이크</option>
+        <option value="GENERAL" th:selected="${search.normalizedType == 'GENERAL'}">일반 케이크</option>
         <option value="CUSTOM" th:selected="${search.normalizedType == 'CUSTOM'}">주문 제작</option>
         <option value="SAME_DAY" th:selected="${search.normalizedType == 'SAME_DAY'}">당일 픽업</option>
         <option value="SEASON" th:selected="${search.normalizedType == 'SEASON'}">시즌 상품</option>

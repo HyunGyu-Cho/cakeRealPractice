@@ -73,10 +73,10 @@ class ProductAdminControllerTests {
 
     @Test
     void stockRequiredForStockManagedTypes() throws Exception {
-        // 재고 관리 유형(NORMAL)인데 재고를 비우면 교차 검증(@AssertTrue)에 걸린다
+        // 재고 관리 유형(GENERAL)인데 재고를 비우면 교차 검증(@AssertTrue)에 걸린다
         mockMvc.perform(post("/admin/products")
                 .param("name", "딸기 생크림 케이크")
-                .param("productType", "NORMAL")
+                .param("productType", "GENERAL")
                 .param("basePrice", "35000")
                 .param("preparationDays", "0")
                 .param("status", "ACTIVE"))
@@ -125,7 +125,7 @@ class ProductAdminControllerTests {
     private MockHttpServletRequestBuilder validCreateRequest() {
         return post("/admin/products")
             .param("name", "딸기 생크림 케이크")
-            .param("productType", "NORMAL")
+            .param("productType", "GENERAL")
             .param("basePrice", "35000")
             .param("stockQuantity", "12")
             .param("preparationDays", "0")

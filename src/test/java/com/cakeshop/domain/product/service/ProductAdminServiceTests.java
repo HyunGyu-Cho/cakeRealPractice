@@ -54,11 +54,11 @@ class ProductAdminServiceTests {
 
     @Test
     void createStoresImageAndInsertsMainImageRow() {
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/a.jpg");
         MockMultipartFile image = new MockMultipartFile("image", "cake.jpg", "image/jpeg", new byte[] {1});
 
-        productAdminService.createProduct(form(ProductType.NORMAL, 12), image);
+        productAdminService.createProduct(form(ProductType.GENERAL, 12), image);
 
         ArgumentCaptor<ProductImage> captor = ArgumentCaptor.forClass(ProductImage.class);
         verify(productMapper).insertProduct(any(Product.class));
@@ -82,10 +82,10 @@ class ProductAdminServiceTests {
 
     @Test
     void nonImageUploadIsRejected() {
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         MockMultipartFile file = new MockMultipartFile("image", "malware.exe", "application/octet-stream", new byte[] {1});
 
-        assertThatThrownBy(() -> productAdminService.createProduct(form(ProductType.NORMAL, 12), file))
+        assertThatThrownBy(() -> productAdminService.createProduct(form(ProductType.GENERAL, 12), file))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode").isEqualTo(ProductErrorCode.INVALID_IMAGE);
     }
@@ -93,7 +93,7 @@ class ProductAdminServiceTests {
     @Test
     void updateReplacesImageAndDeletesPreviousFileAfterDbWrite() {
         when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         ProductImage existing = new ProductImage();
         existing.setId(10L);
         existing.setProductId(1L);
@@ -103,7 +103,7 @@ class ProductAdminServiceTests {
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
         MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
 
-        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), image);
+        productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);
 
         verify(productMapper).updateProductImageUrl(10L, "/uploads/product/202607/new.jpg");
         verify(fileStorageClient).delete("/uploads/product/202606/old.jpg");
@@ -112,7 +112,7 @@ class ProductAdminServiceTests {
     @Test
     void updateDefersPreviousImageDeletionUntilTransactionCommit() {
         when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         ProductImage existing = new ProductImage();
         existing.setId(10L);
         existing.setProductId(1L);
@@ -123,7 +123,7 @@ class ProductAdminServiceTests {
         MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
         TransactionSynchronizationManager.initSynchronization();
 
-        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), image);
+        productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);
 
         verify(fileStorageClient, never()).delete(any());
         TransactionSynchronizationManager.getSynchronizations().forEach(
@@ -135,7 +135,7 @@ class ProductAdminServiceTests {
     @Test
     void updateDeletesNewImageAndKeepsPreviousImageAfterTransactionRollback() {
         when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         ProductImage existing = new ProductImage();
         existing.setId(10L);
         existing.setProductId(1L);
@@ -146,7 +146,7 @@ class ProductAdminServiceTests {
         MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
         TransactionSynchronizationManager.initSynchronization();
 
-        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), image);
+        productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);
 
         TransactionSynchronizationManager.getSynchronizations().forEach(
             synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
@@ -157,9 +157,9 @@ class ProductAdminServiceTests {
     @Test
     void updateWithoutImageKeepsExistingFile() {
         when(productMapper.findProductById(1L)).thenReturn(Optional.of(existingProduct()));
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.of(category(1L, "NORMAL")));
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
 
-        productAdminService.updateProduct(1L, form(ProductType.NORMAL, 5), null);
+        productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), null);
 
         verify(productMapper).updateProduct(any(Product.class));
         verify(fileStorageClient, never()).delete(any());
@@ -177,9 +177,9 @@ class ProductAdminServiceTests {
 
     @Test
     void missingCategorySeedFailsExplicitly() {
-        when(productMapper.findCategoryByCode("NORMAL")).thenReturn(Optional.empty());
+        when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productAdminService.createProduct(form(ProductType.NORMAL, 12), null))
+        assertThatThrownBy(() -> productAdminService.createProduct(form(ProductType.GENERAL, 12), null))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode").isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
     }
@@ -201,7 +201,7 @@ class ProductAdminServiceTests {
         product.setCategoryId(1L);
         product.setName("딸기 생크림 케이크");
         product.setBasePrice(35000L);
-        product.setProductType("NORMAL");
+        product.setProductType("GENERAL");
         product.setPreparationDays(0);
         product.setStockQuantity(12);
         product.setStatus("ACTIVE");
