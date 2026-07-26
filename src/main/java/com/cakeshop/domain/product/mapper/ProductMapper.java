@@ -3,6 +3,7 @@ package com.cakeshop.domain.product.mapper;
 import com.cakeshop.domain.product.dto.form.AdminProductSearchForm;
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
 import com.cakeshop.domain.product.dto.view.ProductSummaryRow;
+import com.cakeshop.domain.product.dto.view.ProductTypeCountRow;
 import com.cakeshop.domain.product.entity.Category;
 import com.cakeshop.domain.product.entity.Product;
 import com.cakeshop.domain.product.entity.ProductImage;
@@ -34,6 +35,12 @@ public interface ProductMapper {
     Optional<Product> findProductById(@Param("id") Long id);
 
     List<ProductSummaryRow> findLatestActiveProducts(@Param("limit") int limit);
+
+    /** 홈 노출용 — 판매 가능 상품을 후기 수·평점 순으로. 목록 화면의 sort=popular와 같은 기준이다. */
+    List<ProductSummaryRow> findPopularActiveProducts(@Param("limit") int limit);
+
+    /** 홈 카테고리 카드용 — 판매 가능 상품 수를 product_type별로 집계한다. */
+    List<ProductTypeCountRow> countActiveByProductType();
 
     // ---- 쓰기 ----
     int insertProduct(Product product);

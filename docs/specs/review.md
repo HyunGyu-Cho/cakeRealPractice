@@ -53,6 +53,8 @@ approved-at: 2026-07-26
 - 내가 제공할 공개 Service 메서드 (`ReviewService`):
   - `PageResult<ProductReviewView> getProductReviews(Long productId, PageRequest)` — 상품 상세의 공개 후기
   - `ReviewSummaryView getProductReviewSummary(Long productId)` — 평균·건수(화면 표시용)
+  - `List<BestReviewView> getLatestVisibleReviews(int limit)` — home 메인의 "베스트 후기" 섹션용.
+    `VISIBLE`만, 이미지는 첫 장만 썸네일로 내보낸다.
 - 내가 사용할 다른 도메인의 공개 Service 메서드 (Mapper 직접 호출 금지):
   - `OrderService.getReviewableItems(Long memberId)` / `findReviewableItem(Long memberId, Long orderItemId)`
     — **신규 공개 계약**(order 도메인에 추가). `PICKED_UP` 주문 항목만 돌려준다.

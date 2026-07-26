@@ -31,6 +31,9 @@ public interface CommunityMapper {
                                              @Param("cursor") Long cursor,
                                              @Param("limit") int limit);
 
+    // 홈 인기 글: 좋아요 순 상위 N건 (카테고리 무관)
+    List<PostSummaryRow> findPopularPosts(@Param("limit") int limit);
+
     // 상세는 상태와 무관하게 조회하고, BLOCKED/DELETED 노출 판단은 service가 한다.
     Optional<PostDetailRow> findPostDetail(@Param("postId") long postId);
 

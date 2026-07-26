@@ -3,6 +3,7 @@ package com.cakeshop.domain.review.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,8 @@ import com.cakeshop.domain.order.dto.view.ReviewableItemView;
 import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.review.dto.form.ReviewForm;
+import com.cakeshop.domain.review.dto.view.AdminReviewRow;
+import com.cakeshop.domain.review.dto.view.BestReviewView;
 import com.cakeshop.domain.review.dto.view.RatingStatsRow;
 import com.cakeshop.domain.review.entity.Review;
 import com.cakeshop.domain.review.entity.ReviewImage;
@@ -24,7 +27,9 @@ import com.cakeshop.global.infra.FileStorageClient;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -236,6 +241,37 @@ class ReviewServiceTests {
     private void givenReviewableItem() {
         when(orderService.findReviewableItem(MEMBER_ID, ORDER_ITEM_ID))
             .thenReturn(Optional.of(item(ORDER_ITEM_ID)));
+    }
+
+    // ==================== 홈 베스트 후기 ====================
+
+    @Test
+    void bestReviewsFillNicknameAndFirstImage() {
+        when(reviewMapper.findLatestVisible(3)).thenReturn(List.of(bestRow()));
+        when(reviewMapper.findImagesByReviewIds(List.of(100L)))
+            .thenReturn(List.of(image("/uploads/review/first.jpg"), image("/uploads/review/second.jpg")));
+        when(memberService.getNicknameMap(Set.of(MEMBER_ID))).thenReturn(Map.of());
+
+        List<BestReviewView> reviews = reviewService.getLatestVisibleReviews(3);
+
+        assertThat(reviews).hasSize(1);
+        // 닉네임을 못 찾은 회원은 화면이 비지 않게 대체 문구로 채운다
+        assertThat(reviews.get(0).writerNickname()).isEqualTo("알 수 없음");
+        assertThat(reviews.get(0).thumbnailUrl()).isEqualTo("/uploads/review/first.jpg");
+        assertThat(reviews.get(0).productName()).isEqualTo("초코 가나슈 케이크");
+    }
+
+    @Test
+    void bestReviewsSkipQueryWhenNothingRequested() {
+        assertThat(reviewService.getLatestVisibleReviews(0)).isEmpty();
+
+        verify(reviewMapper, never()).findLatestVisible(anyInt());
+    }
+
+    private AdminReviewRow bestRow() {
+        return new AdminReviewRow(100L, MEMBER_ID, PRODUCT_ID, "초코 가나슈 케이크",
+            5, 5, null, null, "맛있게 잘 먹었습니다.", ReviewStatus.VISIBLE.name(),
+            LocalDateTime.of(2026, 7, 25, 10, 0), null, null);
     }
 
     private void givenInsertAssignsId(long id) {

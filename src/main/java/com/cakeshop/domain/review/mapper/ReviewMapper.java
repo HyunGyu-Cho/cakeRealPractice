@@ -33,6 +33,9 @@ public interface ReviewMapper {
                                            @Param("size") int size,
                                            @Param("offset") int offset);
 
+    /** 홈 베스트 후기. 상품명이 필요해 관리자 목록과 같은 행을 쓴다. */
+    List<AdminReviewRow> findLatestVisible(@Param("limit") int limit);
+
     /** 내 후기함. 숨김 후기도 본인에게는 보여준다. */
     List<AdminReviewRow> findByMemberId(@Param("memberId") Long memberId);
 
