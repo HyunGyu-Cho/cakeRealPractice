@@ -405,7 +405,9 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
                 "/admin", "/admin/store", "/admin/products", "/admin/products/new",
                 "/admin/community", "/admin/orders", "/admin/payments", "/admin/fulfillment",
                 "/admin/custom-orders", "/admin/chat", "/admin/notifications", "/admin/members",
-                "/admin/coupons", "/admin/coupons/new", "/admin/reviews", "/admin/statistics"
+                "/admin/coupons", "/admin/coupons/new", "/admin/reviews", "/admin/statistics",
+                # 상품 상세 — 후기 블록이 붙어 reviews 조회까지 함께 탄다
+                "/products/8"
             ) "관리자"
         } catch {
             Fail "관리자 로그인 실패: $($_.Exception.Message)"; $failures.Add("admin login")
@@ -419,7 +421,9 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
                 # 주문제작 요청서 — 상품·옵션을 DB에서 읽어 그리므로 시드가 빠지면 여기서 걸린다
                 "/orders/custom/options",
                 # 쿠폰함·쿠폰 받기 — V15 시드와 member_coupons 조인을 실제로 태운다
-                "/mypage/coupons", "/coupons"
+                "/mypage/coupons", "/coupons",
+                # 내 후기 — PICKED_UP 주문 조회와 reviews 조인을 실제로 태운다
+                "/reviews"
             ) "고객"
         } catch {
             Fail "고객 로그인 실패: $($_.Exception.Message)"; $failures.Add("user login")

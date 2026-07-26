@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('내 후기')}"></head>
+<body>
+<header th:replace="~{fragments/common/header :: header}"></header>
+<main class="page-container page-container--narrow">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1>내 후기</h1>
+
+  <section class="section">
+    <h2 class="section-title">작성할 후기
+      (<span th:text="${#lists.size(reviewableItems)}">0</span>)</h2>
+    <div class="stack">
+      <article class="panel cluster cluster--between" th:each="item : ${reviewableItems}">
+        <div>
+          <strong th:text="${item.productName}">상품명</strong>
+          <p class="text-muted">
+            <span th:text="${item.orderNumber}">주문번호</span> ·
+            <span th:text="|${#temporals.format(item.pickupAt, 'yyyy.MM.dd')} 픽업 완료|">픽업</span>
+          </p>
+        </div>
+        <a class="btn btn--primary" th:href="@{/reviews/new(orderItemId=${item.orderItemId})}">후기 쓰기</a>
+      </article>
+      <p class="text-muted" th:if="${#lists.isEmpty(reviewableItems)}">
+        픽업이 완료된 주문 상품에 후기를 쓸 수 있습니다.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">작성한 후기
+      (<span th:text="${#lists.size(myReviews)}">0</span>)</h2>
+    <div class="stack">
+      <article class="panel" th:each="review : ${myReviews}"
+               th:style="${review.hidden} ? 'opacity:.6' : ''">
+        <div class="cluster cluster--between">
+          <div>
+            <strong th:text="${review.productName}">상품명</strong>
+            <p class="text-muted">
+              <span th:text="|종합 ${review.overallRating}점|">종합</span>
+              <span th:if="${review.tasteRating != null}" th:text="|· 맛 ${review.tasteRating}점|"></span>
+              <span th:if="${review.designRating != null}" th:text="|· 디자인 ${review.designRating}점|"></span>
+              <span th:if="${review.serviceRating != null}" th:text="|· 응대 ${review.serviceRating}점|"></span>
+            </p>
+          </div>
+          <!-- 숨김 후기도 본인에게는 남긴다. 흔적 없이 사라지면 문의가 는다(스펙 6장 규칙 6). -->
+          <span class="badge badge--danger" th:if="${review.hidden}">관리자 숨김</span>
+        </div>
+        <p th:text="${review.content}">내용</p>
+        <div class="cluster" th:if="${!#lists.isEmpty(review.imageUrls)}">
+          <img class="placeholder-image placeholder-image--sm" style="object-fit:cover"
+               th:each="url : ${review.imageUrls}" th:src="${url}" alt="후기 이미지">
+        </div>
+        <div class="panel panel--soft" th:if="${review.replyContent != null}">
+          <strong>사장님 답글</strong>
+          <p th:text="${review.replyContent}">답글</p>
+        </div>
+        <div class="cluster">
+          <span class="text-muted"
+                th:text="${#temporals.format(review.createdAt, 'yyyy.MM.dd')}">작성일</span>
+          <a class="btn" th:href="@{|/reviews/${review.id}/edit|}">수정</a>
+          <a class="btn" th:href="@{|/products/${review.productId}|}">상품 보기</a>
+        </div>
+      </article>
+      <p class="text-muted" th:if="${#lists.isEmpty(myReviews)}">아직 작성한 후기가 없습니다.</p>
+    </div>
+  </section>
+</main>
+<footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

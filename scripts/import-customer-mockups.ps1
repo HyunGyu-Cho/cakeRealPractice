@@ -10,10 +10,10 @@ $templateRoot = Join-Path $backendRoot "src\main\resources\templates"
 $staticRoot = Join-Path $backendRoot "src\main\resources\static"
 
 # Keep DB-backed and Security-backed pages intact.
-# member·product·cart·일반 order/payment·chat·notification·주문제작·쿠폰 화면은 실구현으로 전환되어 제외한다.
-# — 덮어쓰면 백엔드 바인딩과 전용 동작이 사라진다.
+# 고객 화면은 전부 실구현으로 전환됐다 — 덮어쓰면 백엔드 바인딩과 전용 동작이 사라지므로 맵을 비워 둔다.
+# 프론트 원본이 갱신되면 CSS·JavaScript만 다시 가져온다(아래 $cssSources / $javascript).
+# 새 목업 화면을 이관할 때만 여기에 항목을 추가하고, 실구현 전환 시 다시 제외한다.
 $screenMap = [ordered]@{
-    "review-form.html"   = "customer\review\form.html"
 }
 
 # Replace longer URLs first so query strings are not consumed by shorter routes.

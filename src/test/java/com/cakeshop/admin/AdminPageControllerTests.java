@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import com.cakeshop.domain.member.controller.MemberAdminController;
-import com.cakeshop.domain.review.controller.ReviewAdminController;
 import com.cakeshop.domain.statistics.controller.StatisticsAdminController;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,17 +23,15 @@ class AdminPageControllerTests {
 
     @BeforeEach
     void setUp() {
-        // 실제 구현된 store·product·order/payment·community·chat·notification·coupon 관리자 화면은
-        // 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
+        // 실제 구현된 store·product·order/payment·community·chat·notification·coupon·review
+        // 관리자 화면은 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
-            new StatisticsAdminController(),
-            new MemberAdminController(), new ReviewAdminController()
+            new StatisticsAdminController(), new MemberAdminController()
         ).build();
 
         pages.put("/admin", "admin/dashboard");
         pages.put("/admin/statistics", "admin/statistics");
         pages.put("/admin/members", "admin/member/list");
-        pages.put("/admin/reviews", "admin/review/list");
     }
 
     @Test

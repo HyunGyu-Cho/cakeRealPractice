@@ -2,6 +2,7 @@ package com.cakeshop.domain.product.controller;
 
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
 import com.cakeshop.domain.product.service.ProductService;
+import com.cakeshop.domain.review.service.ReviewService;
 import com.cakeshop.global.common.paging.PageRequest;
 import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Controller;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriUtils;
 
 @Controller
@@ -17,11 +19,18 @@ import org.springframework.web.util.UriUtils;
 public class ProductController {
 
     private static final int PAGE_SIZE = 9;
+    private static final int REVIEW_PAGE_SIZE = 5;
 
     private final ProductService productService;
+    private final ReviewService reviewService;
 
-    public ProductController(ProductService productService) {
+    /**
+     * 후기는 화면 조합 지점인 <b>컨트롤러에서</b> 붙인다. {@code ProductService}가 {@code ReviewService}를
+     * 부르면 review → product(집계 갱신)와 맞물려 서비스 간 순환이 된다.
+     */
+    public ProductController(ProductService productService, ReviewService reviewService) {
         this.productService = productService;
+        this.reviewService = reviewService;
     }
 
     @GetMapping
@@ -49,8 +58,13 @@ public class ProductController {
     }
 
     @GetMapping("/{productId:\\d+}")
-    public String detail(@PathVariable("productId") long productId, Model model) {
+    public String detail(@PathVariable("productId") long productId,
+                         @RequestParam(name = "page", defaultValue = "1") int page,
+                         Model model) {
         model.addAttribute("product", productService.getProductDetail(productId));
+        // 상세 화면의 유일한 페이징이라 파라미터는 공통 pagination 프래그먼트가 쓰는 page를 그대로 쓴다.
+        model.addAttribute("reviewPage",
+            reviewService.getProductReviews(productId, new PageRequest(page, REVIEW_PAGE_SIZE)));
         return "customer/product/detail";
     }
 

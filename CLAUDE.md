@@ -52,7 +52,7 @@ com.cakeshop
 
 규격 정본은 `docs/frontend-template-format.md`. 고객 화면은 `fragments/common/head·header·footer`, 관리자 화면은 `fragments/admin/sidebar·header` 프래그먼트를 재사용하고 화면 고유 마크업만 작성한다. 공통 스타일·스크립트는 `static/css/app.css`·`static/js/app.js`에만 둔다. `successMessage`/`errorMessage`는 `fragments/common/alert.html`이 출력한다.
 
-목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. `scripts\import-customer-mockups.ps1`은 `$screenMap`에 남아 있는 목업만 덮어쓴다. 현재는 후기 1개이며, 실구현 전환 시 반드시 `$screenMap`에서 해당 화면을 먼저 제외한다.
+목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. `scripts\import-customer-mockups.ps1`은 `$screenMap`에 남아 있는 목업만 덮어쓴다. 고객 화면은 전부 실구현으로 전환돼 현재 맵은 비어 있으며(스크립트는 CSS·JS만 갱신), 새 목업을 이관할 때만 항목을 추가하고 실구현 전환 시 다시 제외한다.
 
 ## 3. 빌드/테스트
 
@@ -107,7 +107,7 @@ com.cakeshop
 
 ### 현재 구현 상태
 
-개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store·community·member·product·cart·일반 order/모의 payment·chat·notification은 실제 구현(각 스펙은 `docs/specs/`)이며, 주문제작·coupon·review·statistics는 아직 목업 또는 골격이다. 단 member는 **고객 측만 실구현**이고 관리자 회원 관리(`MemberAdminController`·`MemberAdminService`)는 아직 목업이다. `home`은 store·product의 공개 View를 조합하는 실구현 계층이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
+개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store·community·member·product·cart·일반 order/모의 payment·주문제작·chat·notification·coupon·review는 실제 구현(각 스펙은 `docs/specs/`)이며, statistics만 아직 목업이다. 단 member는 **고객 측만 실구현**이고 관리자 회원 관리(`MemberAdminController`·`MemberAdminService`)는 아직 목업이다. `home`은 store·product의 공개 View를 조합하는 실구현 계층이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
 
 ## 5. 코딩 컨벤션
 

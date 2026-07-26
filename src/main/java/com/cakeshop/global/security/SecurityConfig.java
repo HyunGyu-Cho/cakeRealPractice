@@ -46,9 +46,11 @@ public class SecurityConfig {
                     // 주문제작(/orders/custom/**)도 실구현으로 전환되어 제외한다 — 요청·견적·결제는
                     // 모두 소유자 검증이 필요하므로 preview에서도 로그인을 요구한다.
                     auth.requestMatchers(HttpMethod.GET, "/orders/custom/**").authenticated();
-                    auth.requestMatchers(HttpMethod.GET, "/mypage/coupons", "/coupons").authenticated();
+                    // 후기도 실구현으로 전환됐다 — 작성 자격은 본인의 PICKED_UP 주문이라 로그인이 필요하다.
                     auth.requestMatchers(HttpMethod.GET,
-                        "/orders/**", "/reviews/**", "/community/new").permitAll();
+                        "/mypage/coupons", "/coupons", "/reviews", "/reviews/**").authenticated();
+                    auth.requestMatchers(HttpMethod.GET,
+                        "/orders/**", "/community/new").permitAll();
                 }
 
                 auth.requestMatchers(HttpMethod.GET, "/chat").hasRole("USER");

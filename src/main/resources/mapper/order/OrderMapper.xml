@@ -187,6 +187,33 @@
          ORDER BY o.pickup_at, o.id
     </select>
 
+    <!-- 후기 작성 자격. reviews를 JOIN하지 않는다 — 이미 쓴 항목을 거르는 일은 review 도메인의 몫이다. -->
+    <sql id="reviewableItemColumns">
+        SELECT oi.id       AS order_item_id,
+               o.id        AS order_id,
+               o.order_number,
+               oi.product_id,
+               oi.product_name,
+               oi.quantity,
+               o.pickup_at
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+         WHERE o.member_id = #{memberId}
+           AND o.status = 'PICKED_UP'
+    </sql>
+
+    <select id="findPickedUpItemsByMemberId"
+            resultType="com.cakeshop.domain.order.dto.view.ReviewableItemView">
+        <include refid="reviewableItemColumns"/>
+        ORDER BY o.pickup_at DESC, oi.id DESC
+    </select>
+
+    <select id="findPickedUpItem"
+            resultType="com.cakeshop.domain.order.dto.view.ReviewableItemView">
+        <include refid="reviewableItemColumns"/>
+        AND oi.id = #{orderItemId}
+    </select>
+
     <update id="updateStatus">
         UPDATE orders
            SET status = #{nextStatus},

@@ -1,6 +1,7 @@
 package com.cakeshop.domain.order.mapper;
 
 import com.cakeshop.domain.order.dto.form.OrderSearchForm;
+import com.cakeshop.domain.order.dto.view.ReviewableItemView;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
 import java.time.LocalDate;
@@ -41,6 +42,13 @@ public interface OrderMapper {
     List<Order> findByIds(@Param("orderIds") Collection<Long> orderIds);
 
     List<Order> findGeneralOrdersByPickupDate(@Param("pickupDate") LocalDate pickupDate);
+
+    // ---- 후기 작성 자격 (review 도메인이 OrderService 계약으로만 사용한다) ----
+    /** 픽업까지 끝난 본인 주문의 항목. 후기를 쓸 자격이 있는 목록이다. */
+    List<ReviewableItemView> findPickedUpItemsByMemberId(@Param("memberId") Long memberId);
+
+    Optional<ReviewableItemView> findPickedUpItem(@Param("memberId") Long memberId,
+                                                  @Param("orderItemId") Long orderItemId);
 
     // ---- 픽업 예약 현황 (store의 PickupReservationPort 구현이 사용한다) ----
     /** 취소·반려되지 않은 주문 수. 취소된 주문의 슬롯은 다시 열려야 하므로 제외한다. */
