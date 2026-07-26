@@ -63,8 +63,16 @@
 
     if (button.matches("[data-select]")) selectButton(button);
 
-    // [data-confirm] 확인창은 먼저 로드되는 app.js가 띄운다(확인창 중복 방지).
-    // 거기서 취소하면 preventDefault가 걸리므로 이후 목업 상태 변경까지 중단한다.
+    // app.js에도 같은 [data-confirm] 핸들러가 있다. 둘 중 먼저 도는 쪽만 확인창을 띄우도록
+    // 이벤트에 표시를 남긴다 — 스크립트 로드 순서가 화면마다 달라도 확인창이 두 번 뜨지 않는다.
+    if (button.dataset.confirm && !event.cakeshopConfirmHandled) {
+      event.cakeshopConfirmHandled = true;
+      if (!window.confirm(button.dataset.confirm)) {
+        event.preventDefault();
+        return;
+      }
+    }
+    // 다른 핸들러가 확인창에서 취소를 받았으면 목업 상태 변경까지 중단한다.
     if (event.defaultPrevented) return;
 
     const status = button.closest("[data-set-status]");

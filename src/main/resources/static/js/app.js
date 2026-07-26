@@ -42,7 +42,12 @@ document.addEventListener("click", (event) => {
     if (modal) modal.hidden = true;
   }
   // 되돌릴 수 없는 동작(탈퇴 등)의 확인창. 취소하면 제출 자체를 막는다.
-  if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) event.preventDefault();
+  // admin-mockup.js에도 같은 핸들러가 있어, 먼저 도는 쪽만 띄우도록 이벤트에 표시를 남긴다
+  // (관리자 화면은 두 스크립트를 함께 로드하고 순서도 화면마다 다르다).
+  if (button.dataset.confirm && !event.cakeshopConfirmHandled) {
+    event.cakeshopConfirmHandled = true;
+    if (!window.confirm(button.dataset.confirm)) event.preventDefault();
+  }
 });
 
 document.addEventListener("change", (event) => {
