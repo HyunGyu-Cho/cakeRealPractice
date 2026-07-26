@@ -9,7 +9,9 @@
     <div class="customer-header__actions">
       <a class="btn" sec:authorize="hasRole('ADMIN')" th:href="@{/admin/store}">관리자</a>
       <a class="btn" th:href="@{/products}">검색</a>
-      <a class="btn" sec:authorize="isAuthenticated()" th:href="@{/notifications}">알림</a>
+      <a class="btn" sec:authorize="isAuthenticated()" th:href="@{/notifications}"
+         data-notification-badge
+         th:text="|알림 (${unreadNotificationCount ?: 0})|">알림 (0)</a>
       <a class="btn" sec:authorize="isAuthenticated()" th:href="@{/cart}"
          th:text="|장바구니 (${cartCount ?: 0})|">장바구니 (0)</a>
       <a class="btn" sec:authorize="isAnonymous()" th:href="@{/cart}">장바구니</a>

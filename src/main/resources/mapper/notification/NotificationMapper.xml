@@ -2,4 +2,113 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.notification.mapper.NotificationMapper">
     <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <resultMap id="notificationResultMap" type="com.cakeshop.domain.notification.entity.Notification">
+        <id property="id" column="id"/>
+        <result property="receiverId" column="receiver_id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="chatMessageId" column="chat_message_id"/>
+        <result property="notificationType" column="notification_type"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="read" column="is_read"/>
+        <result property="readAt" column="read_at"/>
+        <result property="targetUrl" column="target_url"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="notificationColumns">
+        id, receiver_id, order_id, chat_message_id, notification_type,
+        title, content, is_read, read_at, target_url, created_at
+    </sql>
+
+    <sql id="searchWhere">
+        <where>
+            <if test="type != null">
+                AND notification_type = #{type}
+            </if>
+            <if test="read != null">
+                AND is_read = #{read}
+            </if>
+            <if test="receiverIds != null">
+                <choose>
+                    <when test="!receiverIds.isEmpty()">
+                        AND receiver_id IN
+                        <foreach item="receiverId" collection="receiverIds"
+                                 open="(" separator="," close=")">
+                            #{receiverId}
+                        </foreach>
+                    </when>
+                    <otherwise>
+                        AND 1 = 0
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notifications (
+            receiver_id, order_id, chat_message_id, notification_type,
+            title, content, target_url
+        ) VALUES (
+            #{receiverId}, #{orderId}, #{chatMessageId}, #{notificationType},
+            #{title}, #{content}, #{targetUrl}
+        )
+    </insert>
+
+    <select id="findById" resultMap="notificationResultMap">
+        SELECT <include refid="notificationColumns"/>
+          FROM notifications
+         WHERE id = #{id}
+    </select>
+
+    <select id="findSliceByReceiver" resultMap="notificationResultMap">
+        SELECT <include refid="notificationColumns"/>
+          FROM notifications
+         WHERE receiver_id = #{receiverId}
+        <if test="cursor != null">
+            AND id &lt; #{cursor}
+        </if>
+         ORDER BY id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*)
+          FROM notifications
+         WHERE receiver_id = #{receiverId}
+           AND is_read = 0
+    </select>
+
+    <update id="markRead">
+        UPDATE notifications
+           SET is_read = 1,
+               read_at = CURRENT_TIMESTAMP(6)
+         WHERE id = #{id}
+           AND receiver_id = #{receiverId}
+           AND is_read = 0
+    </update>
+
+    <update id="markAllRead">
+        UPDATE notifications
+           SET is_read = 1,
+               read_at = CURRENT_TIMESTAMP(6)
+         WHERE receiver_id = #{receiverId}
+           AND is_read = 0
+    </update>
+
+    <select id="countBySearch" resultType="long">
+        SELECT COUNT(*)
+          FROM notifications
+        <include refid="searchWhere"/>
+    </select>
+
+    <select id="findSearchPage" resultMap="notificationResultMap">
+        SELECT <include refid="notificationColumns"/>
+          FROM notifications
+        <include refid="searchWhere"/>
+         ORDER BY id DESC
+         LIMIT #{size} OFFSET #{offset}
+    </select>
 </mapper>

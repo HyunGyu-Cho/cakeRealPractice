@@ -29,15 +29,17 @@
   - `ChatRoomStatus`: `OPEN`/`CLOSED`, 메시지 타입: `TEXT`/`IMAGE`/`SYSTEM_CARD`.
   - 정확한 `/주문제작` 명령은 `/orders/custom/options`로 연결되는 시스템 카드로 저장한다.
   - 주문제작 요청·견적·결제 링크 연결은 `order(수제) + payment link` 단계에서 채팅 시스템 카드와 알림으로 확장한다.
-- [ ] **notification** — 채팅·주문제작·결제 이벤트 알림 생성 + 읽음 처리(`is_read BOOLEAN`)
-  - `NotificationType` enum과 알림 생성 시점을 확정하고, 최소한 새 채팅 메시지·견적 도착·결제 요청·결제 완료를 포함한다.
+- [x] **notification** — 채팅·주문·결제 이벤트 알림 생성 + 읽음 처리(`is_read BOOLEAN`) + STOMP 실시간 푸시
+  - `NotificationType` 12개 확정(스펙 `docs/specs/notification.md`). 고객 9개 + 관리자 3개이며, 견적 도착·결제 요청은 값만 정의하고 발행은 주문제작 단계에서 연결한다.
+  - 발행 지점: 채팅(발신자 반대편), 결제 완료, 주문 상태 전이, 취소·환불 완료. 업무 트랜잭션에서 저장하고 커밋 후 푸시한다.
+  - 후속(이슈 #10): `notification_deliveries` 전달 이력 + 스케줄러 최대 3회 재시도, `notify()`의 회원 조회를 업무 트랜잭션 밖으로, enum ↔ DDL CHECK 동기화 테스트.
 - [ ] **order(수제) + payment link** — 요청서 제출 → 관리자 검토·견적/반려 → 사용자 견적 수락 → 결제 링크 발급 → 결제 완료 → 제작 시작
   - 요청서: 이미지 첨부, 요구사항, 옵션, 희망 제작일, 희망 예산. 최종 가격은 관리자가 견적으로 제시한다.
   - 상태 흐름: `DRAFT` → `SUBMITTED` → `UNDER_REVIEW` → `REVISION_REQUESTED`/`REJECTED`/`QUOTED` → `QUOTE_ACCEPTED` → `PAYMENT_PENDING` → `PAID` → `IN_PRODUCTION`.
   - 관리자 견적은 옵션·가격·제작 가능일의 버전과 스냅샷을 보존하고, 사용자 수락 전까지 수정할 수 있게 한다.
   - 결제 링크 발급 시 채팅과 알림으로 전달하며 만료·일회성 토큰·견적 변경 시 기존 링크 무효화·중복 결제 방지를 적용한다.
   - 스펙 단계에서 확정: 반려 사유·수정/재요청 규칙, 채팅방과 주문제작 요청의 연결 방식, 결제 승인 API·웹훅·실패 보상 처리.
-  - ⚠️ `WebhookEventMapper`(인터페이스 + 빈 XML)는 이미 있으나 대응 테이블이 `docs/sql`에 없다. 웹훅 구현 착수 시 **V10 스키마 파일 추가가 선행**돼야 한다.
+  - ⚠️ `WebhookEventMapper`(인터페이스 + 빈 XML)는 이미 있으나 대응 테이블이 `docs/sql`에 없다. 웹훅 구현 착수 시 **스키마 V파일 추가가 선행**돼야 한다(V10·V11은 알림·상품 시드가 사용 중이므로 그다음 번호를 쓴다).
 
 ## 4단계 — 구매 확장·구매 후 경험
 

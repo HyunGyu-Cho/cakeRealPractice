@@ -357,12 +357,6 @@
     const addCustom = event.target.closest("[data-add-custom-cart]");
     if (addCustom) addCustomProduct(addCustom);
     if (event.target.closest("[data-quantity-change]") && document.querySelector("[data-add-normal-cart]")) updatePickupPrice();
-    const readAll = event.target.closest("[data-read-all]");
-    if (readAll) {
-      document.querySelectorAll(".notification-item").forEach(function (item) { item.classList.remove("is-unread"); const dot = item.querySelector(".notification-dot"); if (dot) dot.remove(); });
-      readAll.textContent = "모두 읽음";
-      readAll.disabled = true;
-    }
     const coupon = event.target.closest("[data-coupon-select]");
     if (coupon) {
       document.querySelectorAll("[data-coupon-select]").forEach(function (item) { item.classList.remove("is-active"); item.textContent = "사용"; });

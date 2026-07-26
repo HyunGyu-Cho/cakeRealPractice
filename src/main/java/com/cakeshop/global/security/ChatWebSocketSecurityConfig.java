@@ -21,6 +21,9 @@ public class ChatWebSocketSecurityConfig {
             .nullDestMatcher().authenticated()
             .simpSubscribeDestMatchers("/user/queue/chat-events").hasRole("USER")
             .simpSubscribeDestMatchers("/topic/admin/chat-events").hasRole("ADMIN")
+            // 알림 — 고객·관리자 모두 자기 개인 큐를 구독하고, 관리자 공용 알림은 토픽으로 받는다.
+            .simpSubscribeDestMatchers("/user/queue/notifications").authenticated()
+            .simpSubscribeDestMatchers("/topic/admin/notifications").hasRole("ADMIN")
             .simpTypeMatchers(MESSAGE, SUBSCRIBE).denyAll()
             .anyMessage().denyAll();
         return messages.build();

@@ -28,8 +28,16 @@ $domain = $Matches[1]
 $allowlist = @('home')
 if ($allowlist -contains $domain) { exit 0 }
 
+# 스펙 문서 하나가 여러 도메인을 함께 확정한 경우의 별칭.
+# order·payment는 결제 흐름을 공유해 docs/specs/order-payment.md 한 문서로 확정했다.
+$specAlias = @{
+    'order'   = 'order-payment'
+    'payment' = 'order-payment'
+}
+$specName = if ($specAlias.ContainsKey($domain)) { $specAlias[$domain] } else { $domain }
+
 $root = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { (Get-Location).Path }
-$spec = Join-Path $root "docs/specs/$domain.md"
+$spec = Join-Path $root "docs/specs/$specName.md"
 if (Test-Path $spec) {
     try {
         $specText = Get-Content -LiteralPath $spec -Raw -Encoding UTF8
@@ -51,7 +59,7 @@ if (Test-Path $spec) {
 }
 
 $specState = if (Test-Path $spec) { "있지만 status: approved 가 아닙니다" } else { "없습니다" }
-$reason = "spec-driven 관문: docs/specs/$domain.md 가 $specState. " +
+$reason = "spec-driven 관문: docs/specs/$specName.md 가 $specState. " +
           "'$domain' 도메인의 운영 코드를 만들거나 수정하기 전에 /new-domain 스킬로 " +
           "스펙(유스케이스·상태값·비즈니스 규칙)을 작성하고 사용자 확정 후 status: approved 로 바꾸세요. " +
           "템플릿: docs/specs/_template.md"

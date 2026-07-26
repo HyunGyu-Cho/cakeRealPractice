@@ -417,6 +417,15 @@
         `target_url`        VARCHAR(500) NULL,
         `created_at`        DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
+        KEY `idx_notifications_receiver` (`receiver_id`, `id` DESC),
+        KEY `idx_notifications_unread` (`receiver_id`, `is_read`),
+        CONSTRAINT `chk_notifications_type`
+            CHECK (`notification_type` IN (
+                'CHAT_MESSAGE', 'ORDER_PAID', 'ORDER_IN_PRODUCTION', 'ORDER_READY_FOR_PICKUP',
+                'ORDER_PICKED_UP', 'ORDER_CANCELED', 'ORDER_REJECTED',
+                'CUSTOM_ORDER_QUOTE', 'PAYMENT_REQUESTED',
+                'ADMIN_CHAT_MESSAGE', 'ADMIN_ORDER_PLACED', 'ADMIN_ORDER_CANCELED'
+            )),
         CONSTRAINT `fk_notifications_receiver`
             FOREIGN KEY (`receiver_id`) REFERENCES `members` (`id`),
         CONSTRAINT `fk_notifications_order`

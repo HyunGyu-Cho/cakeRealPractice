@@ -90,7 +90,9 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 
 증분 파일은 재적용해도 안전하도록 `IF EXISTS` / `IF NOT EXISTS` 가드를 둔다. V0가 소급 반영되어 있어 가드가 없으면 신규 DB에서 증분을 재적용할 때 `Duplicate column` / `Can't DROP COLUMN`으로 실패한다.
 
-> 검증됨: 개발 로컬 DB에 `V7`(장바구니)·`V8`(일반 주문/모의 결제)·`V9`(1:1 채팅)까지 적용했으며 머지 후 구조 검증·전체 테스트·화면 스모크를 통과했다. 기존 DB는 `V2 → V3 → V4 → V5 → V6 → V7 → V8 → V9` 순서로 적용한다.
+> 검증됨: 개발 로컬 DB에 `V7`(장바구니)·`V8`(일반 주문/모의 결제)·`V9`(1:1 채팅)·`V10`(알림 타입 제약·인덱스)·`V11`(상품 샘플 시드)까지 적용했으며 머지 후 구조 검증·전체 테스트·화면 스모크를 통과했다. 기존 DB는 `V2 → V3 → V4 → V5 → V6 → V7 → V8 → V9 → V10 → V11` 순서로 적용한다.
+>
+> `V11_product_seed.sql`은 스키마가 아니라 개발용 상품 샘플이다(재실행해도 중복되지 않는다). 이 시드가 없으면 products가 비어 있어 로컬에서 장바구니 → 주문 → 결제 흐름을 확인할 수 없다.
 
 기존 DB에 증분 파일을 적용할 때는 다음 도우미를 사용할 수 있다.
 
@@ -150,7 +152,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 후기 | `/admin/reviews` | 목업 |
 | 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
 | 채팅 | `/admin/chat` | 실제 고객별 1:1 상담·검색/필터·읽음·종료·STOMP 실시간 이벤트 |
-| 알림 | `/admin/notifications` | 목업 |
+| 알림 | `/admin/notifications` | 실제 내 알림·읽음 처리 + 전체 발송 내역(유형·읽음 필터·페이징) |
 | 통계 | `/admin/statistics` | 목업 |
 
 각 목업 화면은 해당 `domain/*/controller/*AdminController`가 소유한다. 백엔드를 구현할 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 명령 버튼만 실제 기능으로 교체한다.
@@ -172,10 +174,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
 | 1:1 채팅 | `/chat` | 실제 텍스트·이미지·읽음·상담 자동 재개·`/주문제작` 카드·STOMP 실시간 이벤트 |
 | 쿠폰함 | `/mypage/coupons` | 목업 |
-| 알림·후기 | `/notifications`, `/reviews/new` | 목업 |
+| 알림 | `/notifications` | 실제 구현 (목록·키셋 더보기·개별/전체 읽음·헤더 미읽음 뱃지·STOMP 실시간 수신) |
+| 후기 | `/reviews/new` | 목업 |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 5개(주문제작 2개·알림·후기·쿠폰)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제 화면은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 4개(주문제작 2개·후기·쿠폰)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림 화면은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1

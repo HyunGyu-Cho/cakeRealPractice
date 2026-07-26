@@ -22,6 +22,8 @@ import com.cakeshop.domain.chat.infra.ChatImageStorage;
 import com.cakeshop.domain.chat.mapper.ChatMapper;
 import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.service.MemberService;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.global.error.BusinessException;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -43,13 +45,15 @@ class ChatServiceTests {
     @Mock private MemberService memberService;
     @Mock private ChatImageStorage imageStorage;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private NotificationService notificationService;
 
     private ChatService chatService;
     private AtomicReference<ChatMessage> inserted;
 
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(chatMapper, memberService, imageStorage, eventPublisher);
+        chatService = new ChatService(chatMapper, memberService, imageStorage, eventPublisher,
+            notificationService);
         inserted = new AtomicReference<>();
         org.mockito.Mockito.lenient().when(memberService.getProfile(1L)).thenReturn(
             new MemberProfileView(1L, "고객", "customer@example.com", null, LocalDateTime.now()));
@@ -174,6 +178,35 @@ class ChatServiceTests {
             ChatErrorCode.IMAGE_TOO_LARGE
         );
         verify(chatMapper, never()).insertMessage(any());
+    }
+
+    @Test
+    void customerMessageNotifiesAdminsAndSystemCardDoesNot() {
+        when(chatMapper.findRoomByCustomerId(1L)).thenReturn(Optional.of(room(ChatRoomStatus.OPEN)));
+        givenMessageInsert();
+
+        chatService.sendCustomerMessage(1L, form("케이크 문의드려요"));
+        verify(notificationService).notifyAdmins(any(NotificationCommand.class));
+
+        chatService.sendCustomerMessage(1L, form("/주문제작"));
+        verify(notificationService, org.mockito.Mockito.times(1))
+            .notifyAdmins(any(NotificationCommand.class));
+        verify(notificationService, never()).notify(any(NotificationCommand.class));
+    }
+
+    @Test
+    void adminMessageNotifiesTheRoomCustomer() {
+        when(chatMapper.findRoomById(10L)).thenReturn(Optional.of(room(ChatRoomStatus.OPEN)));
+        givenMessageInsert();
+
+        chatService.sendAdminMessage(10L, 99L, form("확인해 드릴게요"));
+
+        org.mockito.ArgumentCaptor<NotificationCommand> captor =
+            org.mockito.ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService).notify(captor.capture());
+        assertThat(captor.getValue().receiverId()).isEqualTo(1L);
+        assertThat(captor.getValue().targetUrl()).isEqualTo("/chat");
+        verify(notificationService, never()).notifyAdmins(any(NotificationCommand.class));
     }
 
     @Test

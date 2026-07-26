@@ -9,6 +9,9 @@ import com.cakeshop.domain.payment.entity.Payment;
 import com.cakeshop.domain.payment.entity.PaymentStatus;
 import com.cakeshop.domain.payment.error.PaymentErrorCode;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
@@ -29,21 +32,25 @@ public class CheckoutPaymentProcessor {
     private final CartService cartService;
     private final ProductService productService;
     private final PaymentMapper paymentMapper;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Autowired
     public CheckoutPaymentProcessor(OrderService orderService, CartService cartService,
-                                    ProductService productService, PaymentMapper paymentMapper) {
-        this(orderService, cartService, productService, paymentMapper, Clock.systemDefaultZone());
+                                    ProductService productService, PaymentMapper paymentMapper,
+                                    NotificationService notificationService) {
+        this(orderService, cartService, productService, paymentMapper, notificationService,
+            Clock.systemDefaultZone());
     }
 
     public CheckoutPaymentProcessor(OrderService orderService, CartService cartService,
                                     ProductService productService, PaymentMapper paymentMapper,
-                                    Clock clock) {
+                                    NotificationService notificationService, Clock clock) {
         this.orderService = orderService;
         this.cartService = cartService;
         this.productService = productService;
         this.paymentMapper = paymentMapper;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
@@ -72,7 +79,21 @@ public class CheckoutPaymentProcessor {
         }
 
         cartService.removeCheckoutItems(memberId, draft.getCartItemIds());
+        notifyPaid(order);
         return order.getId();
+    }
+
+    /** 결제 성공을 고객에게, 신규 주문을 전체 관리자에게 알린다. */
+    private void notifyPaid(Order order) {
+        notificationService.notify(NotificationCommand.forOrder(
+            order.getMemberId(), NotificationType.ORDER_PAID, order.getId(),
+            NotificationType.ORDER_PAID.label(),
+            "주문 " + order.getOrderNumber() + " 결제가 완료되었습니다."));
+        notificationService.notifyAdmins(NotificationCommand.toAdmins(
+            NotificationType.ADMIN_ORDER_PLACED,
+            NotificationType.ADMIN_ORDER_PLACED.label(),
+            "새 주문 " + order.getOrderNumber() + "이 결제되었습니다.",
+            "/admin/orders/" + order.getId(), order.getId(), null));
     }
 
     private String normalizeMethod(String method) {

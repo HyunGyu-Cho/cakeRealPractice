@@ -91,6 +91,15 @@
          WHERE nickname LIKE CONCAT('%', #{keyword}, '%')
     </select>
 
+    <!-- 알림 팬아웃 대상. 정지·탈퇴 계정은 제외한다. -->
+    <select id="findActiveAdminIds" resultType="long">
+        SELECT id
+          FROM members
+         WHERE role = 'ADMIN'
+           AND status = 'ACTIVE'
+         ORDER BY id
+    </select>
+
     <select id="findIdsByKeyword" resultType="long">
         SELECT id
           FROM members

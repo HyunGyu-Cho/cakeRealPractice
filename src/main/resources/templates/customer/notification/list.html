@@ -1,25 +1,54 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="_csrf" th:content="${_csrf.token}">
+  <meta name="_csrf_header" th:content="${_csrf.headerName}">
   <title>알림 | 케이크 쇼핑몰</title>
   <link rel="stylesheet" th:href="@{/css/app.css}">
-  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
   <script defer th:src="@{/js/app.js}"></script>
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
+  <script defer th:src="@{/webjars/stomp__stompjs/7.3.0/bundles/stomp.umd.min.js}"></script>
+  <script defer th:src="@{/js/notification.js}"></script>
 </head>
 <body data-page-title="알림">
   <header th:replace="~{fragments/common/header :: header}"></header>
-  <main class="page-container page-container--narrow">
-    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
-    <div class="cluster cluster--between"><h1>알림</h1><button class="btn" type="button" data-read-all>전체 읽음</button></div><div class="stack">
-      <article class="notification-item is-unread"><div class="cluster" style="align-items:flex-start"><span class="notification-dot" aria-hidden="true"></span><div><span class="badge">주문 승인</span><p>레터링 케이크 주문이 승인되었습니다.</p><time class="text-muted">10분 전</time></div></div><a class="btn" href="/orders/1">상세</a></article>
-      <article class="notification-item is-unread"><div class="cluster" style="align-items:flex-start"><span class="notification-dot" aria-hidden="true"></span><div><span class="badge">결제 완료</span><p>ORD-001 결제가 완료되었습니다.</p><time class="text-muted">1시간 전</time></div></div><a class="btn" href="/orders/1">상세</a></article>
-      <article class="notification-item"><div><span class="badge">제작 시작</span><p>딸기 케이크 제작을 시작했습니다.</p><time class="text-muted">어제</time></div><a class="btn" href="/orders/1">상세</a></article><article class="notification-item"><div><span class="badge">픽업 준비</span><p>초코 케이크 픽업 준비가 완료되었습니다.</p><time class="text-muted">2일 전</time></div><a class="btn" href="/orders/1">상세</a></article><article class="notification-item"><div><span class="badge">취소 완료</span><p>마카롱 케이크 취소 및 환불이 처리되었습니다.</p><time class="text-muted">1주일 전</time></div><a class="btn" href="/orders/1">상세</a></article><article class="notification-item"><div><span class="badge">주문 거절</span><p>레터링 케이크 제작 요청이 거절되었습니다. 사유: 일정 불가</p><time class="text-muted">1주일 전</time></div><a class="btn" href="/orders/1">상세</a></article>
+  <main class="page-container page-container--narrow" data-notification-root
+        data-subscribe="/user/queue/notifications">
+    <div class="cluster cluster--between">
+      <h1>알림</h1>
+      <button class="btn" type="button" data-read-all
+              th:disabled="${slice.unreadCount() == 0}"
+              th:text="${slice.unreadCount() == 0} ? '모두 읽음' : '전체 읽음'">전체 읽음</button>
+    </div>
+    <p class="form-error" data-notification-error role="alert" hidden></p>
+
+    <div class="stack" data-notification-list>
+      <p class="text-muted" data-notification-empty
+         th:hidden="${!#lists.isEmpty(slice.content())}">받은 알림이 없습니다.</p>
+
+      <article th:each="item : ${slice.content()}" class="notification-item"
+               th:classappend="${item.read()} ? '' : ' is-unread'"
+               th:attr="data-notification-id=${item.id()}">
+        <div class="cluster" style="align-items:flex-start">
+          <span class="notification-dot" aria-hidden="true" th:if="${!item.read()}"></span>
+          <div>
+            <span class="badge" th:text="${item.typeLabel()}">알림</span>
+            <p th:text="${item.content()}">알림 내용</p>
+            <time class="text-muted"
+                  th:text="${#temporals.format(item.createdAt(), 'MM.dd HH:mm')}"></time>
+          </div>
+        </div>
+        <a class="btn" th:if="${item.targetUrl() != null}"
+           th:href="${item.targetUrl()}" data-notification-link>상세</a>
+      </article>
+    </div>
+
+    <div class="cluster cluster--center section" th:if="${slice.hasNext()}">
+      <button class="btn" type="button" data-load-more
+              th:attr="data-cursor=${slice.nextCursor()}">더 보기</button>
     </div>
   </main>
   <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
 </html>
-

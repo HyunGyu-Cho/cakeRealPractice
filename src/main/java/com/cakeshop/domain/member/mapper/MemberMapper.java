@@ -35,4 +35,7 @@ public interface MemberMapper {
     List<Long> findIdsByNicknameLike(@Param("keyword") String keyword);
 
     List<Long> findIdsByKeyword(@Param("keyword") String keyword);
+
+    // 공개 계약(findAdminMemberIds)용 — 알림 팬아웃 대상인 활성 관리자 id.
+    List<Long> findActiveAdminIds();
 }
