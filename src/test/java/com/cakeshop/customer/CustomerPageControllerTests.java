@@ -10,9 +10,14 @@ import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
 import com.cakeshop.domain.order.controller.OrderController;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -54,6 +59,61 @@ class CustomerPageControllerTests {
         );
         assertThat(new ClassPathResource("static/css/customer-mockup.css").exists()).isTrue();
         assertThat(new ClassPathResource("static/js/customer-mockup.js").exists()).isTrue();
+    }
+
+    /**
+     * 목업 JS 번들 2개는 새 목업을 이관할 때를 위해 파일로 남겨 두지만,
+     * 실구현 화면이 다시 끌어다 쓰면 안 된다. 특히 두 번들 모두 [data-confirm] 핸들러를
+     * 갖고 있어 app.js와 함께 로드되면 확인창이 두 번 뜬다.
+     */
+    @Test
+    void noTemplateDependsOnMockupScript() throws IOException {
+        assertNoTemplateReferences("customer-mockup.js");
+        assertNoTemplateReferences("admin-mockup.js");
+    }
+
+    /**
+     * app.js는 화면마다 붙이지 않고 공통 프래그먼트(고객 head·관리자 header)에서만 로드한다.
+     * 같은 스크립트를 두 번 붙이면 클릭 핸들러가 두 번 등록돼 확인창이 두 번 뜬다.
+     */
+    @Test
+    void adminTemplatesLoadAppScriptOnlyThroughTheSharedHeader() throws IOException {
+        Path adminRoot = Path.of("src", "main", "resources", "templates", "admin");
+        try (Stream<Path> templates = Files.walk(adminRoot)) {
+            List<String> offenders = templates
+                .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> readTemplate(path).contains("/js/app.js"))
+                .map(Path::toString)
+                .toList();
+
+            assertThat(offenders)
+                .as("관리자 화면은 app.js를 직접 로드하지 않는다 — fragments/admin/header가 담당한다")
+                .isEmpty();
+        }
+    }
+
+    private void assertNoTemplateReferences(String script) throws IOException {
+        Path templateRoot = Path.of("src", "main", "resources", "templates");
+        try (Stream<Path> templates = Files.walk(templateRoot)) {
+            List<String> offenders = templates
+                .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> readTemplate(path).contains(script))
+                .map(templateRoot::relativize)
+                .map(Path::toString)
+                .toList();
+
+            assertThat(offenders)
+                .as("화면이 전부 실구현이므로 %s에 의존하면 안 된다", script)
+                .isEmpty();
+        }
+    }
+
+    private String readTemplate(Path path) {
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException error) {
+            throw new UncheckedIOException(error);
+        }
     }
 
     @Test

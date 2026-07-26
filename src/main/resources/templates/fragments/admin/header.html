@@ -11,5 +11,7 @@
       <button class="btn" type="submit">로그아웃</button>
     </form>
   </div>
-  <script defer th:src="@{/js/admin-mockup.js}"></script>
+  <!-- 관리자 화면 공통 스크립트. 화면마다 따로 붙이면 중복 로드로 핸들러가 두 번 등록되므로
+       이 프래그먼트 한 곳에서만 로드한다. 여기 있던 관리자 목업 번들은 쓰는 화면이 없어 내렸다. -->
+  <script defer th:src="@{/js/app.js}"></script>
 </header>
