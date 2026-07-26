@@ -3,6 +3,8 @@
         xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
   <strong class="admin-header__title" th:text="${title}">관리자 화면</strong>
   <div class="cluster">
+    <a class="btn" th:href="@{/admin/notifications}" data-notification-badge
+       th:text="|알림 (${unreadNotificationCount ?: 0})|">알림 (0)</a>
     <a class="btn" th:href="@{/}">고객 화면</a>
     <span class="note" sec:authentication="name">관리자</span>
     <form th:action="@{/logout}" method="post">

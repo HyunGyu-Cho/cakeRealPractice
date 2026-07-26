@@ -1,11 +1,95 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>알림 관리 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('notifications')}"></aside><div class="admin-main"><header th:replace="~{fragments/admin/header :: header('알림 관리')}"></header><main class="admin-content">
-<div th:replace="~{fragments/admin/mock-notice :: notice}"></div><h1 class="admin-page-title">알림 관리</h1><section class="section"><h2 class="section-title">자동 알림 발송 내역</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>발송 시각</th><th>알림 유형</th><th>대상 회원</th><th>관련 주문</th><th>내용</th><th>읽음 여부</th></tr></thead><tbody>
-<tr><td>01.15 14:35</td><td>주문 승인</td><td>홍길동</td><td>ORD-001</td><td>레터링 케이크 주문이 승인되었습니다.</td><td><span class="badge">읽음</span></td></tr>
-<tr><td>01.15 14:00</td><td>결제 완료</td><td>이영희</td><td>ORD-002</td><td>결제가 완료되었습니다.</td><td><span class="badge badge--info">미읽음</span></td></tr>
-<tr><td>01.14 10:00</td><td>제작 시작</td><td>박민수</td><td>ORD-003</td><td>제작을 시작했습니다.</td><td><span class="badge">읽음</span></td></tr>
-<tr><td>01.13 16:00</td><td>픽업 준비</td><td>김지수</td><td>ORD-004</td><td>픽업 준비가 완료되었습니다.</td><td><span class="badge badge--info">미읽음</span></td></tr>
-<tr><td>01.10 09:00</td><td>취소 완료</td><td>최유진</td><td>ORD-005</td><td>취소 및 환불을 처리했습니다.</td><td><span class="badge">읽음</span></td></tr>
-<tr><td>01.09 11:00</td><td>주문 거절</td><td>홍길동</td><td>ORD-006</td><td>제작 요청이 거절되었습니다.</td><td><span class="badge">읽음</span></td></tr>
-</tbody></table></div></section><section><h2 class="section-title">자동 알림 유형 안내</h2><div class="panel"><p>· 주문 승인 / 거절: 관리자가 제작 요청 처리 시 자동 발송</p><p>· 결제 완료: 고객 결제 성공 시 자동 발송</p><p>· 제작 시작: 주문 상태를 ‘제작 중’으로 변경 시 자동 발송</p><p>· 픽업 준비: 주문 상태를 ‘픽업 준비’로 변경 시 자동 발송</p><p>· 취소·환불 완료: 환불 처리 완료 시 자동 발송</p></div></section>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="_csrf" th:content="${_csrf.token}">
+  <meta name="_csrf_header" th:content="${_csrf.headerName}">
+  <title>알림 관리 | 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/webjars/stomp__stompjs/7.3.0/bundles/stomp.umd.min.js}"></script>
+  <script defer th:src="@{/js/notification.js}"></script>
+</head>
+<body><div class="admin-layout">
+<aside th:replace="~{fragments/admin/sidebar :: sidebar('notifications')}"></aside>
+<div class="admin-main"><header th:replace="~{fragments/admin/header :: header('알림 관리')}"></header>
+<main class="admin-content"><div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1 class="admin-page-title">알림 관리</h1>
+
+  <section class="section" data-notification-root data-subscribe="/topic/admin/notifications">
+    <div class="cluster cluster--between">
+      <h2 class="section-title">내 알림</h2>
+      <button class="btn" type="button" data-read-all
+              th:disabled="${mine.unreadCount() == 0}"
+              th:text="${mine.unreadCount() == 0} ? '모두 읽음' : '전체 읽음'">전체 읽음</button>
+    </div>
+    <p class="form-error" data-notification-error role="alert" hidden></p>
+    <div class="stack" data-notification-list>
+      <p class="text-muted" data-notification-empty
+         th:hidden="${!#lists.isEmpty(mine.content())}">받은 알림이 없습니다.</p>
+      <article th:each="item : ${mine.content()}" class="notification-item"
+               th:classappend="${item.read()} ? '' : ' is-unread'"
+               th:attr="data-notification-id=${item.id()}">
+        <div class="cluster" style="align-items:flex-start">
+          <span class="notification-dot" aria-hidden="true" th:if="${!item.read()}"></span>
+          <div>
+            <span class="badge" th:text="${item.typeLabel()}">알림</span>
+            <p th:text="${item.content()}">알림 내용</p>
+            <time class="text-muted"
+                  th:text="${#temporals.format(item.createdAt(), 'MM.dd HH:mm')}"></time>
+          </div>
+        </div>
+        <a class="btn" th:if="${item.targetUrl() != null}"
+           th:href="${item.targetUrl()}" data-notification-link>상세</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">전체 발송 내역</h2>
+    <form class="admin-toolbar" method="get" th:action="@{/admin/notifications}" th:object="${cond}">
+      <select class="form-control" th:field="*{type}">
+        <option value="">유형 전체</option>
+        <option th:each="type : ${types}" th:value="${type.name()}" th:text="${type.label()}"></option>
+      </select>
+      <select class="form-control" th:field="*{read}">
+        <option value="">읽음 전체</option>
+        <option value="UNREAD">미읽음</option>
+        <option value="READ">읽음</option>
+      </select>
+      <button class="btn" type="submit">조회</button>
+    </form>
+    <div class="table-wrap"><table class="data-table"><thead><tr>
+      <th>발송 시각</th><th>알림 유형</th><th>대상 회원</th><th>관련 주문</th><th>내용</th><th>읽음 여부</th>
+    </tr></thead><tbody>
+      <tr th:each="row : ${notifications.content}">
+        <td th:text="${#temporals.format(row.createdAt(), 'MM.dd HH:mm')}">-</td>
+        <td th:text="${row.typeLabel()}">유형</td>
+        <td th:text="${row.receiverNickname()}">회원</td>
+        <td th:text="${row.orderId() != null} ? ${row.orderId()} : '-'">-</td>
+        <td th:text="${row.content()}">내용</td>
+        <td><span class="badge" th:classappend="${row.read()} ? '' : ' badge--info'"
+                  th:text="${row.read()} ? '읽음' : '미읽음'">읽음</span></td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(notifications.content)}">
+        <td colspan="6">조회된 알림이 없습니다.</td>
+      </tr>
+    </tbody></table></div>
+    <nav class="cluster" th:if="${notifications.totalPages > 1}" aria-label="알림 페이지">
+      <a class="btn" th:if="${notifications.page > 1}"
+         th:href="@{/admin/notifications(page=${notifications.page - 1},size=${notifications.size},type=${cond.type},read=${cond.read})}">이전</a>
+      <span th:text="${notifications.page + ' / ' + notifications.totalPages}">1 / 1</span>
+      <a class="btn" th:if="${notifications.page < notifications.totalPages}"
+         th:href="@{/admin/notifications(page=${notifications.page + 1},size=${notifications.size},type=${cond.type},read=${cond.read})}">다음</a>
+    </nav>
+  </section>
+
+  <section>
+    <h2 class="section-title">자동 알림 유형 안내</h2>
+    <div class="panel">
+      <p>· 고객 알림: 결제 완료 / 제작 시작 / 픽업 준비 / 픽업 완료 / 주문 거절 / 취소·환불 완료 / 새 메시지</p>
+      <p>· 관리자 알림: 고객 문의(새 채팅 메시지) / 신규 주문(결제 완료) / 주문 취소(고객 취소)</p>
+      <p>· 알림은 이벤트 발생 트랜잭션에서 자동 저장되며 수동 발송·재발송은 지원하지 않습니다.</p>
+    </div>
+  </section>
 </main></div></div></body></html>
