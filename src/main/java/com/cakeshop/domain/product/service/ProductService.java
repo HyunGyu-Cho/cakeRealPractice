@@ -1,11 +1,13 @@
 package com.cakeshop.domain.product.service;
 
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
+import com.cakeshop.domain.product.dto.view.CategorySummaryView;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
 import com.cakeshop.domain.product.dto.view.ProductOptionGroupView;
 import com.cakeshop.domain.product.dto.view.ProductOptionView;
 import com.cakeshop.domain.product.dto.view.ProductSalesInfo;
 import com.cakeshop.domain.product.dto.view.ProductSummaryView;
+import com.cakeshop.domain.product.dto.view.ProductTypeCountRow;
 import com.cakeshop.domain.product.entity.Product;
 import com.cakeshop.domain.product.entity.ProductOption;
 import com.cakeshop.domain.product.entity.ProductOptionGroup;
@@ -17,6 +19,7 @@ import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -134,11 +137,36 @@ public class ProductService {
             .toList();
     }
 
-    /** [공개 계약] 홈 메인 노출용 — 판매 가능 상품 최신순. */
+    /** [공개 계약] 판매 가능 상품 최신순. order(수제)가 기본 상품을 고를 때 쓴다. */
     @Transactional(readOnly = true)
     public List<ProductSummaryView> getLatestActiveProducts(int limit) {
         return productMapper.findLatestActiveProducts(limit)
             .stream().map(ProductSummaryView::from).toList();
+    }
+
+    /** [공개 계약] 홈 메인 노출용 — 판매 가능 상품을 후기 수·평점 순으로. */
+    @Transactional(readOnly = true)
+    public List<ProductSummaryView> getPopularActiveProducts(int limit) {
+        return productMapper.findPopularActiveProducts(limit)
+            .stream().map(ProductSummaryView::from).toList();
+    }
+
+    /**
+     * [공개 계약] 홈 카테고리 카드용 — 유형 4개를 enum 순서대로 채운다.
+     * 판매 가능 상품이 없는 유형도 "판매 중 0개"로 남겨 카드가 사라지지 않게 한다.
+     */
+    @Transactional(readOnly = true)
+    public List<CategorySummaryView> getCategorySummaries() {
+        Map<String, Long> counts = productMapper.countActiveByProductType().stream()
+            .collect(Collectors.toMap(
+                ProductTypeCountRow::productType, ProductTypeCountRow::productCount));
+        return Arrays.stream(ProductType.values())
+            .map(type -> {
+                long count = counts.getOrDefault(type.name(), 0L);
+                return new CategorySummaryView(
+                    type.name(), type.label(), "판매 중 " + count + "개", count);
+            })
+            .toList();
     }
 
     private Product findProduct(Long productId) {

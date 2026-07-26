@@ -64,6 +64,13 @@
          LIMIT #{limit}
     </select>
 
+    <!-- 홈 인기 글 — 좋아요가 많은 순. 동점이면 최신 글이 앞선다. -->
+    <select id="findPopularPosts" resultType="com.cakeshop.domain.community.dto.view.PostSummaryRow">
+        <include refid="postSummaryColumns"/>
+         ORDER BY p.like_count DESC, p.id DESC
+         LIMIT #{limit}
+    </select>
+
     <select id="findPostDetail" resultType="com.cakeshop.domain.community.dto.view.PostDetailRow">
         SELECT p.id,
                p.member_id,

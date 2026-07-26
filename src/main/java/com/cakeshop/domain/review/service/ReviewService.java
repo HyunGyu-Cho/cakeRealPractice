@@ -6,6 +6,7 @@ import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.review.dto.form.ReviewForm;
 import com.cakeshop.domain.review.dto.view.AdminReviewRow;
+import com.cakeshop.domain.review.dto.view.BestReviewView;
 import com.cakeshop.domain.review.dto.view.MyReviewView;
 import com.cakeshop.domain.review.dto.view.ProductReviewView;
 import com.cakeshop.domain.review.dto.view.RatingStatsRow;
@@ -116,6 +117,33 @@ public class ReviewService {
             row.content(), images.getOrDefault(row.id(), List.of()), row.createdAt(),
             row.replyContent(), row.replyCreatedAt())).toList();
         return new PageResult<>(content, pageRequest, total);
+    }
+
+    /**
+     * [공개 계약] 홈 메인의 베스트 후기 — 공개 후기 최신순. 화면 조합 계층이 호출한다.
+     * 이미지는 첫 장만 썸네일로 내보낸다.
+     */
+    @Transactional(readOnly = true)
+    public List<BestReviewView> getLatestVisibleReviews(int limit) {
+        if (limit < 1) {
+            return List.of();
+        }
+        List<AdminReviewRow> rows = reviewMapper.findLatestVisible(limit);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<String>> images = imageUrlsOf(rows.stream().map(AdminReviewRow::id).toList());
+        Map<Long, String> nicknames = memberService.getNicknameMap(
+            rows.stream().map(AdminReviewRow::memberId).collect(Collectors.toSet()));
+        return rows.stream().map(row -> {
+            List<String> imageUrls = images.getOrDefault(row.id(), List.of());
+            return new BestReviewView(
+                row.id(), row.productId(), row.productName(),
+                nicknames.getOrDefault(row.memberId(), "알 수 없음"),
+                row.overallRating(), row.content(),
+                imageUrls.isEmpty() ? null : imageUrls.get(0),
+                row.createdAt());
+        }).toList();
     }
 
     /** [공개 계약] 상품의 후기 집계. */

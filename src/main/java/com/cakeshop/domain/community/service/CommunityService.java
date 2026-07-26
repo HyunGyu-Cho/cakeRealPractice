@@ -95,6 +95,15 @@ public class CommunityService {
         return new PostSliceView(toViews(rows), hasNext, nextCursor);
     }
 
+    /** [공개 계약] 홈 메인 노출용 — 공개 글 중 좋아요가 많은 순 상위 N건. */
+    @Transactional(readOnly = true)
+    public List<PostSummaryView> getPopularPosts(int limit) {
+        if (limit < 1) {
+            return List.of();
+        }
+        return toViews(communityMapper.findPopularPosts(Math.min(limit, SLICE_MAX_SIZE)));
+    }
+
     /**
      * 상세 조회. BLOCKED는 사유가 있는 차단이므로 403, DELETED·미존재는 존재를 숨기는 404로 응답한다.
      * 조회수 증가가 있어 readOnly가 아니다.

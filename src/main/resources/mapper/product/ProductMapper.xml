@@ -127,12 +127,33 @@
     </select>
 
     <!-- 홈 메인 노출: 판매 가능(ACTIVE + 품절 아님) 최신순 -->
+    <!-- 판매 가능 = 판매 스위치 ACTIVE + (재고 미관리 or 재고 > 0). 고객 목록의 ON_SALE 조건과 같다. -->
+    <sql id="onSaleWhere">
+        p.status = 'ACTIVE'
+        AND (p.stock_quantity IS NULL OR p.stock_quantity &gt; 0)
+    </sql>
+
     <select id="findLatestActiveProducts" resultType="com.cakeshop.domain.product.dto.view.ProductSummaryRow">
         <include refid="summaryColumns"/>
-         WHERE p.status = 'ACTIVE'
-           AND (p.stock_quantity IS NULL OR p.stock_quantity &gt; 0)
+         WHERE <include refid="onSaleWhere"/>
          ORDER BY p.id DESC
          LIMIT #{limit}
+    </select>
+
+    <!-- 정렬 기준은 고객 목록의 sort=popular와 맞춘다. -->
+    <select id="findPopularActiveProducts" resultType="com.cakeshop.domain.product.dto.view.ProductSummaryRow">
+        <include refid="summaryColumns"/>
+         WHERE <include refid="onSaleWhere"/>
+         ORDER BY p.review_count DESC, p.average_rating DESC, p.id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="countActiveByProductType" resultType="com.cakeshop.domain.product.dto.view.ProductTypeCountRow">
+        SELECT p.product_type,
+               COUNT(*) AS product_count
+          FROM products p
+         WHERE <include refid="onSaleWhere"/>
+         GROUP BY p.product_type
     </select>
 
     <!-- status·average_rating·review_count·시간 컬럼은 DDL DEFAULT에 위임한다(status는 폼 값으로 명시 세팅). -->

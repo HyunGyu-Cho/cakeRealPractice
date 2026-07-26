@@ -42,7 +42,8 @@ approved-at: 2026-07-25
   - `MemberService.getNicknameMap(Collection<Long>)`
   - `MemberService.searchMemberIdsByNickname(String)`
 - 제공:
-  - 현재 다른 도메인이 사용하는 공개 계약 없음
+  - `CommunityService.getPopularPosts(int limit)` → `List<PostSummaryView>` — 공개 글 좋아요 순 상위 N건.
+    home 메인의 "커뮤니티 인기 글" 섹션이 사용한다.
 - Community Mapper에서 members 테이블을 직접 JOIN하지 않는다.
 
 ## 5. 화면

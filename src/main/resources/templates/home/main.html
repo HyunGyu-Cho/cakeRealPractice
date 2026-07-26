@@ -24,25 +24,12 @@
 
     <section class="section" aria-labelledby="category-title">
       <h2 id="category-title" class="section-title">카테고리</h2>
+      <!-- product 공개 조회(getCategorySummaries) — 유형 4개는 상품이 0개여도 카드로 남는다 -->
       <div class="grid grid--4">
-        <a class="category-card" th:href="@{/products(type='general')}">
-          <div class="category-card__name">일반 케이크</div>
-          <div class="category-card__desc">당일~7일 이내 픽업</div>
-          <span class="note">상품 목록 →</span>
-        </a>
-        <a class="category-card" th:href="@{/products(type='custom')}">
-          <div class="category-card__name">주문 제작</div>
-          <div class="category-card__desc">원하는 디자인으로 맞춤 제작</div>
-          <span class="note">상품 목록 →</span>
-        </a>
-        <a class="category-card" th:href="@{/products(type='sameday')}">
-          <div class="category-card__name">당일 픽업</div>
-          <div class="category-card__desc">오늘 바로 픽업 가능</div>
-          <span class="note">상품 목록 →</span>
-        </a>
-        <a class="category-card" th:href="@{/products(type='season')}">
-          <div class="category-card__name">시즌 상품</div>
-          <div class="category-card__desc">기간 한정 케이크</div>
+        <a class="category-card" th:each="category : ${categories}"
+           th:href="@{/products(type=${category.productType})}">
+          <div class="category-card__name" th:text="${category.productTypeLabel}">일반 케이크</div>
+          <div class="category-card__desc" th:text="${category.description}">판매 중 0개</div>
           <span class="note">상품 목록 →</span>
         </a>
       </div>
@@ -50,9 +37,9 @@
 
     <section id="recommended-products" class="section" aria-labelledby="recommended-title">
       <h2 id="recommended-title" class="section-title">추천 · 인기 상품</h2>
-      <!-- product 공개 조회(getLatestActiveProducts) — 판매 가능 상품 최신순 -->
-      <div class="grid grid--4 product-grid" th:if="${!latestProducts.isEmpty()}">
-        <a class="product-card" th:each="product : ${latestProducts}" th:href="@{|/products/${product.id}|}">
+      <!-- product 공개 조회(getPopularActiveProducts) — 판매 가능 상품을 후기 수·평점 순으로 -->
+      <div class="grid grid--4 product-grid" th:if="${!popularProducts.isEmpty()}">
+        <a class="product-card" th:each="product : ${popularProducts}" th:href="@{|/products/${product.id}|}">
           <img class="placeholder-image" th:if="${product.imageUrl != null}" th:src="${product.imageUrl}"
                th:alt="${product.name}" style="object-fit:cover">
           <div class="placeholder-image" th:if="${product.imageUrl == null}">상품 이미지</div>
@@ -66,8 +53,75 @@
           </div>
         </a>
       </div>
-      <div class="panel panel--dashed text-muted" th:if="${latestProducts.isEmpty()}"
+      <div class="panel panel--dashed text-muted" th:if="${popularProducts.isEmpty()}"
            style="text-align:center">아직 등록된 상품이 없습니다.</div>
+    </section>
+
+    <!-- coupon 공개 조회 — 로그인 회원이 지금 받을 수 있는 쿠폰만. 없으면 섹션 자체를 감춘다. -->
+    <section id="home-coupons" class="section" aria-labelledby="coupon-title"
+             th:if="${!downloadableCoupons.isEmpty()}">
+      <div class="cluster cluster--between">
+        <h2 id="coupon-title" class="section-title">받을 수 있는 쿠폰</h2>
+        <a class="btn" th:href="@{/coupons}">쿠폰 전체 보기</a>
+      </div>
+      <div class="grid grid--3">
+        <article class="coupon-card" th:each="coupon : ${downloadableCoupons}">
+          <strong th:text="${coupon.name}">쿠폰명</strong>
+          <p style="font-size:16px;font-weight:700" th:text="${coupon.discountLabel}">할인</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount > 0}"
+             th:text="|${#numbers.formatInteger(coupon.minimumOrderAmount, 0, 'COMMA')}원 이상 구매 시|">최소 주문</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount == 0}">최소 주문 금액 없음</p>
+          <p class="text-muted"
+             th:text="|~ ${#temporals.format(coupon.expiresAt, 'yyyy.MM.dd')}까지|">유효기간</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- review 공개 조회(getLatestVisibleReviews) — 공개 후기 최신순 -->
+    <section id="home-reviews" class="section" aria-labelledby="review-title">
+      <div class="cluster cluster--between">
+        <h2 id="review-title" class="section-title">베스트 후기</h2>
+      </div>
+      <div class="grid grid--3" th:if="${!bestReviews.isEmpty()}">
+        <article class="panel stack" th:each="review : ${bestReviews}">
+          <div class="cluster cluster--between">
+            <a th:href="@{|/products/${review.productId}|}">
+              <strong th:text="${review.productName}">상품명</strong>
+            </a>
+            <span class="badge badge--info" th:text="|★ ${review.overallRating}|">★ 5</span>
+          </div>
+          <img class="placeholder-image" th:if="${review.thumbnailUrl != null}"
+               th:src="${review.thumbnailUrl}" th:alt="${review.productName}" style="object-fit:cover">
+          <p th:text="${review.content}">후기 내용</p>
+          <p class="text-muted"
+             th:text="|${review.writerNickname} · ${#temporals.format(review.createdAt, 'yyyy.MM.dd')}|">작성자 · 날짜</p>
+        </article>
+      </div>
+      <div class="panel panel--dashed text-muted" th:if="${bestReviews.isEmpty()}"
+           style="text-align:center">아직 등록된 후기가 없습니다.</div>
+    </section>
+
+    <!-- community 공개 조회(getPopularPosts) — 좋아요 많은 순 -->
+    <section id="home-posts" class="section" aria-labelledby="post-title">
+      <div class="cluster cluster--between">
+        <h2 id="post-title" class="section-title">커뮤니티 인기 글</h2>
+        <a class="btn" th:href="@{/community}">커뮤니티 가기</a>
+      </div>
+      <div class="stack" th:if="${!popularPosts.isEmpty()}">
+        <article class="panel" th:each="post : ${popularPosts}">
+          <div class="cluster cluster--between">
+            <div class="cluster">
+              <span class="badge" th:text="${post.categoryName}">후기</span>
+              <a th:href="@{|/community/${post.id}|}"><strong th:text="${post.title}">제목</strong></a>
+            </div>
+            <span class="text-muted" th:text="|좋아요 ${post.likeCount}|">좋아요 0</span>
+          </div>
+          <p class="text-muted"
+             th:text="|${post.nickname} · ${post.createdDate} · 댓글 ${post.commentCount}|">작성자 · 날짜 · 댓글</p>
+        </article>
+      </div>
+      <div class="panel panel--dashed text-muted" th:if="${popularPosts.isEmpty()}"
+           style="text-align:center">아직 등록된 게시글이 없습니다.</div>
     </section>
 
     <section class="section" aria-labelledby="store-title">

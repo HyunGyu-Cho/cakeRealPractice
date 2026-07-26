@@ -92,6 +92,14 @@
         LIMIT #{size} OFFSET #{offset}
     </select>
 
+    <!-- 홈 베스트 후기 — 공개(VISIBLE) 후기 최신순. 상품명을 함께 보여줘야 해 adminReviewColumns를 쓴다. -->
+    <select id="findLatestVisible" resultType="com.cakeshop.domain.review.dto.view.AdminReviewRow">
+        <include refid="adminReviewColumns"/>
+        WHERE r.status = 'VISIBLE'
+        ORDER BY r.id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="findByMemberId" resultType="com.cakeshop.domain.review.dto.view.AdminReviewRow">
         <include refid="adminReviewColumns"/>
         WHERE r.member_id = #{memberId}

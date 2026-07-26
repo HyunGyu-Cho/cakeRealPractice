@@ -9,14 +9,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
+import com.cakeshop.domain.product.dto.view.CategorySummaryView;
 import com.cakeshop.domain.product.dto.view.ProductSalesInfo;
 import com.cakeshop.domain.product.dto.view.ProductSummaryView;
+import com.cakeshop.domain.product.dto.view.ProductTypeCountRow;
 import com.cakeshop.domain.product.entity.Product;
 import com.cakeshop.domain.product.entity.ProductType;
 import com.cakeshop.domain.product.error.ProductErrorCode;
 import com.cakeshop.domain.product.mapper.ProductMapper;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.error.BusinessException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -91,6 +94,22 @@ class ProductServiceTests {
         assertThat(ProductSummaryView.stockLabel(ProductType.GENERAL, 4)).isEqualTo("재고 부족");
         assertThat(ProductSummaryView.stockLabel(ProductType.GENERAL, 5)).isEqualTo("재고 있음");
         assertThat(ProductSummaryView.stockLabel(ProductType.CUSTOM, null)).isEqualTo("주문 가능");
+    }
+
+    @Test
+    void categorySummariesKeepAllTypesEvenWithoutProducts() {
+        // 홈 카테고리 카드는 상품이 0개인 유형도 남아야 한다(enum 기준으로 만든다)
+        when(productMapper.countActiveByProductType())
+            .thenReturn(List.of(new ProductTypeCountRow("GENERAL", 3L)));
+
+        List<CategorySummaryView> categories = productService.getCategorySummaries();
+
+        assertThat(categories).hasSize(ProductType.values().length);
+        assertThat(categories).extracting(CategorySummaryView::productType)
+            .containsExactly("GENERAL", "CUSTOM", "SAME_DAY", "SEASON");
+        assertThat(categories.get(0).productCount()).isEqualTo(3L);
+        assertThat(categories.get(0).description()).isEqualTo("판매 중 3개");
+        assertThat(categories.get(1).description()).isEqualTo("판매 중 0개");
     }
 
     private Product product(String status, Integer stock) {

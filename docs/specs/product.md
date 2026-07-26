@@ -42,7 +42,10 @@ approved-at: 2026-07-25
 
 - 내가 제공할 공개 Service 메서드:
   - `ProductService.getSalesInfo(Long productId)` → `ProductSalesInfo(onSale, price, stockQuantity)` — 1차 합의 계약(`ProductQueryService.getSalesInfo`)의 이행. cart가 사용 중이며 order가 사용 예정.
-  - `ProductService.getLatestActiveProducts(int limit)` → home 메인 노출용.
+  - `ProductService.getLatestActiveProducts(int limit)` → 판매 가능 상품 최신순. order(수제)의 기본 상품 선택에 쓴다.
+  - `ProductService.getPopularActiveProducts(int limit)` → home 메인 "추천·인기 상품"용. 후기 수·평점 순.
+  - `ProductService.getCategorySummaries()` → `List<CategorySummaryView>` — home 카테고리 카드용.
+    유형 4개를 enum 순서대로 채우며 판매 가능 상품이 0개인 유형도 남긴다.
 - 내가 사용할 다른 도메인의 공개 Service: 없음.
 
 ## 5. 화면
@@ -52,7 +55,8 @@ approved-at: 2026-07-25
 - 관리자 목록 필터: `keyword`/`type`/`status`/`stock`(전체/재고있음/품절) + 페이징.
 - 상세: 대표 이미지, 판매 상태·재고 상태(파생 라벨), 알레르기·후기 영역은 "예시 데이터" 배지로 목업 유지(review 차례에 교체). 일반 상품 장바구니 버튼은 서버 폼이며 주문제작 동선은 order(수제)에서 구현한다.
 - 고객 목록·상세 템플릿은 import 스크립트 덮어쓰기 목록에서 제외한다.
-- home 메인의 상품 목업 영역을 `getLatestActiveProducts`로 교체(각 도메인 완성 시 home 연결 규칙).
+- home 메인의 상품 영역은 `getPopularActiveProducts`, 카테고리 카드는 `getCategorySummaries`가 채운다
+  (각 도메인 완성 시 home 연결 규칙).
 
 ## 6. 비즈니스 규칙 확정
 

@@ -3,6 +3,7 @@ package com.cakeshop.domain.community.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,8 @@ import com.cakeshop.domain.community.dto.form.PostCreateForm;
 import com.cakeshop.domain.community.dto.form.PostReportForm;
 import com.cakeshop.domain.community.dto.view.LikeResultView;
 import com.cakeshop.domain.community.dto.view.PostDetailRow;
+import com.cakeshop.domain.community.dto.view.PostSummaryRow;
+import com.cakeshop.domain.community.dto.view.PostSummaryView;
 import com.cakeshop.domain.community.entity.Comment;
 import com.cakeshop.domain.community.entity.CommentStatus;
 import com.cakeshop.domain.community.entity.PostStatus;
@@ -20,7 +23,10 @@ import com.cakeshop.domain.community.mapper.CommunityMapper;
 import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.global.error.BusinessException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -134,6 +140,38 @@ class CommunityServiceTests {
         assertThatThrownBy(action::run)
             .isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(expected));
+    }
+
+    @Test
+    void popularPostsAreCappedBySliceMaxSize() {
+        when(communityMapper.findPopularPosts(30)).thenReturn(List.of(summaryRow(1L, 12L)));
+        when(memberService.getNicknameMap(Set.of(2L))).thenReturn(Map.of(2L, "케이크러버"));
+
+        List<PostSummaryView> posts = communityService.getPopularPosts(999);
+
+        assertThat(posts).hasSize(1);
+        assertThat(posts.get(0).nickname()).isEqualTo("케이크러버");
+        assertThat(posts.get(0).likeCount()).isEqualTo(12L);
+    }
+
+    @Test
+    void popularPostsSkipQueryWhenNothingRequested() {
+        assertThat(communityService.getPopularPosts(0)).isEmpty();
+
+        verify(communityMapper, never()).findPopularPosts(anyInt());
+    }
+
+    private PostSummaryRow summaryRow(long id, long likeCount) {
+        PostSummaryRow row = new PostSummaryRow();
+        row.setId(id);
+        row.setMemberId(2L);
+        row.setCategoryCode("FREE");
+        row.setCategoryName("자유");
+        row.setTitle("제목");
+        row.setLikeCount(likeCount);
+        row.setCommentCount(3L);
+        row.setCreatedAt(LocalDateTime.of(2026, 7, 25, 12, 0));
+        return row;
     }
 
     private PostCreateForm postForm() {

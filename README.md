@@ -121,6 +121,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 4. 폼 저장은 `StoreUpdateForm` 검증 → `StoreService` 트랜잭션 → `StoreMapper.xml`의 `#{}` 바인딩 순서로 처리된다.
 5. 검증 실패는 같은 화면을 재렌더하고, 성공은 `/admin/store`로 redirect한 뒤 공통 FlashMessage를 표시한다.
 6. 저장 결과는 `HomeService`가 `StorePublicView`로 받아 고객 메인과 공통 Footer에 전달한다.
+   `HomeService`는 매장 외에 product·coupon·review·community의 공개 View도 같은 방식으로 조합한다(전용 Mapper 없음).
 
 `V1_first_MVC_table.sql`의 샘플 계정은 화면 확인용이므로 공용 RDS에는 그대로 적용하지 않는다. Spring Security는 이메일로 회원을 조회하고 DB의 `ADMIN` 역할(권한 문자열 `ROLE_ADMIN`)을 확인한 뒤, 로그인 전에 요청했던 `/admin/store`로 돌려보낸다.
 
@@ -164,6 +165,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 기능 | 경로 | 현재 상태 |
 |---|---|---|
 | 전체 화면 목록 | `/screens` | 고객 22개·관리자 15개, 총 37개 경로 안내 |
+| 메인 | `/` | 실제 구현 (store·product·coupon·review·community의 공개 View 조합, 히어로 배너만 정적) |
 | 회원가입 | `/signup` | 실제 가입 (검증·중복 확인) |
 | 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 일반 상품 DB 장바구니 담기) |
 | 장바구니 | `/cart` | 실제 DB 구현 (조회·합산·수량 변경·단건/선택/전체 삭제·선택 주문 인계·최신 판매 정보 검증) |
