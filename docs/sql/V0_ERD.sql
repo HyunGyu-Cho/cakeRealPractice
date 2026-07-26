@@ -579,19 +579,27 @@ CREATE TABLE `notifications` (
 CREATE TABLE `notification_deliveries` (
     `id`                  BIGINT NOT NULL AUTO_INCREMENT,
     `notification_id`     BIGINT NOT NULL,
-    `channel`             VARCHAR(30) NOT NULL,
-    `recipient`           VARCHAR(500) NOT NULL,
-    `template_code`       VARCHAR(100) NULL,
-    `provider_message_id` VARCHAR(200) NULL,
-    `status`              VARCHAR(30) NOT NULL DEFAULT 'REQUESTED',
+    `channel`             VARCHAR(20) NOT NULL,
+    -- 전송 시점에 브로드캐스터/스케줄러가 해석해 채운다(업무 트랜잭션에서 회원 조회 금지)
+    `recipient`           VARCHAR(500) NULL,
+    `template_code`       VARCHAR(100) NULL,   -- WEBSOCKET 채널 미사용(외부 채널 확장용)
+    `provider_message_id` VARCHAR(200) NULL,   -- WEBSOCKET 채널 미사용(외부 채널 확장용)
+    `status`              VARCHAR(20) NOT NULL DEFAULT 'REQUESTED',
+    `retry_count`         INT NOT NULL DEFAULT 0,
+    `next_retry_at`       DATETIME(6) NULL,
     `failure_code`        VARCHAR(100) NULL,
     `failure_reason`      VARCHAR(500) NULL,
     `requested_at`        DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `sent_at`             DATETIME(6) NULL,
-    `delivered_at`        DATETIME(6) NULL,
-    `clicked_at`          DATETIME(6) NULL,
+    `delivered_at`        DATETIME(6) NULL,    -- WEBSOCKET 채널 미사용(수신 확인 없음)
+    `clicked_at`          DATETIME(6) NULL,    -- WEBSOCKET 채널 미사용
     `created_at`          DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`),
+    KEY `idx_notification_deliveries_retry` (`status`, `next_retry_at`),
+    CONSTRAINT `chk_notification_deliveries_status`
+        CHECK (`status` IN ('REQUESTED', 'SENT', 'FAILED', 'ABANDONED')),
+    CONSTRAINT `chk_notification_deliveries_channel`
+        CHECK (`channel` IN ('WEBSOCKET')),
     CONSTRAINT `fk_notification_deliveries_notification`
         FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
