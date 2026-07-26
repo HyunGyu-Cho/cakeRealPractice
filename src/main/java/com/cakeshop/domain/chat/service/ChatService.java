@@ -23,8 +23,7 @@ import com.cakeshop.domain.notification.entity.NotificationType;
 import com.cakeshop.domain.notification.service.NotificationCommand;
 import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.global.error.BusinessException;
-import java.io.IOException;
-import java.io.InputStream;
+import com.cakeshop.global.infra.ImageValidator;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,15 +56,17 @@ public class ChatService {
     private final ChatImageStorage imageStorage;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationService notificationService;
+    private final ImageValidator imageValidator;
 
     public ChatService(ChatMapper chatMapper, MemberService memberService,
                        ChatImageStorage imageStorage, ApplicationEventPublisher eventPublisher,
-                       NotificationService notificationService) {
+                       NotificationService notificationService, ImageValidator imageValidator) {
         this.chatMapper = chatMapper;
         this.memberService = memberService;
         this.imageStorage = imageStorage;
         this.eventPublisher = eventPublisher;
         this.notificationService = notificationService;
+        this.imageValidator = imageValidator;
     }
 
     @Transactional(readOnly = true)
@@ -412,34 +413,19 @@ public class ChatService {
             image, contentType, command);
     }
 
+    /**
+     * 판정은 공통 검증기가 한다(원래 이 매직바이트 검사가 chat 에만 있었고 이제 전 도메인이 공유한다).
+     * 여기서는 채팅 오류 코드로 옮기고, DB 에 저장할 content type 을 돌려준다.
+     */
     private String validateImage(MultipartFile image) {
-        if (image.getSize() > MAX_IMAGE_SIZE) {
+        ImageValidator.Violation violation = imageValidator.validate(image, MAX_IMAGE_SIZE);
+        if (violation == ImageValidator.Violation.SIZE) {
             throw new BusinessException(ChatErrorCode.IMAGE_TOO_LARGE);
         }
-        String declared = image.getContentType();
-        if (!"image/jpeg".equals(declared) && !"image/png".equals(declared)) {
+        if (violation != null) {
             throw new BusinessException(ChatErrorCode.INVALID_IMAGE_TYPE);
         }
-        byte[] header = new byte[8];
-        int read;
-        try (InputStream input = image.getInputStream()) {
-            read = input.read(header);
-        } catch (IOException e) {
-            throw new BusinessException(ChatErrorCode.INVALID_IMAGE_TYPE);
-        }
-        boolean jpeg = read >= 3
-            && (header[0] & 0xff) == 0xff && (header[1] & 0xff) == 0xd8
-            && (header[2] & 0xff) == 0xff;
-        boolean png = read >= 8
-            && (header[0] & 0xff) == 0x89 && header[1] == 0x50
-            && header[2] == 0x4e && header[3] == 0x47
-            && header[4] == 0x0d && header[5] == 0x0a
-            && header[6] == 0x1a && header[7] == 0x0a;
-        if (("image/jpeg".equals(declared) && !jpeg)
-            || ("image/png".equals(declared) && !png)) {
-            throw new BusinessException(ChatErrorCode.INVALID_IMAGE_TYPE);
-        }
-        return declared;
+        return image.getContentType();
     }
 
     private void requireCursor(Long roomId, Long messageId, Long viewerId) {

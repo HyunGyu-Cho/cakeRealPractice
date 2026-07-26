@@ -23,6 +23,8 @@ import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.common.stats.MemberCountRow;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
@@ -51,23 +53,26 @@ public class ReviewService {
 
     static final String IMAGE_DIRECTORY = "review";
     static final int MAX_IMAGES = 3;
-    static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
-    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png");
 
     private final ReviewMapper reviewMapper;
     private final OrderService orderService;
     private final ProductService productService;
     private final MemberService memberService;
     private final FileStorageClient fileStorageClient;
+    private final ImageValidator imageValidator;
+    private final StoredFileCleanup storedFileCleanup;
 
     public ReviewService(ReviewMapper reviewMapper, OrderService orderService,
                          ProductService productService, MemberService memberService,
-                         FileStorageClient fileStorageClient) {
+                         FileStorageClient fileStorageClient, ImageValidator imageValidator,
+                         StoredFileCleanup storedFileCleanup) {
         this.reviewMapper = reviewMapper;
         this.orderService = orderService;
         this.productService = productService;
         this.memberService = memberService;
         this.fileStorageClient = fileStorageClient;
+        this.imageValidator = imageValidator;
+        this.storedFileCleanup = storedFileCleanup;
     }
 
     // ==================== 조회 ====================
@@ -303,13 +308,18 @@ public class ReviewService {
 
     private void storeImages(Long reviewId, List<MultipartFile> images) {
         int sortOrder = 0;
+        List<String> stored = new java.util.ArrayList<>();
         for (MultipartFile image : images) {
             ReviewImage row = new ReviewImage();
             row.setReviewId(reviewId);
-            row.setImageUrl(fileStorageClient.store(image, IMAGE_DIRECTORY));
+            String url = fileStorageClient.store(image, IMAGE_DIRECTORY);
+            stored.add(url);
+            row.setImageUrl(url);
             row.setSortOrder(sortOrder++);
             reviewMapper.insertImage(row);
         }
+        // 파일은 트랜잭션에 참여하지 않는다 — 뒤이은 쓰기가 실패하면 디스크에 파일만 남는다.
+        storedFileCleanup.registerRollbackDelete(stored);
     }
 
     private void deleteImages(Long reviewId) {
@@ -328,7 +338,10 @@ public class ReviewService {
             Collectors.mapping(ReviewImage::getImageUrl, Collectors.toList())));
     }
 
-    /** chat·주문제작과 같은 제약(최대 3장, 장당 5MB, JPG/PNG). */
+    /**
+     * 장수 제한만 여기서 보고 장당 판정(형식·크기·실제 내용)은 공통 검증기에 맡긴다.
+     * 형식·크기 기준은 {@code ImageValidator}가 전 도메인 공통으로 갖는다.
+     */
     private List<MultipartFile> validateImages(List<MultipartFile> images) {
         if (images == null) {
             return List.of();
@@ -340,11 +353,11 @@ public class ReviewService {
             throw new BusinessException(ReviewErrorCode.TOO_MANY_IMAGES);
         }
         for (MultipartFile image : present) {
-            if (image.getSize() > MAX_IMAGE_SIZE) {
+            ImageValidator.Violation violation = imageValidator.validate(image);
+            if (violation == ImageValidator.Violation.SIZE) {
                 throw new BusinessException(ReviewErrorCode.IMAGE_TOO_LARGE);
             }
-            String contentType = image.getContentType();
-            if (contentType == null || !IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            if (violation != null) {
                 throw new BusinessException(ReviewErrorCode.INVALID_IMAGE);
             }
         }

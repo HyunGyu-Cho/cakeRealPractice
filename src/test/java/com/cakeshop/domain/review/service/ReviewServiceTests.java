@@ -24,6 +24,9 @@ import com.cakeshop.domain.review.error.ReviewErrorCode;
 import com.cakeshop.domain.review.mapper.ReviewMapper;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
+import com.cakeshop.support.TestImages;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,7 +60,8 @@ class ReviewServiceTests {
     @BeforeEach
     void setUp() {
         reviewService = new ReviewService(
-            reviewMapper, orderService, productService, memberService, fileStorageClient);
+            reviewMapper, orderService, productService, memberService, fileStorageClient,
+            new ImageValidator(), new StoredFileCleanup(fileStorageClient));
     }
 
     // ==================== 작성 자격 ====================
@@ -315,6 +319,6 @@ class ReviewServiceTests {
     }
 
     private MockMultipartFile jpeg() {
-        return new MockMultipartFile("images", "cake.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        return TestImages.jpeg("images", "cake.jpg");
     }
 }

@@ -13,27 +13,29 @@ import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProductAdminService {
 
-    private static final Logger log = LoggerFactory.getLogger(ProductAdminService.class);
     private static final String IMAGE_DIRECTORY = "product";
 
     private final ProductMapper productMapper;
     private final FileStorageClient fileStorageClient;
+    private final ImageValidator imageValidator;
+    private final StoredFileCleanup storedFileCleanup;
 
-    public ProductAdminService(ProductMapper productMapper, FileStorageClient fileStorageClient) {
+    public ProductAdminService(ProductMapper productMapper, FileStorageClient fileStorageClient,
+                               ImageValidator imageValidator, StoredFileCleanup storedFileCleanup) {
         this.productMapper = productMapper;
         this.fileStorageClient = fileStorageClient;
+        this.imageValidator = imageValidator;
+        this.storedFileCleanup = storedFileCleanup;
     }
 
     @Transactional(readOnly = true)
@@ -89,10 +91,7 @@ public class ProductAdminService {
         ProductImage existing = productMapper.findMainImage(productId).orElse(null);
         String previousUrl = existing == null ? null : existing.getImageUrl();
         String newUrl = fileStorageClient.store(image, IMAGE_DIRECTORY);
-        boolean transactionSynchronized = TransactionSynchronizationManager.isSynchronizationActive();
-        if (transactionSynchronized) {
-            registerImageCleanup(previousUrl, newUrl);
-        }
+        boolean transactionSynchronized = storedFileCleanup.registerReplace(previousUrl, newUrl);
 
         try {
             if (existing == null) {
@@ -106,14 +105,14 @@ public class ProductAdminService {
             }
         } catch (RuntimeException exception) {
             if (!transactionSynchronized) {
-                deleteImageQuietly(newUrl);
+                storedFileCleanup.deleteNow(newUrl);
             }
             throw exception;
         }
 
         // 프록시를 거치지 않는 단위 테스트 같은 비트랜잭션 호출도 파일 정합성을 지킨다.
         if (!transactionSynchronized) {
-            deleteImageQuietly(previousUrl);
+            storedFileCleanup.deleteNow(previousUrl);
         }
     }
 
@@ -151,34 +150,10 @@ public class ProductAdminService {
         return image != null && !image.isEmpty();
     }
 
+    /** 형식·크기·실제 내용 판정은 공통 검증기가 하고, 여기서는 상품 오류 코드로 옮기기만 한다. */
     private void validateImage(MultipartFile image) {
-        String contentType = image.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
+        if (imageValidator.validate(image) != null) {
             throw new BusinessException(ProductErrorCode.INVALID_IMAGE);
-        }
-    }
-
-    private void registerImageCleanup(String previousUrl, String newUrl) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == TransactionSynchronization.STATUS_COMMITTED) {
-                    deleteImageQuietly(previousUrl);
-                } else {
-                    deleteImageQuietly(newUrl);
-                }
-            }
-        });
-    }
-
-    private void deleteImageQuietly(String imageUrl) {
-        if (imageUrl == null || imageUrl.isBlank()) {
-            return;
-        }
-        try {
-            fileStorageClient.delete(imageUrl);
-        } catch (RuntimeException exception) {
-            log.warn("상품 이미지 파일 정리에 실패했습니다: {}", imageUrl, exception);
         }
     }
 

@@ -2,7 +2,6 @@ package com.cakeshop.global.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,12 +12,6 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
-    private final boolean publicPreview;
-
-    public SecurityConfig(@Value("${app.mockup.public-preview:false}") boolean publicPreview) {
-        this.publicPreview = publicPreview;
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -35,23 +28,6 @@ public class SecurityConfig {
                 auth.requestMatchers(HttpMethod.GET, "/community", "/community/{id:\\d+}",
                         "/community/scroll", "/community/api/posts").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/webhooks/toss").permitAll();
-
-                if (publicPreview) {
-                    // local 프로필에서만 고객 목업 흐름을 로그인 없이 확인한다.
-                    // 관리자 화면은 preview에서도 열지 않는다 — 아래 /admin/** 규칙에 따라 관리자 로그인이 필요하다.
-                    // /mypage·/mypage/profile은 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
-                    // 쿠폰함(/mypage/coupons)·쿠폰 다운로드(/coupons)도 실구현으로 전환되어 제외했다 —
-                    // 보유 쿠폰은 로그인 회원 본인 것만 조회한다.
-                    // /notifications는 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
-                    // 주문제작(/orders/custom/**)도 실구현으로 전환되어 제외한다 — 요청·견적·결제는
-                    // 모두 소유자 검증이 필요하므로 preview에서도 로그인을 요구한다.
-                    auth.requestMatchers(HttpMethod.GET, "/orders/custom/**").authenticated();
-                    // 후기도 실구현으로 전환됐다 — 작성 자격은 본인의 PICKED_UP 주문이라 로그인이 필요하다.
-                    auth.requestMatchers(HttpMethod.GET,
-                        "/mypage/coupons", "/coupons", "/reviews", "/reviews/**").authenticated();
-                    auth.requestMatchers(HttpMethod.GET,
-                        "/orders/**", "/community/new").permitAll();
-                }
 
                 auth.requestMatchers(HttpMethod.GET, "/chat").hasRole("USER");
                 auth.requestMatchers(HttpMethod.GET, "/api/chat/messages").hasRole("USER");

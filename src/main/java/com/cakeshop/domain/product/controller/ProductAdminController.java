@@ -5,9 +5,9 @@ import com.cakeshop.domain.product.dto.form.ProductForm;
 import com.cakeshop.domain.product.entity.ProductStatus;
 import com.cakeshop.domain.product.entity.ProductType;
 import com.cakeshop.domain.product.service.ProductAdminService;
+import com.cakeshop.global.common.paging.PageQuery;
 import com.cakeshop.global.common.paging.PageRequest;
 import jakarta.validation.Valid;
-import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.web.util.UriUtils;
 
 @Controller
 @RequestMapping("/admin/products")
@@ -37,15 +36,12 @@ public class ProductAdminController {
     public String list(@ModelAttribute("search") AdminProductSearchForm search, Model model) {
         model.addAttribute("pageResult",
             productAdminService.getAdminProductPage(search, new PageRequest(search.getPage(), PAGE_SIZE)));
-        StringBuilder extraQuery = new StringBuilder();
-        if (search.getNormalizedKeyword() != null) {
-            extraQuery.append("&keyword=")
-                .append(UriUtils.encodeQueryParam(search.getNormalizedKeyword(), StandardCharsets.UTF_8));
-        }
-        appendParam(extraQuery, "type", search.getNormalizedType());
-        appendParam(extraQuery, "status", search.getNormalizedStatus());
-        appendParam(extraQuery, "stock", search.getNormalizedStock());
-        model.addAttribute("extraQuery", extraQuery.toString());
+        model.addAttribute("extraQuery", PageQuery.of()
+            .add("keyword", search.getNormalizedKeyword())
+            .add("type", search.getNormalizedType())
+            .add("status", search.getNormalizedStatus())
+            .add("stock", search.getNormalizedStock())
+            .toQueryString());
         return "admin/product/list";
     }
 
@@ -110,9 +106,4 @@ public class ProductAdminController {
         model.addAttribute("currentImageUrl", currentImageUrl);
     }
 
-    private void appendParam(StringBuilder query, String name, Object value) {
-        if (value != null) {
-            query.append('&').append(name).append('=').append(value);
-        }
-    }
 }

@@ -12,6 +12,8 @@ import com.cakeshop.domain.store.entity.StoreBusinessHour;
 import com.cakeshop.domain.store.entity.StoreHoliday;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -49,21 +51,29 @@ public class StoreService {
 
     private final StoreMapper storeMapper;
     private final FileStorageClient fileStorageClient;
+    private final ImageValidator imageValidator;
+    private final StoredFileCleanup storedFileCleanup;
     /** order가 끼워주는 예약 현황 조회. 없으면 정원·휴무일 충돌 검사를 건너뛴다(테스트·부분 기동 대비). */
     private final PickupReservationPort pickupReservationPort;
     private final Clock clock;
 
     @Autowired
     public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient,
-                        PickupReservationPort pickupReservationPort) {
-        this(storeMapper, fileStorageClient, pickupReservationPort, Clock.systemDefaultZone());
+                        PickupReservationPort pickupReservationPort,
+                        ImageValidator imageValidator, StoredFileCleanup storedFileCleanup) {
+        this(storeMapper, fileStorageClient, pickupReservationPort,
+            imageValidator, storedFileCleanup, Clock.systemDefaultZone());
     }
 
     public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient,
-                        PickupReservationPort pickupReservationPort, Clock clock) {
+                        PickupReservationPort pickupReservationPort,
+                        ImageValidator imageValidator, StoredFileCleanup storedFileCleanup,
+                        Clock clock) {
         this.storeMapper = storeMapper;
         this.fileStorageClient = fileStorageClient;
         this.pickupReservationPort = pickupReservationPort;
+        this.imageValidator = imageValidator;
+        this.storedFileCleanup = storedFileCleanup;
         this.clock = clock;
     }
 
@@ -288,14 +298,11 @@ public class StoreService {
         }
 
         boolean transactionSynchronized =
-            imageReplaced && TransactionSynchronizationManager.isSynchronizationActive();
-        if (transactionSynchronized) {
-            registerImageCleanup(previousImageUrl, newImageUrl);
-        }
+            imageReplaced && storedFileCleanup.registerReplace(previousImageUrl, newImageUrl);
 
         if (storeMapper.updateStore(store) != 1) {
             if (imageReplaced && !transactionSynchronized) {
-                deleteImageQuietly(newImageUrl);
+                storedFileCleanup.deleteNow(newImageUrl);
             }
             throw new BusinessException(StoreErrorCode.UPDATE_FAILED);
         }
@@ -316,14 +323,14 @@ public class StoreService {
             }
         } catch (RuntimeException exception) {
             if (imageReplaced && !transactionSynchronized) {
-                deleteImageQuietly(newImageUrl);
+                storedFileCleanup.deleteNow(newImageUrl);
             }
             throw exception;
         }
 
         // 프록시를 거치지 않는 단위 테스트 같은 비트랜잭션 호출도 파일 정합성을 지킨다.
         if (imageReplaced && !transactionSynchronized) {
-            deleteImageQuietly(previousImageUrl);
+            storedFileCleanup.deleteNow(previousImageUrl);
         }
     }
 
@@ -404,35 +411,13 @@ public class StoreService {
         return "%s ~ %s".formatted(formatTime(open), formatTime(close));
     }
 
-    // 파일 확장자는 위조가 쉬우므로 브라우저가 보낸 content type 이 image/* 인지 확인한다.
+    /**
+     * content type 은 클라이언트가 보내는 값이라 그것만으로는 부족하다 — 공통 검증기가 실제 파일
+     * 머리 바이트까지 확인한다. 여기서는 판정 결과를 매장 오류 코드로 옮기기만 한다.
+     */
     private void validateImage(MultipartFile image) {
-        String contentType = image.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
+        if (imageValidator.validate(image) != null) {
             throw new BusinessException(StoreErrorCode.INVALID_IMAGE);
-        }
-    }
-
-    private void registerImageCleanup(String previousImageUrl, String newImageUrl) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == TransactionSynchronization.STATUS_COMMITTED) {
-                    deleteImageQuietly(previousImageUrl);
-                } else {
-                    deleteImageQuietly(newImageUrl);
-                }
-            }
-        });
-    }
-
-    private void deleteImageQuietly(String imageUrl) {
-        if (imageUrl == null || imageUrl.isBlank()) {
-            return;
-        }
-        try {
-            fileStorageClient.delete(imageUrl);
-        } catch (RuntimeException exception) {
-            log.warn("이미지 파일 정리에 실패했습니다: {}", imageUrl, exception);
         }
     }
 

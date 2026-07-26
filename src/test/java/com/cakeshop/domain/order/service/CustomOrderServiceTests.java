@@ -32,6 +32,9 @@ import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.store.service.StoreService;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
+import com.cakeshop.support.TestImages;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -72,7 +75,8 @@ class CustomOrderServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
         customOrderService = new CustomOrderService(orderMapper, customOrderMapper, productService,
-            storeService, memberService, notificationService, chatService, fileStorageClient, clock);
+            storeService, memberService, notificationService, chatService, fileStorageClient,
+            new ImageValidator(), new StoredFileCleanup(fileStorageClient), clock);
 
         when(productService.getProductDetail(PRODUCT_ID)).thenReturn(customProduct(true));
         when(productService.getOptionGroups(PRODUCT_ID)).thenReturn(optionGroups());
@@ -394,7 +398,7 @@ class CustomOrderServiceTests {
     }
 
     private MockMultipartFile jpg() {
-        return new MockMultipartFile("referenceImages", "a.jpg", "image/jpeg", new byte[] {1});
+        return TestImages.jpeg("referenceImages", "a.jpg");
     }
 
     private List<ProductOptionGroupView> optionGroups() {

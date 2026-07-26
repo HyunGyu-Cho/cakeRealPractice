@@ -23,13 +23,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * 목업 preview 를 끈 <b>운영과 같은 설정</b>에서 화면 잠금 범위를 검증한다.
+ * 화면 잠금 범위 — 공개·회원 전용·관리자 세 구간이 실제로 갈리는지 한자리에서 고정한다.
  *
- * <p>local 프로필은 {@code app.mockup.public-preview=true} 라서 {@code /orders/**} 조회가
- * 비로그인에 열려 있다. 그 상태만 테스트하면 rds 배포에서의 실제 접근 통제를 확인할 수 없으므로,
- * 여기서는 플래그를 false 로 덮어써 별도 컨텍스트로 검증한다({@code CartSecurityTests} 와 같은 방식).
+ * <p>경로를 하나 추가하면서 {@code SecurityConfig} 규칙을 빠뜨리는 것이 흔한 사고다.
+ * 도메인별 {@code *SecurityTests}가 자기 경로만 보는 것과 달리 여기서는 전 구간을 훑는다.
  */
-@SpringBootTest(properties = "app.mockup.public-preview=false")
+@SpringBootTest
 @ActiveProfiles("local")
 class CustomerAuthGateE2ETests {
 

@@ -31,6 +31,8 @@ import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.store.service.StoreService;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -63,8 +65,6 @@ public class CustomOrderService {
     private static final DateTimeFormatter ORDER_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final String IMAGE_DIRECTORY = "custom-order";
     private static final int MAX_IMAGES = 3;
-    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
-    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png");
     /** 결제 링크 유효기간. 제작 가능일 전날과 비교해 이른 쪽을 쓴다. */
     private static final int LINK_VALID_HOURS = 72;
     /** 제작 가능일 이후 픽업 슬롯을 찾아볼 최대 일수(휴무일 연속을 넘기기 위한 여유). */
@@ -84,21 +84,26 @@ public class CustomOrderService {
     private final NotificationService notificationService;
     private final ChatService chatService;
     private final FileStorageClient fileStorageClient;
+    private final ImageValidator imageValidator;
+    private final StoredFileCleanup storedFileCleanup;
     private final Clock clock;
 
     @Autowired
     public CustomOrderService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
                               ProductService productService, StoreService storeService,
                               MemberService memberService, NotificationService notificationService,
-                              ChatService chatService, FileStorageClient fileStorageClient) {
+                              ChatService chatService, FileStorageClient fileStorageClient,
+                              ImageValidator imageValidator, StoredFileCleanup storedFileCleanup) {
         this(orderMapper, customOrderMapper, productService, storeService, memberService,
-            notificationService, chatService, fileStorageClient, Clock.systemDefaultZone());
+            notificationService, chatService, fileStorageClient, imageValidator, storedFileCleanup,
+            Clock.systemDefaultZone());
     }
 
     public CustomOrderService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
                               ProductService productService, StoreService storeService,
                               MemberService memberService, NotificationService notificationService,
                               ChatService chatService, FileStorageClient fileStorageClient,
+                              ImageValidator imageValidator, StoredFileCleanup storedFileCleanup,
                               Clock clock) {
         this.orderMapper = orderMapper;
         this.customOrderMapper = customOrderMapper;
@@ -108,6 +113,8 @@ public class CustomOrderService {
         this.notificationService = notificationService;
         this.chatService = chatService;
         this.fileStorageClient = fileStorageClient;
+        this.imageValidator = imageValidator;
+        this.storedFileCleanup = storedFileCleanup;
         this.clock = clock;
     }
 
@@ -205,13 +212,18 @@ public class CustomOrderService {
         }
 
         int sortOrder = 0;
+        List<String> storedImages = new java.util.ArrayList<>();
         for (MultipartFile image : images) {
             OrderItemImage row = new OrderItemImage();
             row.setOrderItemId(item.getId());
-            row.setImageUrl(fileStorageClient.store(image, IMAGE_DIRECTORY));
+            String url = fileStorageClient.store(image, IMAGE_DIRECTORY);
+            storedImages.add(url);
+            row.setImageUrl(url);
             row.setSortOrder(sortOrder++);
             customOrderMapper.insertOrderItemImage(row);
         }
+        // 파일은 트랜잭션에 참여하지 않는다 — 알림 발행 등 뒤이은 작업이 실패하면 파일만 남는다.
+        storedFileCleanup.registerRollbackDelete(storedImages);
 
         notificationService.notifyAdmins(NotificationCommand.toAdmins(
             NotificationType.ADMIN_ORDER_PLACED,
@@ -428,12 +440,12 @@ public class CustomOrderService {
             throw new BusinessException(CustomOrderErrorCode.TOO_MANY_IMAGES);
         }
         for (MultipartFile image : present) {
-            if (image.getSize() > MAX_IMAGE_SIZE) {
+            // 장수만 여기서 보고 장당 판정(형식·크기·실제 내용)은 공통 검증기에 맡긴다.
+            ImageValidator.Violation violation = imageValidator.validate(image);
+            if (violation == ImageValidator.Violation.SIZE) {
                 throw new BusinessException(CustomOrderErrorCode.IMAGE_TOO_LARGE);
             }
-            String contentType = image.getContentType();
-            if (contentType == null
-                || !IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            if (violation != null) {
                 throw new BusinessException(CustomOrderErrorCode.INVALID_IMAGE);
             }
         }

@@ -16,6 +16,9 @@ import com.cakeshop.domain.product.entity.ProductType;
 import com.cakeshop.domain.product.error.ProductErrorCode;
 import com.cakeshop.domain.product.mapper.ProductMapper;
 import com.cakeshop.global.error.BusinessException;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
+import com.cakeshop.support.TestImages;
 import com.cakeshop.global.infra.FileStorageClient;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -42,7 +45,8 @@ class ProductAdminServiceTests {
 
     @BeforeEach
     void setUp() {
-        productAdminService = new ProductAdminService(productMapper, fileStorageClient);
+        productAdminService = new ProductAdminService(productMapper, fileStorageClient,
+            new ImageValidator(), new StoredFileCleanup(fileStorageClient));
     }
 
     @AfterEach
@@ -56,7 +60,7 @@ class ProductAdminServiceTests {
     void createStoresImageAndInsertsMainImageRow() {
         when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/a.jpg");
-        MockMultipartFile image = new MockMultipartFile("image", "cake.jpg", "image/jpeg", new byte[] {1});
+        MockMultipartFile image = TestImages.jpeg("image", "cake.jpg");
 
         productAdminService.createProduct(form(ProductType.GENERAL, 12), image);
 
@@ -83,7 +87,8 @@ class ProductAdminServiceTests {
     @Test
     void nonImageUploadIsRejected() {
         when(productMapper.findCategoryByCode("GENERAL")).thenReturn(Optional.of(category(1L, "GENERAL")));
-        MockMultipartFile file = new MockMultipartFile("image", "malware.exe", "application/octet-stream", new byte[] {1});
+        MockMultipartFile file = new MockMultipartFile(
+            "image", "malware.exe", "application/octet-stream", new byte[] {1});
 
         assertThatThrownBy(() -> productAdminService.createProduct(form(ProductType.GENERAL, 12), file))
             .isInstanceOf(BusinessException.class)
@@ -101,7 +106,7 @@ class ProductAdminServiceTests {
         existing.setSortOrder(0);
         when(productMapper.findMainImage(1L)).thenReturn(Optional.of(existing));
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
-        MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
+        MockMultipartFile image = TestImages.png("image", "new.png");
 
         productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);
 
@@ -120,7 +125,7 @@ class ProductAdminServiceTests {
         existing.setSortOrder(0);
         when(productMapper.findMainImage(1L)).thenReturn(Optional.of(existing));
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
-        MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
+        MockMultipartFile image = TestImages.png("image", "new.png");
         TransactionSynchronizationManager.initSynchronization();
 
         productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);
@@ -143,7 +148,7 @@ class ProductAdminServiceTests {
         existing.setSortOrder(0);
         when(productMapper.findMainImage(1L)).thenReturn(Optional.of(existing));
         when(fileStorageClient.store(any(), any())).thenReturn("/uploads/product/202607/new.jpg");
-        MockMultipartFile image = new MockMultipartFile("image", "new.jpg", "image/png", new byte[] {1});
+        MockMultipartFile image = TestImages.png("image", "new.png");
         TransactionSynchronizationManager.initSynchronization();
 
         productAdminService.updateProduct(1L, form(ProductType.GENERAL, 5), image);

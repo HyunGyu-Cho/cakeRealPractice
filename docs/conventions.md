@@ -30,6 +30,18 @@ MyBatis XML은 `resources/mapper/<도메인>/XxxMapper.xml`에 둔다.
 
 계층 호출 방향은 `Controller → Service → Mapper` 단방향이며, 역방향 호출이나 계층 건너뛰기는 하지 않는다.
 
+### 도메인에서 다시 만들지 말 것 (global이 이미 갖고 있다)
+
+같은 판단을 도메인마다 복사하면 한 곳만 빠뜨렸을 때 조용히 어긋난다. 아래는 전 도메인 공용이다.
+
+| 필요한 일 | 쓰는 것 |
+|---|---|
+| 파일 저장·삭제 | `global/infra/FileStorageClient` — 저장 확장자는 **파일명이 아니라 content type에서 역산**한다(공개 서빙 경로에서 실행 가능한 파일이 생기지 않게). |
+| 업로드 이미지 검증 | `global/infra/ImageValidator` — 형식 화이트리스트 + 크기 + **실제 파일 머리 바이트**. 예외를 던지지 않고 위반 사유를 돌려주므로, 받아서 자기 `ErrorCode`로 예외를 만든다. |
+| 롤백 시 파일 정리 | `global/infra/StoredFileCleanup` — 파일 시스템은 트랜잭션에 참여하지 않는다. `@Transactional` 안에서 파일을 쓰면 반드시 등록한다. |
+| 페이지 링크 쿼리 | `global/common/paging/PageQuery` — `fragments/common/pagination.html`의 `extraQuery` 입력을 만든다(인코딩 포함). |
+| 페이지 요청·응답 | `global/common/paging/PageRequest`·`PageResult` |
+
 ## 데이터베이스 규약
 
 - **PK**: `BIGINT AUTO_INCREMENT`, 컬럼명 `id`, 자바 타입 `Long`.
@@ -92,6 +104,8 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 - 도메인마다 `com.cakeshop.global.error.ErrorCode`를 구현한 enum을 둔다. 각 항목은 `코드·메시지·HTTP 상태`를 가진다. (store `StoreErrorCode`)
 - 코드 접두어는 도메인별로 구분한다(`STORE_001`, `MEMBER_001` …).
 - 화면에서 바로 고칠 수 있는 업무 오류는 컨트롤러에서 `bindingResult.rejectValue(...)`로 해당 입력 필드에 돌려준다. (store `addHoliday`)
+- 외부 연동 실패처럼 원인 예외가 있으면 `new BusinessException(도메인ErrorCode, cause)`로 감싼다. 화면에는 `ErrorCode`의 메시지가 나가고 원인 스택은 로그에만 남는다 — 외부 오류 문구를 사용자에게 그대로 노출하지 않는다.
+- **화면(`@Controller`)은 `GlobalExceptionHandler`가 오류 페이지를, JSON(`@RestController`)은 `ApiExceptionHandler`가 `{code, message}`를 돌려준다. 둘 다 `global/error`에 있고 자동으로 적용되므로 새 JSON 컨트롤러에 전용 advice를 만들지 않는다.** 도메인 고유 문구가 꼭 필요할 때만 `@RestControllerAdvice(assignableTypes = ...)`로 그 예외 하나만 덧붙인다(chat의 업로드 상한이 유일한 예). 전용 advice가 없으면 fetch 호출자에게 HTML 오류 페이지가 나간다.
 
 ## 컨트롤러
 

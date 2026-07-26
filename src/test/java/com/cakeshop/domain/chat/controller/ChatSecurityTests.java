@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(properties = "app.mockup.public-preview=true")
+@SpringBootTest
 class ChatSecurityTests {
 
     @Autowired private WebApplicationContext context;
@@ -34,7 +34,7 @@ class ChatSecurityTests {
     }
 
     @Test
-    void chatIsNoLongerPublicPreviewAndSavesLoginReturnPath() throws Exception {
+    void anonymousChatRedirectsToLoginAndSavesReturnPath() throws Exception {
         MvcResult result = mockMvc.perform(get("/chat"))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/login"))

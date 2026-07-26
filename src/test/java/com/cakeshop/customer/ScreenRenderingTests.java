@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(properties = "app.mockup.public-preview=true")
+@SpringBootTest
 @ActiveProfiles("local")
 class ScreenRenderingTests {
 
@@ -31,11 +31,9 @@ class ScreenRenderingTests {
     }
 
     @Test
-    void allDatabaseFreePreviewScreensRenderThroughThymeleaf() throws Exception {
-        // 관리자 화면은 public-preview 에서도 열리지 않는다(SecurityConfig: /admin/** = ROLE_ADMIN).
-        // 따라서 로그인 없이 렌더되는 고객 프리뷰 화면만 검증한다.
-        // 고객 화면이 전부 실구현으로 전환돼(후기가 마지막) 인증 또는 DB가 필요하다.
-        // 프리뷰로 남는 것은 로그인 없이 열리는 안내·인증 화면뿐이다.
+    void allDatabaseFreePublicScreensRenderThroughThymeleaf() throws Exception {
+        // 고객 화면이 전부 실구현으로 전환돼 대부분 인증 또는 DB가 필요하다.
+        // 여기서 검증할 수 있는 것은 로그인 없이 열리고 DB도 타지 않는 안내·인증 화면뿐이다.
         String[] paths = {
             "/screens", "/login"
         };
