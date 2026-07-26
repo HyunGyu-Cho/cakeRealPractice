@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
 import com.cakeshop.domain.order.error.OrderErrorCode;
@@ -42,13 +43,14 @@ class RefundServiceTests {
     @Mock PaymentMapper paymentMapper;
     @Mock ProductService productService;
     @Mock NotificationService notificationService;
+    @Mock CouponService couponService;
 
     private RefundService refundService;
 
     @BeforeEach
     void setUp() {
         refundService = new RefundService(orderService, paymentMapper, productService,
-            notificationService, CLOCK);
+            notificationService, couponService, CLOCK);
     }
 
     @Test
@@ -64,6 +66,8 @@ class RefundServiceTests {
         refundService.cancelByCustomer(1L, 9L, "일정 변경");
 
         verify(productService).restoreStock(7L, 2);
+        // 쓴 쿠폰은 같은 취소 트랜잭션에서 되돌린다.
+        verify(couponService).restoreByOrderId(9L);
         verify(orderService).markCanceled(order, "일정 변경", "MEMBER:1");
         ArgumentCaptor<PaymentCancellation> captor =
             ArgumentCaptor.forClass(PaymentCancellation.class);

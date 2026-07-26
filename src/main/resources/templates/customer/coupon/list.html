@@ -1,21 +1,73 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>쿠폰함 | 케이크 쇼핑몰</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
-  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
-  <script defer th:src="@{/js/app.js}"></script>
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
-</head>
-<body data-page-title="쿠폰함">
-  <header th:replace="~{fragments/common/header :: header}"></header>
-  <main class="page-container page-container--narrow">
-    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
-    <h1>내 쿠폰함</h1><div class="cluster section" data-select-group><button class="btn is-active" data-select type="button">사용 가능</button><button class="btn" data-select type="button">사용 완료</button><button class="btn" data-select type="button">기간 만료</button></div><div class="stack"><article class="coupon-card"><div class="cluster cluster--between"><div><strong>첫 주문 할인 쿠폰</strong><p style="font-size:16px;font-weight:700">5,000원 할인</p><p class="text-muted">30,000원 이상 구매 시</p></div><span class="badge badge--success">사용 가능</span></div><p class="text-muted">유효기간: 2025.03.31</p></article><article class="coupon-card"><div class="cluster cluster--between"><div><strong>10% 할인 쿠폰</strong><p style="font-size:16px;font-weight:700">10% 할인 (최대 10,000원)</p><p class="text-muted">20,000원 이상 구매 시</p></div><span class="badge badge--success">사용 가능</span></div><p class="text-muted">유효기간: 2025.02.28</p></article><article class="coupon-card" style="opacity:.5"><div class="cluster cluster--between"><div><strong>생일 축하 쿠폰</strong><p style="font-size:16px;font-weight:700">15% 할인</p><p class="text-muted">최소 주문 금액 없음</p></div><span class="badge">사용 완료</span></div><p class="text-muted">유효기간: 2025.01.31</p></article></div>
-  </main>
-  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+<head th:replace="~{fragments/common/head :: head('쿠폰함')}"></head>
+<body>
+<header th:replace="~{fragments/common/header :: header}"></header>
+<main class="page-container page-container--narrow">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <div class="cluster cluster--between">
+    <h1>내 쿠폰함</h1>
+    <a class="btn btn--primary" th:href="@{/coupons}">쿠폰 받기</a>
+  </div>
+
+  <!-- 탭은 저장된 상태가 아니라 status(2개) + 만료 파생값으로 나눈 화면 분류다. -->
+  <div class="cluster section" data-panel-tabs>
+    <button class="btn is-active" data-panel-target="coupon-available" type="button">
+      사용 가능 (<span th:text="${#lists.size(availableCoupons)}">0</span>)</button>
+    <button class="btn" data-panel-target="coupon-used" type="button">
+      사용 완료 (<span th:text="${#lists.size(usedCoupons)}">0</span>)</button>
+    <button class="btn" data-panel-target="coupon-expired" type="button">
+      기간 만료 (<span th:text="${#lists.size(expiredCoupons)}">0</span>)</button>
+  </div>
+
+  <div class="stack" id="coupon-available">
+    <article class="coupon-card" th:each="coupon : ${availableCoupons}">
+      <div class="cluster cluster--between">
+        <div>
+          <strong th:text="${coupon.couponName}">쿠폰명</strong>
+          <p style="font-size:16px;font-weight:700" th:text="${coupon.discountLabel}">할인</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount > 0}"
+             th:text="|${#numbers.formatInteger(coupon.minimumOrderAmount, 0, 'COMMA')}원 이상 구매 시|">최소 주문</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount == 0}">최소 주문 금액 없음</p>
+        </div>
+        <span class="badge badge--success" th:text="${coupon.stateLabel}">사용 가능</span>
+      </div>
+      <p class="text-muted"
+         th:text="|유효기간: ${#temporals.format(coupon.expiresAt, 'yyyy.MM.dd HH:mm')}|">유효기간</p>
+    </article>
+    <p class="text-muted" th:if="${#lists.isEmpty(availableCoupons)}">사용할 수 있는 쿠폰이 없습니다.</p>
+  </div>
+
+  <div class="stack" id="coupon-used" hidden>
+    <article class="coupon-card" style="opacity:.5" th:each="coupon : ${usedCoupons}">
+      <div class="cluster cluster--between">
+        <div>
+          <strong th:text="${coupon.couponName}">쿠폰명</strong>
+          <p style="font-size:16px;font-weight:700" th:text="${coupon.discountLabel}">할인</p>
+        </div>
+        <span class="badge" th:text="${coupon.stateLabel}">사용 완료</span>
+      </div>
+      <p class="text-muted"
+         th:text="|사용일: ${#temporals.format(coupon.usedAt, 'yyyy.MM.dd HH:mm')}|">사용일</p>
+    </article>
+    <p class="text-muted" th:if="${#lists.isEmpty(usedCoupons)}">사용한 쿠폰이 없습니다.</p>
+  </div>
+
+  <div class="stack" id="coupon-expired" hidden>
+    <article class="coupon-card" style="opacity:.5" th:each="coupon : ${expiredCoupons}">
+      <div class="cluster cluster--between">
+        <div>
+          <strong th:text="${coupon.couponName}">쿠폰명</strong>
+          <p style="font-size:16px;font-weight:700" th:text="${coupon.discountLabel}">할인</p>
+        </div>
+        <span class="badge badge--danger" th:text="${coupon.stateLabel}">기간 만료</span>
+      </div>
+      <p class="text-muted"
+         th:text="|유효기간: ${#temporals.format(coupon.expiresAt, 'yyyy.MM.dd HH:mm')}|">유효기간</p>
+    </article>
+    <p class="text-muted" th:if="${#lists.isEmpty(expiredCoupons)}">만료된 쿠폰이 없습니다.</p>
+  </div>
+</main>
+<footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
 </html>
-

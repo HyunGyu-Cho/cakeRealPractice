@@ -206,6 +206,15 @@
          WHERE id = #{orderId}
     </update>
 
+    <!-- 결제 시점에 견적 금액(원가)·쿠폰 할인·최종 금액을 함께 확정한다. -->
+    <update id="updateAmounts">
+        UPDATE orders
+           SET original_amount = #{originalAmount},
+               discount_amount = #{discountAmount},
+               final_amount = #{finalAmount}
+         WHERE id = #{orderId}
+    </update>
+
     <update id="updatePickupAt">
         UPDATE orders
            SET pickup_at = #{pickupAt}

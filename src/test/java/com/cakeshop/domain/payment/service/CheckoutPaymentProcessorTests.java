@@ -6,6 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cakeshop.domain.cart.service.CartService;
+import com.cakeshop.domain.coupon.dto.view.AvailableCouponView;
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.dto.session.CheckoutDraft;
 import com.cakeshop.domain.order.dto.view.CheckoutItemView;
 import com.cakeshop.domain.order.dto.view.CheckoutView;
@@ -36,6 +38,7 @@ class CheckoutPaymentProcessorTests {
     @Mock ProductService productService;
     @Mock PaymentMapper paymentMapper;
     @Mock NotificationService notificationService;
+    @Mock CouponService couponService;
 
     private CheckoutPaymentProcessor processor;
 
@@ -43,6 +46,7 @@ class CheckoutPaymentProcessorTests {
     void setUp() {
         processor = new CheckoutPaymentProcessor(
             orderService, cartService, productService, paymentMapper, notificationService,
+            couponService,
             Clock.fixed(Instant.parse("2026-07-25T04:20:00Z"), ZoneId.of("Asia/Seoul")));
     }
 
@@ -73,6 +77,33 @@ class CheckoutPaymentProcessorTests {
         assertThat(captor.getValue().getMethod()).isEqualTo("CARD");
         assertThat(captor.getValue().getIdempotencyKey()).isEqualTo(draft.getCheckoutId());
         assertThat(captor.getValue().getPaymentKey()).startsWith("MOCK-");
+    }
+
+    @Test
+    void appliesCouponDiscountToPaymentAmountAndConfirmsUseInTheSameTransaction() {
+        CheckoutDraft draft = new CheckoutDraft(1L, List.of(11L));
+        draft.setPickupAt(LocalDateTime.of(2026, 7, 27, 14, 0));
+        draft.setMemberCouponId(5L);
+        CheckoutItemView item = new CheckoutItemView(
+            11L, 7L, "딸기 케이크", "GENERAL", null, 2, 41_000L, 82_000L, 2, 3);
+        AvailableCouponView coupon = new AvailableCouponView(
+            5L, "5천원 할인", "5,000원 할인", 5_000L, 20_000L,
+            LocalDateTime.of(2026, 12, 31, 0, 0));
+        CheckoutView checkout = new CheckoutView(draft.getCheckoutId(), List.of(item), 82_000L, 2,
+            draft.getPickupAt(), List.of(coupon), 5L, 5_000L, 77_000L);
+        when(orderService.getCheckoutView(1L, draft)).thenReturn(checkout);
+        Order order = new Order();
+        order.setId(99L);
+        order.setOrderNumber("ORD-20260725-ABC");
+        when(orderService.createPaidOrder(draft, checkout)).thenReturn(order);
+        when(paymentMapper.insertPayment(any(Payment.class))).thenReturn(1);
+
+        processor.process(1L, draft, "card");
+
+        verify(couponService).use(1L, 5L, 99L, 82_000L);
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentMapper).insertPayment(captor.capture());
+        assertThat(captor.getValue().getAmount()).isEqualTo(77_000L);
     }
 
     @Test

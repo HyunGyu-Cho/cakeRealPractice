@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common/head :: head('쿠폰 받기')}"></head>
+<body>
+<header th:replace="~{fragments/common/header :: header}"></header>
+<main class="page-container page-container--narrow">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <div class="cluster cluster--between">
+    <h1>쿠폰 받기</h1>
+    <a class="btn" th:href="@{/mypage/coupons}">내 쿠폰함</a>
+  </div>
+
+  <div class="stack section">
+    <article class="coupon-card" th:each="coupon : ${coupons}"
+             th:style="${coupon.downloadable} ? '' : 'opacity:.5'">
+      <div class="cluster cluster--between">
+        <div>
+          <strong th:text="${coupon.name}">쿠폰명</strong>
+          <p style="font-size:16px;font-weight:700" th:text="${coupon.discountLabel}">할인</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount > 0}"
+             th:text="|${#numbers.formatInteger(coupon.minimumOrderAmount, 0, 'COMMA')}원 이상 구매 시|">최소 주문</p>
+          <p class="text-muted" th:if="${coupon.minimumOrderAmount == 0}">최소 주문 금액 없음</p>
+        </div>
+        <form method="post" th:action="@{|/coupons/${coupon.couponId}/download|}">
+          <button class="btn btn--primary" type="submit" th:if="${coupon.downloadable}">받기</button>
+          <span class="badge" th:unless="${coupon.downloadable}"
+                th:text="${coupon.unavailableReason}">받을 수 없음</span>
+        </form>
+      </div>
+      <p class="text-muted">
+        <span th:text="|유효기간: ${#temporals.format(coupon.expiresAt, 'yyyy.MM.dd HH:mm')}|">유효기간</span>
+        · <span th:text="|남은 수량 ${coupon.remainingQuantity}장|">남은 수량</span>
+      </p>
+    </article>
+    <p class="text-muted" th:if="${#lists.isEmpty(coupons)}">받을 수 있는 쿠폰이 없습니다.</p>
+  </div>
+</main>
+<footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

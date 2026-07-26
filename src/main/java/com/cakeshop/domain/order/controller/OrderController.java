@@ -132,6 +132,21 @@ public class OrderController {
         return "redirect:/orders/payment";
     }
 
+    /**
+     * 결제 화면의 쿠폰 선택. 초안에 <b>id만</b> 담고 금액은 담지 않는다 — 유효성과 할인액은
+     * 화면을 다시 그릴 때와 결제 트랜잭션에서 서버가 각각 계산한다.
+     */
+    @PostMapping("/coupon")
+    public String selectCoupon(
+        @RequestParam(name = "memberCouponId", required = false) Long memberCouponId,
+        Principal principal,
+        HttpSession session) {
+        MemberDetails member = member(principal);
+        CheckoutDraft draft = requireDraft(member, session);
+        draft.setMemberCouponId(memberCouponId);
+        return "redirect:/orders/payment";
+    }
+
     @GetMapping("/complete")
     public String complete(@RequestParam(name = "orderId", required = false) Long orderId,
                            Principal principal, Model model) {

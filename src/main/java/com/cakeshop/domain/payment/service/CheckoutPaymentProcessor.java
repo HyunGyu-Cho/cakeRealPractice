@@ -1,6 +1,7 @@
 package com.cakeshop.domain.payment.service;
 
 import com.cakeshop.domain.cart.service.CartService;
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.dto.session.CheckoutDraft;
 import com.cakeshop.domain.order.dto.view.CheckoutView;
 import com.cakeshop.domain.order.entity.Order;
@@ -33,24 +34,28 @@ public class CheckoutPaymentProcessor {
     private final ProductService productService;
     private final PaymentMapper paymentMapper;
     private final NotificationService notificationService;
+    private final CouponService couponService;
     private final Clock clock;
 
     @Autowired
     public CheckoutPaymentProcessor(OrderService orderService, CartService cartService,
                                     ProductService productService, PaymentMapper paymentMapper,
-                                    NotificationService notificationService) {
+                                    NotificationService notificationService,
+                                    CouponService couponService) {
         this(orderService, cartService, productService, paymentMapper, notificationService,
-            Clock.systemDefaultZone());
+            couponService, Clock.systemDefaultZone());
     }
 
     public CheckoutPaymentProcessor(OrderService orderService, CartService cartService,
                                     ProductService productService, PaymentMapper paymentMapper,
-                                    NotificationService notificationService, Clock clock) {
+                                    NotificationService notificationService,
+                                    CouponService couponService, Clock clock) {
         this.orderService = orderService;
         this.cartService = cartService;
         this.productService = productService;
         this.paymentMapper = paymentMapper;
         this.notificationService = notificationService;
+        this.couponService = couponService;
         this.clock = clock;
     }
 
@@ -63,6 +68,10 @@ public class CheckoutPaymentProcessor {
         checkout.items().forEach(
             item -> productService.decreaseStock(item.productId(), item.quantity()));
         Order order = orderService.createPaidOrder(draft, checkout);
+        // 쿠폰 사용은 결제 트랜잭션 안에서 확정한다. 조건부 UPDATE가 실패하면 예외가 올라와
+        // 재고 차감·주문 생성까지 전부 롤백된다(스펙 docs/specs/coupon.md 6장 규칙 5).
+        couponService.use(memberId, checkout.selectedMemberCouponId(), order.getId(),
+            checkout.totalAmount());
 
         Payment payment = new Payment();
         payment.setOrderId(order.getId());
@@ -70,7 +79,7 @@ public class CheckoutPaymentProcessor {
         payment.setPaymentKey("MOCK-" + UUID.randomUUID());
         payment.setIdempotencyKey(draft.getCheckoutId());
         payment.setMethod(method);
-        payment.setAmount(checkout.totalAmount());
+        payment.setAmount(checkout.finalAmount());
         payment.setStatus(PaymentStatus.DONE.name());
         payment.setProviderStatus("MOCK_DONE");
         payment.setApprovedAt(LocalDateTime.now(clock));

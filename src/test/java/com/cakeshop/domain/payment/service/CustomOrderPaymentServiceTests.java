@@ -6,10 +6,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cakeshop.domain.coupon.dto.view.CouponDiscount;
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.order.entity.CustomOrderPaymentLink;
 import com.cakeshop.domain.order.entity.CustomOrderQuote;
@@ -52,6 +55,7 @@ class CustomOrderPaymentServiceTests {
     @Mock private CustomOrderService customOrderService;
     @Mock private PaymentMapper paymentMapper;
     @Mock private NotificationService notificationService;
+    @Mock private CouponService couponService;
 
     private CustomOrderPaymentService paymentService;
 
@@ -59,7 +63,10 @@ class CustomOrderPaymentServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
         paymentService = new CustomOrderPaymentService(orderMapper, customOrderMapper,
-            customOrderService, paymentMapper, notificationService, clock);
+            customOrderService, paymentMapper, notificationService, couponService, clock);
+        // 쿠폰 미선택이 기본 경로다 — 할인 없이 견적 금액 그대로 결제한다.
+        when(couponService.use(eq(MEMBER_ID), isNull(), anyLong(), anyLong()))
+            .thenAnswer(invocation -> CouponDiscount.none(invocation.getArgument(3)));
 
         CustomOrderQuote quote = new CustomOrderQuote();
         quote.setId(5L);
@@ -76,11 +83,11 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.ISSUED, NOW.plusHours(10));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        Long orderId = paymentService.pay(TOKEN, MEMBER_ID, "CARD");
+        Long orderId = paymentService.pay(TOKEN, MEMBER_ID, "CARD", null);
 
         assertThat(orderId).isEqualTo(100L);
         verify(customOrderMapper).updateLinkStatus(1L, "ISSUED", "USED", NOW);
-        verify(customOrderMapper).updateFinalAmount(100L, 180_000L);
+        verify(customOrderMapper).updateAmounts(100L, 180_000L, 0L, 180_000L);
         verify(orderMapper).updateStatus(100L, "UNDER_REVIEW", "IN_PRODUCTION");
 
         ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
@@ -98,13 +105,13 @@ class CustomOrderPaymentServiceTests {
         Order order = givenOrder(OrderStatus.UNDER_REVIEW);
         order.setFinalAmount(62_000L); // 요청서 제출 시점의 예상 금액
 
-        paymentService.pay(TOKEN, MEMBER_ID, "CARD");
+        paymentService.pay(TOKEN, MEMBER_ID, "CARD", null);
 
         // 결제 금액의 정본은 발급 시점 견적 스냅샷(링크 금액)이지 주문의 예상 금액이 아니다
         ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentMapper).insertPayment(captor.capture());
         assertThat(captor.getValue().getAmount()).isEqualTo(180_000L);
-        verify(customOrderMapper).updateFinalAmount(100L, 180_000L);
+        verify(customOrderMapper).updateAmounts(100L, 180_000L, 0L, 180_000L);
     }
 
     @Test
@@ -112,7 +119,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.ISSUED, NOW.minusMinutes(1));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.LINK_EXPIRED);
         verify(paymentMapper, never()).insertPayment(any());
@@ -123,7 +130,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.USED, NOW.plusHours(10));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.ALREADY_PAID);
     }
@@ -133,7 +140,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.REVOKED, NOW.plusHours(10));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.LINK_NOT_PAYABLE);
     }
@@ -144,7 +151,7 @@ class CustomOrderPaymentServiceTests {
         // 토큰은 맞지만 소유자가 다르다 — 토큰만으로 통과시키지 않는다
         when(orderMapper.findByIdAndMemberId(100L, MEMBER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.REQUEST_NOT_FOUND);
     }
@@ -154,7 +161,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.ISSUED, NOW.plusHours(10));
         givenOrder(OrderStatus.IN_PRODUCTION);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.ALREADY_PAID);
     }
@@ -167,7 +174,7 @@ class CustomOrderPaymentServiceTests {
         when(customOrderMapper.updateLinkStatus(anyLong(), anyString(), anyString(), any()))
             .thenReturn(0);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.LINK_NOT_PAYABLE);
         verify(paymentMapper, never()).insertPayment(any());
@@ -179,7 +186,7 @@ class CustomOrderPaymentServiceTests {
         givenOrder(OrderStatus.UNDER_REVIEW);
         when(paymentMapper.insertPayment(any())).thenThrow(new DuplicateKeyException("dup"));
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.ALREADY_PAID);
     }
@@ -189,7 +196,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.ISSUED, NOW.plusHours(10));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "BITCOIN"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "BITCOIN", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", PaymentErrorCode.INVALID_METHOD);
     }
@@ -199,7 +206,7 @@ class CustomOrderPaymentServiceTests {
         givenLink(PaymentLinkStatus.ISSUED, NOW.plusHours(10));
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        paymentService.pay(TOKEN, MEMBER_ID, "CARD");
+        paymentService.pay(TOKEN, MEMBER_ID, "CARD", null);
 
         verify(notificationService).notify(any());
         verify(notificationService).notifyAdmins(any());
@@ -209,7 +216,7 @@ class CustomOrderPaymentServiceTests {
     void unknownTokenIsNotFound() {
         when(customOrderMapper.findLinkByTokenForUpdate(TOKEN)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD"))
+        assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.LINK_NOT_FOUND);
     }
@@ -236,3 +243,5 @@ class CustomOrderPaymentServiceTests {
         return order;
     }
 }
+
+
