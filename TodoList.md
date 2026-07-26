@@ -117,8 +117,20 @@
     TDS 원본 Red·Green도 텍스트 대비가 모자라 시맨틱 색은 명도대비를 맞춰 조정했다.
   - `customer-mockup.css`가 app.css 뒤에 로드되며 `:root`를 재선언해 고객 화면 11개의 팔레트를 되돌리고 있었다.
     부분집합임을 검증하고 링크를 제거했다(파일은 목업 번들과 같은 원칙으로 존치, 참조 0을 테스트로 고정).
-  - 남은 작업: **app.css L22-52와 chat.css의 채팅 스타일 중복 통합.** 값이 서로 어긋난 채 chat.css가 이기는
-    구조인데(`.chat-messages` 높이, `.chat-msg` 최대폭 등), 리테마링과 함께 건드리면 레이아웃 회귀를 부르므로 분리했다.
+  - 남은 작업이던 채팅 CSS 중복 통합은 아래 항목에서 끝냈다.
+- [x] **채팅 스타일 중복 통합 (app.css → chat.css)** — 위 리테마링에서 분리해 뒀던 후속 작업
+  - `.chat-*` 를 쓰는 화면은 `chat.css`를 함께 싣는 채팅 2개(고객·관리자)뿐이라, 전 화면에 실리는
+    app.css의 채팅 규칙 33줄은 **나중에 로드된 chat.css가 이기는 사문 규칙**이었다. app.css에서 걷어냈다.
+  - 확정: **chat.css가 채팅 스타일의 단일 출처.** 값이 어긋나 있던 곳은 chat.css 값을 정본으로 삼았다
+    (`.chat-messages` 높이·`.chat-msg` 최대폭·`.chat-layout` 사이드바 폭 등 — 원래 chat.css가 이기던 값이라 화면은 그대로다).
+  - 실제로 app.css만 갖고 있던 규칙 3개는 chat.css로 옮겼다 — 말풍선 꼬리(`--me`/`--other` 비대칭 모서리),
+    `.chat-msg--me .chat-msg__meta{text-align:right}`, `.chat-msg__read`. 옮기며 `8px` 리터럴은 `--radius-sm`으로 바꿨다.
+  - 정리한 사용처 없는 규칙 5개: `.chat-date-divider`(+span), `.chat-msg--other__content-wrap`,
+    `.chat-input-area`, `.chat-sidebar`, `.chat-order-item` — 템플릿·JS 어디서도 쓰지 않는다.
+  - **유일한 실제 변화**: app.css의 `.chat-messages{max-height:480px}`가 chat.css의 `height:min(56vh,560px)`를
+    480px로 깎고 있었다. 이 캡을 없애 chat.css 의도대로 최대 560px까지 늘어난다.
+  - 양방향을 테스트로 고정했다(`chatStylesLiveOnlyInChatCss`) — app.css에 `.chat-*` 금지, 그리고
+    `.chat-*` 를 쓰는 화면은 chat.css를 반드시 링크. 두 조건 모두 실제로 깨뜨려 실패하는 것을 확인했다.
 
 ---
 
