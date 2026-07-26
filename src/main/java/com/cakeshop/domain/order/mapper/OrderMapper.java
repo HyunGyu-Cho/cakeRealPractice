@@ -4,6 +4,7 @@ import com.cakeshop.domain.order.dto.form.OrderSearchForm;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,12 @@ public interface OrderMapper {
     List<Order> findByIds(@Param("orderIds") Collection<Long> orderIds);
 
     List<Order> findGeneralOrdersByPickupDate(@Param("pickupDate") LocalDate pickupDate);
+
+    // ---- 픽업 예약 현황 (store의 PickupReservationPort 구현이 사용한다) ----
+    /** 취소·반려되지 않은 주문 수. 취소된 주문의 슬롯은 다시 열려야 하므로 제외한다. */
+    long countActivePickupsOn(@Param("date") LocalDate date);
+
+    List<LocalDateTime> findActivePickupAts(@Param("dates") Collection<LocalDate> dates);
 
     int updateStatus(@Param("orderId") Long orderId,
                      @Param("currentStatus") String currentStatus,

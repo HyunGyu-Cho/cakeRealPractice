@@ -88,7 +88,7 @@ class CustomOrderServiceTests {
         });
         // 픽업 슬롯 스냅용 — 그날 10:00·14:00 두 슬롯이 열려 있다고 본다.
         // any() 는 null 도 매칭하므로 날짜가 없으면 빈 목록으로 돌려준다.
-        when(storeService.getAvailablePickupSlots(any(), org.mockito.ArgumentMatchers.anyInt()))
+        when(storeService.getAvailablePickupSlots(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
             .thenAnswer(invocation -> {
                 LocalDate date = invocation.getArgument(0, LocalDate.class);
                 return date == null ? List.of() : List.of(date.atTime(10, 0), date.atTime(14, 0));
@@ -245,9 +245,9 @@ class CustomOrderServiceTests {
         when(customOrderMapper.updateQuoteStatus(anyLong(), anyString(), anyString(), any())).thenReturn(1);
         when(customOrderMapper.findLinkByQuoteId(5L)).thenReturn(Optional.empty());
         // 8/16은 휴무(슬롯 없음), 8/17부터 열린다
-        when(storeService.getAvailablePickupSlots(eq(LocalDate.of(2026, 8, 16)), org.mockito.ArgumentMatchers.anyInt()))
+        when(storeService.getAvailablePickupSlots(eq(LocalDate.of(2026, 8, 16)), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
             .thenReturn(List.of());
-        when(storeService.getAvailablePickupSlots(eq(LocalDate.of(2026, 8, 17)), org.mockito.ArgumentMatchers.anyInt()))
+        when(storeService.getAvailablePickupSlots(eq(LocalDate.of(2026, 8, 17)), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
             .thenReturn(List.of(LocalDateTime.of(2026, 8, 17, 10, 0),
                 LocalDateTime.of(2026, 8, 17, 14, 0)));
 
@@ -263,7 +263,7 @@ class CustomOrderServiceTests {
         when(customOrderMapper.findLatestQuoteForUpdate(100L))
             .thenReturn(Optional.of(quote(QuoteStatus.SENT, 180_000L, LocalDate.of(2026, 8, 20))));
         when(customOrderMapper.updateQuoteStatus(anyLong(), anyString(), anyString(), any())).thenReturn(1);
-        when(storeService.getAvailablePickupSlots(any(), org.mockito.ArgumentMatchers.anyInt()))
+        when(storeService.getAvailablePickupSlots(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
             .thenReturn(List.of());
 
         assertThatThrownBy(() -> customOrderService.acceptQuote(MEMBER_ID, 100L))

@@ -123,10 +123,10 @@ class CustomOrderAdminServiceTests {
     void quoteRejectsProducibleDateBeyondPickupWindow() {
         givenOrder(OrderStatus.UNDER_REVIEW);
 
-        // 매장 픽업 예약 창은 오늘(8/1) + 14일 = 8/15까지다. 그 뒤 날짜를 제시하면
+        // 주문제작 픽업 예약 창은 오늘(8/1) + 90일 = 10/30까지다. 그 뒤 날짜를 제시하면
         // 고객이 수락해도 잡을 픽업 슬롯이 없으므로 견적 단계에서 막는다.
         assertThatThrownBy(() ->
-            adminService.quote(100L, ADMIN_ID, quoteForm(200_000L, LocalDate.of(2026, 8, 16))))
+            adminService.quote(100L, ADMIN_ID, quoteForm(200_000L, LocalDate.of(2026, 10, 31))))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode",
                 CustomOrderErrorCode.PRODUCIBLE_DATE_OUT_OF_WINDOW);
@@ -138,7 +138,8 @@ class CustomOrderAdminServiceTests {
         givenOrder(OrderStatus.UNDER_REVIEW);
         when(customOrderMapper.findLatestQuoteForUpdate(100L)).thenReturn(Optional.empty());
 
-        adminService.quote(100L, ADMIN_ID, quoteForm(200_000L, LocalDate.of(2026, 8, 15)));
+        // 경계값(오늘 + 90일)은 허용한다
+        adminService.quote(100L, ADMIN_ID, quoteForm(200_000L, LocalDate.of(2026, 10, 30)));
 
         verify(customOrderMapper).insertQuote(any());
     }

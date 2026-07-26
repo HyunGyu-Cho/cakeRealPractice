@@ -11,4 +11,14 @@ public class BusinessException extends RuntimeException {
         super(errorCode.message());
         this.errorCode = errorCode;
     }
+
+    /**
+     * 상황값(건수 등)을 담아 화면에 그대로 보여줄 때 쓴다.
+     * 오류 페이지는 {@code errorCode.message()}를 쓰므로, 이 메시지는 필드 오류로 되돌리는
+     * 컨트롤러({@code bindingResult.rejectValue(..., e.getMessage())})에서만 드러난다.
+     */
+    public BusinessException(ErrorCode errorCode, String message) {
+        super(message);
+        this.errorCode = errorCode;
+    }
 }

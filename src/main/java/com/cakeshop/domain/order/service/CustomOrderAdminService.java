@@ -40,13 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CustomOrderAdminService {
 
-    /**
-     * 매장 픽업 예약 가능 기간(StoreService의 픽업 창과 같은 값).
-     * ⚠️ 주문제작은 제작 기간이 이보다 길 수 있어 장기 리드타임을 막는다.
-     * 픽업 창을 매장 설정값으로 빼는 것은 store 공통 코드 변경이라 별도 PR 합의가 필요하다.
-     */
-    private static final int PICKUP_WINDOW_DAYS = 14;
-
     private final OrderMapper orderMapper;
     private final CustomOrderMapper customOrderMapper;
     private final CustomOrderService customOrderService;
@@ -140,9 +133,10 @@ public class CustomOrderAdminService {
         if (!form.getProducibleDate().isAfter(today)) {
             throw new BusinessException(CustomOrderErrorCode.PRODUCIBLE_DATE_PASSED);
         }
-        // 매장 픽업 예약 창(오늘 + PICKUP_WINDOW_DAYS)을 넘는 날짜를 제시하면 고객이 견적을 수락해도
-        // 잡을 수 있는 픽업 슬롯이 없다. 수락 시점이 아니라 견적 단계에서 막는다.
-        if (form.getProducibleDate().isAfter(today.plusDays(PICKUP_WINDOW_DAYS))) {
+        // 주문제작 픽업 예약 창을 넘는 날짜를 제시하면 고객이 견적을 수락해도 잡을 슬롯이 없다.
+        // 수락 시점이 아니라 견적 단계에서 막는다.
+        if (form.getProducibleDate().isAfter(
+            today.plusDays(CustomOrderService.PICKUP_WINDOW_DAYS))) {
             throw new BusinessException(CustomOrderErrorCode.PRODUCIBLE_DATE_OUT_OF_WINDOW);
         }
 

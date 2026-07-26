@@ -69,6 +69,12 @@ public class CustomOrderService {
     private static final int LINK_VALID_HOURS = 72;
     /** 제작 가능일 이후 픽업 슬롯을 찾아볼 최대 일수(휴무일 연속을 넘기기 위한 여유). */
     private static final int PICKUP_SEARCH_DAYS = 14;
+    /**
+     * 주문제작 픽업 예약 창. 일반 주문(14일)보다 길게 잡는다 —
+     * 주문제작 상품은 재고를 관리하지 않아(stock_quantity NULL) 먼 미래 예약이 재고를 묶지 않고,
+     * 실무 제작 리드타임이 2주를 넘는 경우가 흔하기 때문이다.
+     */
+    public static final int PICKUP_WINDOW_DAYS = 90;
 
     private final OrderMapper orderMapper;
     private final CustomOrderMapper customOrderMapper;
@@ -146,7 +152,7 @@ public class CustomOrderService {
 
         // 요청서 단계의 픽업 하한은 상품 준비일이다. 견적 수락 시 제작 가능일로 다시 검증한다.
         int preparationDays = valueOrZero(product.preparationDays());
-        storeService.validatePickupAt(form.getPickupAt(), preparationDays);
+        storeService.validatePickupAt(form.getPickupAt(), preparationDays, PICKUP_WINDOW_DAYS);
 
         long optionAmount = selected.stream().mapToLong(SelectedOption::additionalPrice).sum();
         long estimated = Math.addExact(product.basePrice(), optionAmount);
@@ -314,7 +320,8 @@ public class CustomOrderService {
      */
     private LocalDateTime firstSlotFrom(LocalDate from, java.time.LocalTime preferredTime) {
         for (LocalDate date = from; !date.isAfter(from.plusDays(PICKUP_SEARCH_DAYS)); date = date.plusDays(1)) {
-            List<LocalDateTime> slots = storeService.getAvailablePickupSlots(date, 0);
+            List<LocalDateTime> slots =
+                storeService.getAvailablePickupSlots(date, 0, PICKUP_WINDOW_DAYS);
             if (slots.isEmpty()) {
                 continue;
             }
