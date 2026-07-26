@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.cakeshop.domain.order.dto.view.ReviewableItemView;
+import com.cakeshop.domain.product.dto.view.ProductDetailView;
+import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.review.dto.form.AdminReviewSearchForm;
 import com.cakeshop.domain.review.dto.form.ReviewForm;
 import com.cakeshop.domain.review.dto.view.AdminReviewListView;
@@ -20,6 +22,7 @@ import com.cakeshop.domain.review.service.ReviewService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.security.MemberDetails;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +49,9 @@ class ReviewScreenRenderingTests {
     @Autowired private WebApplicationContext context;
     @MockitoBean private ReviewService reviewService;
     @MockitoBean private ReviewAdminService reviewAdminService;
+    // 상품 상세는 product·review를 컨트롤러가 조합한다. 상품 쪽을 실제 서비스로 두면
+    // 로컬 DB에 특정 id의 상품이 있어야만 통과하는 테스트가 된다.
+    @MockitoBean private ProductService productService;
 
     private MockMvc mockMvc;
 
@@ -83,6 +89,7 @@ class ReviewScreenRenderingTests {
     /** 상품 상세의 후기 블록도 실데이터 경로로 렌더된다(컨트롤러 조합 지점). */
     @Test
     void productDetailRendersPublicReviews() throws Exception {
+        when(productService.getProductDetail(8L)).thenReturn(productDetail());
         when(reviewService.getProductReviews(anyLong(), any(PageRequest.class)))
             .thenReturn(new PageResult<>(List.of(productReview()), new PageRequest(1, 5), 1));
 
@@ -107,6 +114,13 @@ class ReviewScreenRenderingTests {
         return new AdminReviewListView(100L, "단골손님", 8L, "초코 가나슈 케이크", 5,
             "맛있게 잘 먹었습니다.", "VISIBLE", "공개", false, NOW, reply,
             reply == null ? null : NOW);
+    }
+
+    /** 후기 블록이 붙는 상품. 이 테스트의 다른 픽스처와 같은 8번 상품이다. */
+    private ProductDetailView productDetail() {
+        return new ProductDetailView(8L, "초코 가나슈 케이크", "설명", 38000L,
+            "GENERAL", "일반 케이크", "ACTIVE", "판매 중", 10, "재고 있음",
+            0, 0, null, new BigDecimal("4.50"), 1, true);
     }
 
     private ProductReviewView productReview() {
