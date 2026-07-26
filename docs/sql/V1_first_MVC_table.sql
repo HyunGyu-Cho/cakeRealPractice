@@ -190,9 +190,11 @@
         `option_group_id`  BIGINT NOT NULL,
         `name`             VARCHAR(100) NOT NULL,
         `additional_price` DECIMAL(12, 0) NOT NULL DEFAULT 0,
-        `status`           VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+        `status`           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
         `sort_order`       INT NOT NULL DEFAULT 0,
         PRIMARY KEY (`id`),
+        CONSTRAINT `chk_product_options_status`
+            CHECK (`status` IN ('ACTIVE', 'INACTIVE')),
         CONSTRAINT `fk_product_options_group`
             FOREIGN KEY (`option_group_id`) REFERENCES `product_option_groups` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -256,6 +258,8 @@
         `original_amount`         DECIMAL(12, 0) NOT NULL,
         `discount_amount`         DECIMAL(12, 0) NOT NULL DEFAULT 0,
         `final_amount`            DECIMAL(12, 0) NOT NULL,
+        -- 주문제작 전용: 고객 희망 예산. 일반 주문 흐름은 읽지도 쓰지도 않는다 (V13에서 추가).
+        `desired_budget`          DECIMAL(12, 0) NULL,
         `status`                  VARCHAR(20) NOT NULL,
         `pickup_at`               DATETIME(6) NOT NULL,
         `request_message`         TEXT NULL,

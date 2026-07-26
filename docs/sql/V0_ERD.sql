@@ -40,6 +40,8 @@ DROP TABLE IF EXISTS `coupons`;
 DROP TABLE IF EXISTS `review_replies`;
 DROP TABLE IF EXISTS `review_images`;
 DROP TABLE IF EXISTS `reviews`;
+DROP TABLE IF EXISTS `custom_order_payment_links`;
+DROP TABLE IF EXISTS `custom_order_quotes`;
 DROP TABLE IF EXISTS `payment_cancellations`;
 DROP TABLE IF EXISTS `payments`;
 DROP TABLE IF EXISTS `order_item_images`;
@@ -156,9 +158,11 @@ CREATE TABLE `product_options` (
     `option_group_id`  BIGINT NOT NULL,
     `name`             VARCHAR(100) NOT NULL,
     `additional_price` DECIMAL(12, 0) NOT NULL DEFAULT 0,
-    `status`           VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+    `status`           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `sort_order`       INT NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`),
+    CONSTRAINT `chk_product_options_status`
+        CHECK (`status` IN ('ACTIVE', 'INACTIVE')),
     CONSTRAINT `fk_product_options_group`
         FOREIGN KEY (`option_group_id`) REFERENCES `product_option_groups` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -221,6 +225,8 @@ CREATE TABLE `orders` (
     `original_amount`         DECIMAL(12, 0) NOT NULL,
     `discount_amount`         DECIMAL(12, 0) NOT NULL DEFAULT 0,
     `final_amount`            DECIMAL(12, 0) NOT NULL,
+    -- 주문제작 전용: 고객 희망 예산. 일반 주문 흐름은 읽지도 쓰지도 않는다 (V13에서 추가).
+    `desired_budget`          DECIMAL(12, 0) NULL,
     `status`                  VARCHAR(20) NOT NULL,
     `pickup_at`               DATETIME(6) NOT NULL,
     `request_message`         TEXT NULL,
@@ -291,6 +297,57 @@ CREATE TABLE `order_item_images` (
     PRIMARY KEY (`id`),
     CONSTRAINT `fk_order_item_images_item`
         FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 주문제작 견적·결제 링크 (V13에서 추가)
+-- 요청서는 별도 테이블 없이 orders(UNDER_REVIEW) + order_items 계열로 표현한다.
+-- =========================================================
+
+CREATE TABLE `custom_order_quotes` (
+    `id`               BIGINT NOT NULL AUTO_INCREMENT,
+    `order_id`         BIGINT NOT NULL,
+    `version`          INT NOT NULL,
+    `quoted_amount`    DECIMAL(12, 0) NOT NULL,
+    `producible_date`  DATE NOT NULL,
+    `admin_note`       VARCHAR(500) NULL,
+    `issued_by`        BIGINT NOT NULL,
+    `status`           VARCHAR(20) NOT NULL DEFAULT 'SENT',
+    `sent_at`          DATETIME(6) NOT NULL,
+    `accepted_at`      DATETIME(6) NULL,
+    `created_at`       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `updated_at`       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                        ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_custom_order_quotes_version` UNIQUE (`order_id`, `version`),
+    KEY `idx_custom_order_quotes_order` (`order_id`, `version` DESC),
+    CONSTRAINT `chk_custom_order_quotes_status`
+        CHECK (`status` IN ('SENT', 'ACCEPTED', 'SUPERSEDED')),
+    CONSTRAINT `fk_custom_order_quotes_order`
+        FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
+    CONSTRAINT `fk_custom_order_quotes_issuer`
+        FOREIGN KEY (`issued_by`) REFERENCES `members` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `custom_order_payment_links` (
+    `id`          BIGINT NOT NULL AUTO_INCREMENT,
+    `quote_id`    BIGINT NOT NULL,
+    `token`       VARCHAR(64) NOT NULL,
+    `amount`      DECIMAL(12, 0) NOT NULL,
+    `expires_at`  DATETIME(6) NOT NULL,
+    `used_at`     DATETIME(6) NULL,
+    `revoked_at`  DATETIME(6) NULL,
+    `status`      VARCHAR(20) NOT NULL DEFAULT 'ISSUED',
+    `created_at`  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_custom_order_payment_links_token` UNIQUE (`token`),
+    -- 견적 1건당 링크 1건. 중복 결제 방지의 1차 방어선이다.
+    CONSTRAINT `uk_custom_order_payment_links_quote` UNIQUE (`quote_id`),
+    KEY `idx_custom_order_payment_links_expiry` (`status`, `expires_at`),
+    CONSTRAINT `chk_custom_order_payment_links_status`
+        CHECK (`status` IN ('ISSUED', 'USED', 'EXPIRED', 'REVOKED')),
+    CONSTRAINT `fk_custom_order_payment_links_quote`
+        FOREIGN KEY (`quote_id`) REFERENCES `custom_order_quotes` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
