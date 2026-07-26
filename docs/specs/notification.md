@@ -3,6 +3,7 @@ domain: notification
 status: approved
 owner: 민정
 approved-at: 2026-07-26
+revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 ---
 
 # notification 스펙
@@ -20,12 +21,15 @@ approved-at: 2026-07-26
 
 ## 2. 상태값 (conventions.md 상태값 공통 규칙 준수)
 
-알림에는 **상태(status) 컬럼이 없다.** 읽음 여부는 불리언이고, 알림 종류는 type 컬럼이다.
+`notifications` 자체에는 **상태(status) 컬럼이 없다.** 읽음 여부는 불리언이고, 알림 종류는 type 컬럼이다.
+상태 컬럼은 전달 이력 테이블 `notification_deliveries`에만 있다.
 
 | 컬럼 | 값(영문 enum 이름) | 시작 상태 | 최종 상태 | 전이 규칙 요약 |
 |---|---|---|---|---|
 | `notifications.notification_type` | `NotificationType` 12개(아래 표) | 해당 없음(생성 시 확정) | 해당 없음 | 전이 없음 — 생성 후 불변 |
 | `notifications.is_read` | BOOLEAN (status 아님) | `false` (DDL DEFAULT 0) | `true` | 수신자 본인만 `false → true` 단방향, 되돌리기 없음 |
+| `notification_deliveries.status` | `DeliveryStatus` — `REQUESTED / SENT / FAILED / ABANDONED` | `REQUESTED` (DDL DEFAULT) | `SENT` / `ABANDONED` | `REQUESTED → SENT\|FAILED`, `FAILED → SENT\|FAILED\|ABANDONED`. 전이는 `DeliveryStatus.canTransitionTo()`가 소유 |
+| `notification_deliveries.channel` | `DeliveryChannel` — `WEBSOCKET` (status 아님, 종류) | 해당 없음(생성 시 확정) | 해당 없음 | 전이 없음 — 생성 후 불변 |
 
 `NotificationType` — 영문 enum 이름만 저장하고 한글 라벨은 화면에서만 매핑한다.
 
@@ -61,7 +65,12 @@ approved-at: 2026-07-26
   - `idx_notifications_receiver (receiver_id, id DESC)` — 목록 키셋 페이징
   - `idx_notifications_unread (receiver_id, is_read)` — 헤더 미읽음 카운트
   - 컬럼 타입 변경 없음. `created_at`은 DDL DEFAULT에 위임(자바에서 세팅 금지).
-- 범위 밖: `V0_ERD.sql`에만 있고 실제 생성된 적 없는 `notification_deliveries`(외부 채널 발송 이력)는 이번 범위에서 다루지 않는다.
+- 전달 이력 테이블 `notification_deliveries` — `docs/sql/V12_notification_deliveries.sql` 신규 (V0_ERD.sql 소급 반영. V1에는 없던 테이블이라 V1은 수정 없음)
+  - `id`, `notification_id`(FK notifications), `channel VARCHAR(20)`, `recipient VARCHAR(500) NULL`, `status VARCHAR(20) DEFAULT 'REQUESTED'`, `retry_count INT DEFAULT 0`, `next_retry_at DATETIME(6) NULL`, `failure_code`, `failure_reason VARCHAR(500)`, `requested_at`, `sent_at`, `template_code`/`provider_message_id`/`delivered_at`/`clicked_at`(외부 채널 확장용, WEBSOCKET 미사용), `created_at`
+  - `chk_notification_deliveries_status` / `chk_notification_deliveries_channel` CHECK, `idx_notification_deliveries_retry (status, next_retry_at)` — 재시도 대상 스캔
+  - `recipient`는 **NULL 허용**이다. 수신자 이메일을 업무 트랜잭션에서 조회하지 않기 위해(6장 규칙 2·3) 전송 시점에 채운다.
+  - `requested_at`/`created_at`은 DDL DEFAULT에 위임한다. `next_retry_at`은 업무 컬럼이라 서비스가 계산해 세팅한다.
+- 범위 밖: 관리자 알림은 전달 이력을 남기지 않는다(6장 규칙 1 참조).
 
 ## 4. 도메인 간 인터페이스
 
@@ -73,6 +82,7 @@ approved-at: 2026-07-26
 - 내가 사용할 다른 도메인의 공개 Service 메서드 (Mapper 직접 호출 금지):
   - `MemberService.getProfileMap` / `searchMemberIds` — 관리자 발송 내역의 대상 회원 표시·검색. **members 테이블 JOIN 금지.**
   - `MemberService.findAdminMemberIds()` — **신규 공개 계약**(member 도메인에 추가). 관리자 알림 팬아웃 대상 조회용. 시그니처 변경 시 수민↔민정 합의 필요.
+  - `MemberService.getProfile(...)` — 푸시 대상 username(이메일) 해석용. **업무 트랜잭션이 아니라 `NotificationPusher`(커밋 후·스케줄러)에서만 호출한다.**
 - 호출 방향: `ChatService`·`OrderService`·`CheckoutPaymentProcessor`·`RefundService` → `NotificationService` (단방향). notification은 업무 도메인을 역참조하지 않는다.
 
 ## 5. 화면
@@ -93,13 +103,14 @@ approved-at: 2026-07-26
 
 - team-plan.md 8장에서 이 도메인과 관련된 항목: "알림 생성 범위와 읽음 처리 방식" (미결)
 - 확정한 규칙 (확정 후 team-plan 8장 표 갱신):
-  1. 알림 수신자는 **고객과 관리자 모두**다. 관리자 알림은 발행 시점의 전체 ACTIVE ADMIN 회원에게 각각 한 건씩 저장(팬아웃)하고, 실시간 푸시는 `/topic/admin/notifications` 한 번으로 처리한다.
-  2. 알림은 업무 트랜잭션과 **같은 트랜잭션**에서 저장한다. 알림 저장 실패는 업무 트랜잭션을 롤백시킨다(누락 방지).
-  3. 실시간 푸시는 `@TransactionalEventListener(AFTER_COMMIT)`에서 수행하며, **푸시 실패는 롤백하지 않고 로그만 남긴다**. 클라이언트는 재접속 시 REST 조회로 복구한다.
+  1. 알림 수신자는 **고객과 관리자 모두**다. 관리자 알림은 발행 시점의 전체 ACTIVE ADMIN 회원에게 각각 한 건씩 저장(팬아웃)하고, 실시간 푸시는 `/topic/admin/notifications` 한 번으로 처리한다. 이 토픽 브로드캐스트는 수신자별 성공·실패를 판정할 수 없으므로 **관리자 알림에는 전달 이력(`notification_deliveries`)을 만들지 않고 재시도도 하지 않는다.** 관리자 경로를 개인 큐로 통일하는 작업은 `global/security` 변경이 필요해 별도 후속 과제로 둔다.
+  2. 알림은 업무 트랜잭션과 **같은 트랜잭션**에서 저장한다. 알림 저장 실패는 업무 트랜잭션을 롤백시킨다(누락 방지). 단 업무 트랜잭션에 남기는 것은 **INSERT뿐**이다 — `notifications` 1건과 (고객 알림이면) `notification_deliveries` 1건. 회원 조회와 STOMP 전송은 전부 커밋 후로 뺀다.
+  3. 실시간 푸시는 `@TransactionalEventListener(AFTER_COMMIT)`에서 수행하며 **푸시 실패는 롤백하지 않는다**. 고객 알림은 전달 결과를 `notification_deliveries`에 기록하고(`SENT` / `FAILED`), 실패분은 `@Scheduled` 잡이 **최대 3회**(백오프 1·2·4분) 재시도한 뒤 소진되면 `ABANDONED`로 남긴다. 재시도가 모두 실패해도 알림 행 자체는 남아 있으므로 클라이언트는 기존대로 REST 조회로 복구한다.
+     - `SENT`는 "전송 시도 성공"이지 **수신 확인이 아니다.** 접속하지 않은 수신자에게 `convertAndSendToUser`는 예외 없이 조용히 버려지므로 `delivered_at`은 쓰지 않는다. 재시도가 실제로 구제하는 것은 브로커 장애·회원 조회 실패이지 오프라인 사용자가 아니다.
   4. 채팅 알림은 발신자의 반대편에게 발행한다. 관리자→고객 메시지는 `CHAT_MESSAGE`(고객 수신), 고객→관리자 메시지는 `ADMIN_CHAT_MESSAGE`(관리자 수신). `SYSTEM_CARD`는 발행하지 않으며, 재전송 멱등 처리로 기존 메시지를 반환하는 경우에도 발행하지 않는다.
   5. 알림은 수정·삭제하지 않는다. 조회·읽음 처리는 **수신자 본인만** 가능하며, 타인 알림 접근은 `NOTIFICATION_002 FORBIDDEN`이다.
   6. 읽음은 단방향(`false → true`)이며 이미 읽은 알림을 다시 읽어도 성공으로 처리한다(멱등). `read_at`은 최초 읽음 시각을 유지한다.
-  7. 관리자 화면의 "전체 발송 내역"은 **읽기 전용**이다(수동 발송·재발송·삭제 없음). 읽음 처리는 관리자 본인 수신 알림에만 허용한다.
+  7. 관리자 화면의 "전체 발송 내역"은 **읽기 전용**이다(수동 발송·재발송·삭제 없음). 재발송은 규칙 3의 스케줄러 자동 재시도뿐이고 수동 재발송 UI는 범위 밖이다. 읽음 처리는 관리자 본인 수신 알림에만 허용한다.
   8. 목록 정렬은 `id DESC`(최신순)이며 읽은 알림도 함께 보여준다. 별도 보관·만료 정책은 두지 않는다.
 
 ## 7. 완료 기준

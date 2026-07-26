@@ -7,7 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.domain.notification.dto.view.NotificationSliceView;
 import com.cakeshop.domain.notification.entity.Notification;
@@ -32,6 +31,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class NotificationServiceTests {
 
     @Mock private NotificationMapper notificationMapper;
+    @Mock private NotificationDeliveryService deliveryService;
     @Mock private MemberService memberService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -39,15 +39,14 @@ class NotificationServiceTests {
 
     @BeforeEach
     void setUp() {
-        notificationService =
-            new NotificationService(notificationMapper, memberService, eventPublisher);
+        notificationService = new NotificationService(
+            notificationMapper, deliveryService, memberService, eventPublisher);
     }
 
     @Test
     void notifySavesOneRowAndPublishesEventForTheReceiver() {
-        when(memberService.getProfile(1L)).thenReturn(
-            new MemberProfileView(1L, "고객", "customer@example.com", null, LocalDateTime.now()));
         givenInsertAssignsId(100L);
+        when(deliveryService.enqueue(100L)).thenReturn(500L);
 
         notificationService.notify(NotificationCommand.forOrder(
             1L, NotificationType.ORDER_PAID, 9L, "결제 완료", "결제가 완료되었습니다."));
@@ -61,8 +60,31 @@ class NotificationServiceTests {
         ArgumentCaptor<NotificationEvent> event = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(eventPublisher).publishEvent(event.capture());
         assertThat(event.getValue().adminBroadcast()).isFalse();
-        assertThat(event.getValue().receiverUsername()).isEqualTo("customer@example.com");
+        assertThat(event.getValue().receiverId()).isEqualTo(1L);
+        assertThat(event.getValue().deliveryId()).isEqualTo(500L);
         assertThat(event.getValue().notification().id()).isEqualTo(100L);
+    }
+
+    /** 회원 조회가 업무 트랜잭션에 끼면 조회 실패가 결제를 롤백시킨다(이슈 #10). */
+    @Test
+    void notifyDoesNotTouchMemberServiceInsideTheBusinessTransaction() {
+        givenInsertAssignsId(100L);
+
+        notificationService.notify(NotificationCommand.forOrder(
+            1L, NotificationType.ORDER_PAID, 9L, "결제 완료", "결제가 완료되었습니다."));
+
+        verify(memberService, never()).getProfile(any());
+    }
+
+    /** 관리자 토픽은 수신자별 판정이 불가능해 전달 이력을 남기지 않는다(스펙 6장 규칙 1). */
+    @Test
+    void notifyAdminsDoesNotEnqueueDeliveries() {
+        when(memberService.findAdminMemberIds()).thenReturn(List.of(2L, 3L));
+
+        notificationService.notifyAdmins(NotificationCommand.toAdmins(
+            NotificationType.ADMIN_ORDER_PLACED, "신규 주문", "내용", "/admin/orders", 9L, null));
+
+        verify(deliveryService, never()).enqueue(any());
     }
 
     @Test

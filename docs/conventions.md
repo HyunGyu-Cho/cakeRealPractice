@@ -170,6 +170,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `post_reports.status` | 현규 | (신고 처리) | `PENDING / ACCEPTED / REJECTED` | 거의 확정 |
 | `reviews.status` | 현규 | 숨김 | `VISIBLE / HIDDEN` ? | ☐ 열림 |
 | `chat_rooms.status` | 민정 | 상담 가능 / 상담 종료 | **`OPEN / CLOSED` (확정)** | ✅ 확정 (V9, 스펙 docs/specs/chat.md) |
+| `notification_deliveries.status` | 민정 | (화면 표기 없음 — 내부 전달 이력) | **`REQUESTED / SENT / FAILED / ABANDONED` (확정)** | ✅ 확정 (V12, 스펙 docs/specs/notification.md) |
 
 ### 이미 확정된 두 enum
 
@@ -218,6 +219,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 |---|---|---|
 | 커뮤니티 글 `후기 / 질문 / 레시피 / 자유` | `posts.category` (`REVIEW/QUESTION/RECIPE/FREE`) — status와 별도 컬럼 | 현규 |
 | 알림 `주문 승인 / 결제 완료 …` | `NotificationType` enum 12개 확정 — 고객 `CHAT_MESSAGE`/`ORDER_PAID`/`ORDER_IN_PRODUCTION`/`ORDER_READY_FOR_PICKUP`/`ORDER_PICKED_UP`/`ORDER_CANCELED`/`ORDER_REJECTED`/`CUSTOM_ORDER_QUOTE`/`PAYMENT_REQUESTED`, 관리자 `ADMIN_CHAT_MESSAGE`/`ADMIN_ORDER_PLACED`/`ADMIN_ORDER_CANCELED`. status와 별도 컬럼(`notification_type`) | 민정 |
+| 알림 전달 경로 | `notification_deliveries.channel` (`DeliveryChannel` — 현재 `WEBSOCKET` 하나). 같은 테이블의 `status`(REQUESTED/SENT/FAILED/ABANDONED)와 별도 컬럼 | 민정 |
 
 `type`/`category`도 저장값·라벨 규칙은 status와 동일하게 적용한다(영문 enum 이름 저장, 한글 라벨 미저장).
 

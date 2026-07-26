@@ -27,31 +27,41 @@ public class NotificationService {
     private static final int MAX_SLICE_SIZE = 50;
 
     private final NotificationMapper notificationMapper;
+    private final NotificationDeliveryService deliveryService;
     private final MemberService memberService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public NotificationService(NotificationMapper notificationMapper, MemberService memberService,
+    public NotificationService(NotificationMapper notificationMapper,
+                               NotificationDeliveryService deliveryService,
+                               MemberService memberService,
                                ApplicationEventPublisher eventPublisher) {
         this.notificationMapper = notificationMapper;
+        this.deliveryService = deliveryService;
         this.memberService = memberService;
         this.eventPublisher = eventPublisher;
     }
 
-    /** [공개 계약] 회원 한 명에게 알림을 발행한다. */
+    /**
+     * [공개 계약] 회원 한 명에게 알림을 발행한다.
+     * 업무 트랜잭션에 남기는 것은 INSERT 두 건(알림 + 전달 이력)뿐이다.
+     * 수신자 조회와 STOMP 전송은 커밋 후 브로드캐스터가 맡는다.
+     */
     @Transactional
     public void notify(NotificationCommand command) {
         if (command.receiverId() == null) {
             throw new BusinessException(NotificationErrorCode.INVALID_RECEIVER);
         }
         Notification saved = save(command);
-        String username = memberService.getProfile(command.receiverId()).email();
+        Long deliveryId = deliveryService.enqueue(saved.getId());
         eventPublisher.publishEvent(NotificationEvent.toMember(
-            command.receiverId(), username, NotificationView.from(saved)));
+            command.receiverId(), deliveryId, NotificationView.from(saved)));
     }
 
     /**
      * [공개 계약] 전체 관리자에게 알림을 발행한다.
      * 저장은 관리자마다 한 건씩 하고, 실시간 전달은 공용 토픽으로 한 번만 한다.
+     * 토픽 브로드캐스트는 수신자별 성공·실패를 판정할 수 없어 전달 이력을 남기지 않는다
+     * (스펙 6장 규칙 1 — 관리자 경로 통일은 별도 과제).
      */
     @Transactional
     public void notifyAdmins(NotificationCommand command) {

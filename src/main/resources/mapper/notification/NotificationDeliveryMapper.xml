@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cakeshop.domain.notification.mapper.NotificationDeliveryMapper">
+    <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <resultMap id="deliveryResultMap" type="com.cakeshop.domain.notification.entity.NotificationDelivery">
+        <id property="id" column="id"/>
+        <result property="notificationId" column="notification_id"/>
+        <result property="channel" column="channel"/>
+        <result property="recipient" column="recipient"/>
+        <result property="status" column="status"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="nextRetryAt" column="next_retry_at"/>
+        <result property="failureCode" column="failure_code"/>
+        <result property="failureReason" column="failure_reason"/>
+        <result property="requestedAt" column="requested_at"/>
+        <result property="sentAt" column="sent_at"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="deliveryColumns">
+        id, notification_id, channel, recipient, status, retry_count, next_retry_at,
+        failure_code, failure_reason, requested_at, sent_at, created_at
+    </sql>
+
+    <!-- requested_at / created_at 은 DDL DEFAULT 에 위임한다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification_deliveries (
+            notification_id, channel, status, next_retry_at
+        ) VALUES (
+            #{notificationId}, #{channel}, #{status}, #{nextRetryAt}
+        )
+    </insert>
+
+    <select id="findById" resultMap="deliveryResultMap">
+        SELECT <include refid="deliveryColumns"/>
+          FROM notification_deliveries
+         WHERE id = #{id}
+    </select>
+
+    <!--
+      재시도 대상: 아직 최종 상태가 아니고 재시도 여유가 남았으며 다음 시도 시각이 지난 건.
+      REQUESTED 가 남아 있는 경우는 커밋 직후 앱이 죽어 즉시 푸시 자체가 유실된 상황이다.
+      members 는 절대 조인하지 않는다(수신자 이메일은 MemberService 로 해석).
+    -->
+    <select id="findRetryTargets"
+            resultType="com.cakeshop.domain.notification.dto.view.NotificationDeliveryRetryRow">
+        SELECT d.id            AS deliveryId,
+               d.status        AS status,
+               d.retry_count   AS retryCount,
+               n.id            AS notificationId,
+               n.receiver_id   AS receiverId,
+               n.notification_type AS notificationType,
+               n.title         AS title,
+               n.content       AS content,
+               n.is_read       AS `read`,
+               n.target_url    AS targetUrl,
+               n.created_at    AS createdAt
+          FROM notification_deliveries d
+          JOIN notifications n ON n.id = d.notification_id
+         WHERE d.status IN ('REQUESTED', 'FAILED')
+           AND d.retry_count &lt; #{maxRetryCount}
+           AND d.next_retry_at &lt;= CURRENT_TIMESTAMP(6)
+         ORDER BY d.id
+         LIMIT #{limit}
+    </select>
+
+    <update id="markSent">
+        UPDATE notification_deliveries
+           SET status = #{status},
+               recipient = #{recipient},
+               sent_at = CURRENT_TIMESTAMP(6),
+               next_retry_at = NULL,
+               failure_code = NULL,
+               failure_reason = NULL
+         WHERE id = #{id}
+           AND status = #{fromStatus}
+    </update>
+
+    <update id="markFailed">
+        UPDATE notification_deliveries
+           SET status = #{status},
+               retry_count = #{retryCount},
+               next_retry_at = #{nextRetryAt},
+               failure_code = #{failureCode},
+               failure_reason = #{failureReason}
+         WHERE id = #{id}
+           AND status = #{fromStatus}
+    </update>
+</mapper>
