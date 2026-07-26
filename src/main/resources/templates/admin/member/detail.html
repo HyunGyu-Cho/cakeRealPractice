@@ -1,6 +1,6 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>회원 상세 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
+  <th:block th:replace="~{fragments/common/head :: head('회원 상세 | 관리자')}"></th:block>
+</head><body>
 <div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('members')}"></aside><div class="admin-main">
   <header th:replace="~{fragments/admin/header :: header('회원 상세')}"></header><main class="admin-content">
   <div th:replace="~{fragments/common/alert :: alert}"></div>

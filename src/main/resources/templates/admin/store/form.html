@@ -1,11 +1,7 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>매장 정보 관리 | 관리자</title>
-  <link rel="icon" th:href="@{/favicon.ico}" sizes="any">
-  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <th:block th:replace="~{fragments/common/head :: head('매장 정보 관리 | 관리자')}"></th:block>
   <script defer th:src="@{/js/store-admin.js}"></script>
 </head>
 <body>

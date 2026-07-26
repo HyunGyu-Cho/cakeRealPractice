@@ -11,7 +11,6 @@
       <button class="btn" type="submit">로그아웃</button>
     </form>
   </div>
-  <!-- 관리자 화면 공통 스크립트. 화면마다 따로 붙이면 중복 로드로 핸들러가 두 번 등록되므로
-       이 프래그먼트 한 곳에서만 로드한다. 여기 있던 관리자 목업 번들은 쓰는 화면이 없어 내렸다. -->
-  <script defer th:src="@{/js/app.js}"></script>
+  <!-- app.js는 여기서 로드하지 않는다. 고객·관리자 공통으로 fragments/common/head 한 곳이 소유한다
+       (여기서도 붙이면 head를 함께 쓰는 화면에서 두 번 실행돼 핸들러가 2벌 등록된다). -->
 </header>

@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/common/head :: head('주문 상세')}"></head>
+<head>
+  <th:block th:replace="~{fragments/common/head :: head('주문 상세')}"></th:block>
+</head>
 <body><div class="admin-layout">
 <aside th:replace="~{fragments/admin/sidebar :: sidebar('orders')}"></aside>
 <div class="admin-main"><header th:replace="~{fragments/admin/header :: header('주문 상세')}"></header>

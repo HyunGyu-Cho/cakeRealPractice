@@ -78,21 +78,54 @@ class CustomerPageControllerTests {
     }
 
     /**
-     * app.js는 화면마다 붙이지 않고 공통 프래그먼트(고객 head·관리자 header)에서만 로드한다.
-     * 같은 스크립트를 두 번 붙이면 클릭 핸들러가 두 번 등록돼 확인창이 두 번 뜬다.
+     * app.js를 로드하는 곳은 fragments/common/head 하나뿐이어야 한다.
+     * 예전에는 고객 화면이 head 프래그먼트로, 관리자 화면이 admin/header로 각각 로드했는데
+     * 둘 다 쓰는 관리자 화면 4개(픽업 처리·주문 목록/상세·결제 관리)에서 같은 파일이 두 번 실행됐다.
+     * app.js는 document에 click/change/submit 리스너를 거는 구조라 핸들러가 2벌 등록되고,
+     * 그 화면에 [data-confirm] 버튼을 하나 넣는 순간 확인창이 두 번 뜬다.
      */
     @Test
-    void adminTemplatesLoadAppScriptOnlyThroughTheSharedHeader() throws IOException {
-        Path adminRoot = Path.of("src", "main", "resources", "templates", "admin");
-        try (Stream<Path> templates = Files.walk(adminRoot)) {
+    void appScriptIsLoadedByTheHeadFragmentOnly() throws IOException {
+        Path templateRoot = Path.of("src", "main", "resources", "templates");
+        Path headFragment = templateRoot.resolve(Path.of("fragments", "common", "head.html"));
+
+        try (Stream<Path> templates = Files.walk(templateRoot)) {
             List<String> offenders = templates
                 .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> !path.equals(headFragment))
                 .filter(path -> readTemplate(path).contains("/js/app.js"))
+                .map(templateRoot::relativize)
                 .map(Path::toString)
                 .toList();
 
             assertThat(offenders)
-                .as("관리자 화면은 app.js를 직접 로드하지 않는다 — fragments/admin/header가 담당한다")
+                .as("app.js는 fragments/common/head 한 곳에서만 로드한다 — 두 번 실행되면 핸들러가 2벌 등록된다")
+                .isEmpty();
+        }
+        assertThat(readTemplate(headFragment))
+            .as("공통 head가 app.js를 실제로 로드해야 한다")
+            .contains("/js/app.js");
+    }
+
+    /**
+     * 모든 화면은 자기 &lt;head&gt;를 직접 쓰지 않고 공통 프래그먼트를 부른다.
+     * 직접 쓰면 favicon·viewport·CSRF meta처럼 조용히 빠지는 항목이 생긴다
+     * (통일 전 24개 화면에 favicon이 없었고 error 화면 3개는 viewport도 없었다).
+     */
+    @Test
+    void everyScreenUsesTheSharedHeadFragment() throws IOException {
+        Path templateRoot = Path.of("src", "main", "resources", "templates");
+        try (Stream<Path> templates = Files.walk(templateRoot)) {
+            List<String> offenders = templates
+                .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> !path.toString().contains("fragments"))
+                .filter(path -> !readTemplate(path).contains("fragments/common/head :: head("))
+                .map(templateRoot::relativize)
+                .map(Path::toString)
+                .toList();
+
+            assertThat(offenders)
+                .as("화면은 <head>를 직접 쓰지 않고 fragments/common/head를 부른다")
                 .isEmpty();
         }
     }
