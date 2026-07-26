@@ -92,11 +92,11 @@
     공통 운반 타입 `MemberCountRow`는 `global/common/stats`에 뒀다(⚠️ global 추가 — `StatsPeriod`와 같은 자리).
   - 상세 화면(`/admin/members/{id}`)은 신규다 — 목업의 "상세" 버튼에 이동할 화면이 없었다.
   - 범위 밖: 관리자의 회원 정보 직접 수정, 강제 탈퇴, 제재 이력 테이블, 제재 알림, 로그인된 세션 즉시 만료.
+  - `admin-mockup.js`는 이 화면이 마지막 사용처였다. **삭제하지 않고 `customer-mockup.js`와 같은 원칙으로
+    "파일은 남기고 의존 0"** 으로 맞춘다 — 관리자 header의 목업 번들을 `app.js`로 교체하는 작업은
+    통합 점검 PR이 담당한다. 그래서 회원 화면 템플릿은 `app.js`를 직접 붙이지 않는다(중복 로드 방지).
 
 - [ ] **전체 통합 점검** — 시드 정리(로컬 vs RDS), `customer-mockup.js` 의존 0 확인, 전체 테스트, README 현황표 갱신
-
-- [ ] **후속: `admin-mockup.js` 제거** — `/admin/members` 실구현으로 이 스크립트를 쓰는 화면이 0이 됐다.
-  확인창(`data-confirm`)을 `app.js`가 넘겨받는 통합 점검 PR과 함께 정리한다(두 PR이 모두 dev에 들어간 뒤).
 
 ---
 
