@@ -149,6 +149,9 @@ if ($newSql.Count -eq 0) {
 
         foreach ($rel in $newSql) {
             $sqlText = Get-Content (Join-Path $root $rel) -Raw -Encoding UTF8
+            # 주석은 파싱에서 뺀다. V파일은 "왜 이렇게 했는지"를 주석으로 남기므로 DDL 문장을
+            # 설명하는 문구가 흔하고, 그대로 두면 주석 속 CREATE TABLE이 실제 테이블로 잡힌다.
+            $sqlText = $sqlText -replace '(?m)--.*$', '' -replace '(?s)/\*.*?\*/', ''
 
             foreach ($m in [regex]::Matches($sqlText, '(?is)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?')) {
                 $table = $m.Groups[1].Value
@@ -170,12 +173,15 @@ if ($newSql.Count -eq 0) {
                         Name = $op.Groups[2].Value
                     }
                 }
-                foreach ($op in [regex]::Matches($body, '(?is)\bMODIFY\s+(?:COLUMN\s+)?`?(\w+)`?\s+([A-Z]+\s*(?:\([^)]*\))?)([^,]*)')) {
+                # UNSIGNED·ZEROFILL은 타입의 일부다. 빼고 비교하면 information_schema의
+                # "tinyint(3) unsigned"와 영원히 어긋난다.
+                foreach ($op in [regex]::Matches($body,
+                        '(?is)\bMODIFY\s+(?:COLUMN\s+)?`?(\w+)`?\s+([A-Z]+\s*(?:\([^)]*\))?(?:\s*(?:UNSIGNED|ZEROFILL))*)([^,]*)')) {
                     $column = $op.Groups[1].Value
                     $tail = $op.Groups[3].Value
                     $columnOps += [pscustomobject]@{ Index = $op.Index; Action = "MODIFY"; Name = $column }
                     $expectedColumnDefinitions["$table.$column"] = @{
-                        Type = ($op.Groups[2].Value -replace '\s+', '').ToLowerInvariant()
+                        Type = ($op.Groups[2].Value -replace '\s+', ' ').Trim().ToLowerInvariant()
                         NotNull = ($tail -match '(?i)\bNOT\s+NULL\b')
                         HasDefault = ($tail -match "(?i)\bDEFAULT\s+'([^']*)'")
                         Default = if ($tail -match "(?i)\bDEFAULT\s+'([^']*)'") { $Matches[1] } else { "" }
@@ -263,10 +269,11 @@ if ($newSql.Count -eq 0) {
             $actual = Invoke-DbScalar $q
             if (-not $actual.Ok -or -not $actual.Value) { continue }
             $parts = $actual.Value.Split("|", 3)
-            $actualType = ($parts[0] -replace '\s+', '').ToLowerInvariant()
+            $actualType = ($parts[0] -replace '\s+', ' ').Trim().ToLowerInvariant()
             # MariaDB reports legacy integer display widths (for example BIGINT as bigint(20)).
             # They do not change storage or range, so compare the semantic type without the width.
-            $actualType = $actualType -replace '^(tinyint|smallint|mediumint|int|integer|bigint)\(\d+\)$', '$1'
+            # UNSIGNED 같은 뒤따르는 속성은 남긴다("tinyint(3) unsigned" -> "tinyint unsigned").
+            $actualType = $actualType -replace '^(tinyint|smallint|mediumint|int|integer|bigint)\(\d+\)', '$1'
             $actualDefault = $parts[2].Trim("'")
             if ($actualType -ne $expected.Type -or ($expected.NotNull -and $parts[1] -ne "NO") -or
                     ($expected.HasDefault -and $actualDefault -ne $expected.Default)) {
