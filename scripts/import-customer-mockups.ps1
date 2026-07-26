@@ -49,7 +49,6 @@ $headTemplate = @'
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>__TITLE__</title>
   <link rel="stylesheet" th:href="@{/css/app.css}">
-  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
   <script defer th:src="@{/js/app.js}"></script>
   <script defer th:src="@{/js/customer-mockup.js}"></script>
 </head>
@@ -84,6 +83,10 @@ foreach ($entry in $screenMap.GetEnumerator()) {
     Set-Content -Path $destinationPath -Value $content -Encoding UTF8
 }
 
+# customer-mockup.css는 app.css의 부분집합이며 어떤 템플릿도 로드하지 않는다(참조 0).
+# 새 목업을 이관할 때 원본을 대조하는 스냅샷 용도로만 재생성한다.
+# ⚠ $headTemplate에 이 파일 링크를 되살리지 말 것 — 구 팔레트 :root가 app.css를
+#   덮어써 토스 테마가 통째로 되돌아간다.
 $cssSources = @("reset.css", "variables.css", "common.css", "customer.css", "responsive.css")
 $css = $cssSources | ForEach-Object {
     "/* source: cakeProjectSample/css/$_ */`r`n" +
