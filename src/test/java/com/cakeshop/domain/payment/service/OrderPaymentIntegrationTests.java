@@ -51,7 +51,7 @@ class OrderPaymentIntegrationTests {
             INSERT INTO products
                 (category_id, name, base_price, product_type, preparation_days,
                  cancellation_limit_days, stock_quantity, status)
-            VALUES (?, ?, 41000, 'NORMAL', 0, 0, 5, 'ACTIVE')
+            VALUES (?, ?, 41000, 'GENERAL', 0, 0, 5, 'ACTIVE')
             """, categoryId, productName);
         Long productId = jdbcTemplate.queryForObject(
             "SELECT id FROM products WHERE name = ?", Long.class, productName);

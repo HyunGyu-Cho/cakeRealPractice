@@ -777,7 +777,7 @@ CREATE TABLE `post_reports` (
 
 -- 기본 카테고리 4종 (1차: product_type과 코드 1:1)
 INSERT INTO `categories` (`code`, `name`, `sort_order`) VALUES
-    ('NORMAL',   '일반 케이크', 1),
+    ('GENERAL',  '일반 케이크', 1),
     ('CUSTOM',   '주문 제작',   2),
     ('SAME_DAY', '당일 픽업',   3),
     ('SEASON',   '시즌 상품',   4);

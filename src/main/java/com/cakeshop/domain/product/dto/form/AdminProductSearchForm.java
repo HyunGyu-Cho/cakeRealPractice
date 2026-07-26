@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class AdminProductSearchForm {
 
-    private static final Set<String> TYPES = Set.of("NORMAL", "CUSTOM", "SAME_DAY", "SEASON");
+    private static final Set<String> TYPES = Set.of("GENERAL", "CUSTOM", "SAME_DAY", "SEASON");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE");
     private static final Set<String> STOCKS = Set.of("IN_STOCK", "SOLD_OUT");
 

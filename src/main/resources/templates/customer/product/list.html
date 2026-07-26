@@ -35,7 +35,7 @@
             <strong class="form-label">상품 유형</strong>
             <div class="filter-options">
               <label class="choice"><input type="radio" name="type" value="" th:checked="${search.normalizedType == null}"> 전체</label>
-              <label class="choice"><input type="radio" name="type" value="NORMAL" th:checked="${search.normalizedType == 'NORMAL'}"> 일반 케이크</label>
+              <label class="choice"><input type="radio" name="type" value="GENERAL" th:checked="${search.normalizedType == 'GENERAL'}"> 일반 케이크</label>
               <label class="choice"><input type="radio" name="type" value="CUSTOM" th:checked="${search.normalizedType == 'CUSTOM'}"> 주문 제작</label>
               <label class="choice"><input type="radio" name="type" value="SAME_DAY" th:checked="${search.normalizedType == 'SAME_DAY'}"> 당일 픽업</label>
               <label class="choice"><input type="radio" name="type" value="SEASON" th:checked="${search.normalizedType == 'SEASON'}"> 시즌 상품</label>

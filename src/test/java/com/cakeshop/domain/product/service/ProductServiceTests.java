@@ -87,9 +87,9 @@ class ProductServiceTests {
     @Test
     void stockLabelDerivesFromQuantity() {
         // 품절·재고부족은 stock_quantity 파생값 — 라벨 규칙 회귀 가드
-        assertThat(ProductSummaryView.stockLabel(ProductType.NORMAL, 0)).isEqualTo("품절");
-        assertThat(ProductSummaryView.stockLabel(ProductType.NORMAL, 4)).isEqualTo("재고 부족");
-        assertThat(ProductSummaryView.stockLabel(ProductType.NORMAL, 5)).isEqualTo("재고 있음");
+        assertThat(ProductSummaryView.stockLabel(ProductType.GENERAL, 0)).isEqualTo("품절");
+        assertThat(ProductSummaryView.stockLabel(ProductType.GENERAL, 4)).isEqualTo("재고 부족");
+        assertThat(ProductSummaryView.stockLabel(ProductType.GENERAL, 5)).isEqualTo("재고 있음");
         assertThat(ProductSummaryView.stockLabel(ProductType.CUSTOM, null)).isEqualTo("주문 가능");
     }
 
@@ -98,7 +98,7 @@ class ProductServiceTests {
         product.setId(1L);
         product.setName("딸기 생크림 케이크");
         product.setBasePrice(35000L);
-        product.setProductType(stock == null ? "CUSTOM" : "NORMAL");
+        product.setProductType(stock == null ? "CUSTOM" : "GENERAL");
         product.setPreparationDays(0);
         product.setCancellationLimitDays(0);
         product.setStockQuantity(stock);

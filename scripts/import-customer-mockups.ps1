@@ -24,7 +24,7 @@ $routeMap = [ordered]@{
     "/customer/product-list.html?type=sameday" = "/products?type=sameday"
     "/customer/product-list.html?type=season" = "/products?type=season"
     "/customer/product-list.html?type=custom" = "/products?type=custom"
-    "/customer/product-list.html?type=normal" = "/products?type=normal"
+    "/customer/product-list.html?type=normal" = "/products?type=general"
     "/customer/product-detail.html" = "/products/1"
     "/customer/product-list.html" = "/products"
     "/customer/cart.html" = "/cart"
