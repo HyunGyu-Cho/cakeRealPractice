@@ -1,21 +1,3 @@
-function updateMockCartCount(items) {
-  let cartItems = items;
-  if (!Array.isArray(cartItems)) {
-    try {
-      cartItems = JSON.parse(localStorage.getItem("cakeShopCart") || "[]");
-    } catch (error) {
-      cartItems = [];
-    }
-  }
-
-  const count = Array.isArray(cartItems)
-    ? cartItems.reduce((sum, item) => sum + Math.max(0, Number(item && item.quantity) || 0), 0)
-    : 0;
-  document.querySelectorAll("[data-cart-count]").forEach((element) => {
-    element.textContent = `장바구니 (${count})`;
-  });
-}
-
 /** 패널 탭: [data-panel-tabs] 안의 버튼이 data-panel-target으로 가리키는 패널만 남긴다.
  *  서버가 이미 모든 패널을 렌더한 뒤의 표시 전환일 뿐이라 데이터를 다시 불러오지 않는다. */
 function activatePanelTab(button) {
@@ -30,12 +12,46 @@ function activatePanelTab(button) {
   });
 }
 
+/** 모달: [data-modal-open]이 가리키는 id를 열고 [data-modal-close]가 닫는다. 서버 렌더된 마크업의 표시 전환일 뿐이다. */
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.hidden = false;
+  const focusable = modal.querySelector("button,input,a");
+  if (focusable) focusable.focus();
+}
+
+/** 전체 동의: 같은 폼 안의 나머지 체크박스를 [data-check-all] 상태에 맞춘다. */
+function syncCheckAll(source) {
+  const form = source.closest("form");
+  if (!form) return;
+  form.querySelectorAll('input[type="checkbox"]:not([data-check-all])').forEach((box) => {
+    box.checked = source.checked;
+  });
+}
+
 document.addEventListener("click", (event) => {
   const tab = event.target.closest("[data-panel-target]");
   if (tab) activatePanelTab(tab);
+
+  const button = event.target.closest("button");
+  if (!button) return;
+  if (button.dataset.modalOpen) openModal(button.dataset.modalOpen);
+  if (button.matches("[data-modal-close]")) {
+    const modal = button.closest(".modal");
+    if (modal) modal.hidden = true;
+  }
+  // 되돌릴 수 없는 동작(탈퇴·제재·판매 중지 등)의 확인창. 취소하면 제출 자체를 막는다.
+  // 목업 번들에도 같은 핸들러가 남아 있으므로 그 번들을 다시 로드하면 확인창이 두 번 뜬다.
+  // 현재 이 핸들러가 [data-confirm]의 유일한 주인이며, 테스트가 목업 번들 의존 0을 고정한다.
+  if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) event.preventDefault();
 });
 
-/** 되돌릴 수 없는 제출 확인. 목업 스크립트의 [data-confirm]과 이름을 달리해 확인창이 겹치지 않게 한다. */
+document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-check-all]")) syncCheckAll(event.target);
+});
+
+/** 되돌릴 수 없는 제출 확인. 버튼이 아니라 폼에 붙일 때 쓴다. */
 document.addEventListener("submit", (event) => {
   const message = event.target.dataset && event.target.dataset.confirmSubmit;
   if (message && !window.confirm(message)) event.preventDefault();
@@ -46,10 +62,4 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-current-year]").forEach((element) => {
     element.textContent = currentYear;
   });
-  updateMockCartCount();
-});
-
-document.addEventListener("cart:updated", (event) => updateMockCartCount(event.detail));
-window.addEventListener("storage", (event) => {
-  if (event.key === "cakeShopCart") updateMockCartCount();
 });

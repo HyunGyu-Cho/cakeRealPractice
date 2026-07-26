@@ -29,7 +29,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 정상 실행 로그에는 `The following 1 profile is active: "local"`과 `Tomcat started on port 8080`이 표시된다. 실행 후 `http://localhost:8080/`에서 고객 화면을 확인한다.
 
-전체 화면 경로는 `http://localhost:8080/screens`에서 확인한다. `local` 프로필에서는 화면 선이관 기간 동안 고객 목업 흐름만 로그인 없이 열 수 있다. 모든 관리자 화면(`/admin/**`)은 관리자 로그인이 필요하며, 로컬에서는 `docs/sql/V1_first_MVC_table.sql`로 만든 `admin@cakeshop.local / Admin1234!` 계정으로 로그인해 확인한다. `rds` 프로필에서는 고객 목업 공개 조회도 비활성화된다.
+전체 화면 경로는 `http://localhost:8080/screens`에서 확인한다. `local` 프로필에서는 공개 고객 화면을 로그인 없이 열 수 있다. 모든 관리자 화면(`/admin/**`)은 관리자 로그인이 필요하며, 로컬에서는 `docs/sql/V1_first_MVC_table.sql`로 만든 `admin@cakeshop.local / Admin1234!` 계정으로 로그인해 확인한다. `rds` 프로필에서는 고객 목업 공개 조회도 비활성화된다.
 
 ### 공용 RDS로 실행
 
@@ -93,6 +93,20 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 > 검증됨: 개발 로컬 DB에 `V7`(장바구니)·`V8`(일반 주문/모의 결제)·`V9`(1:1 채팅)·`V10`(알림 타입 제약·인덱스)·`V11`(상품 샘플 시드)·`V12`(알림 전달 이력)까지 적용했으며 머지 후 구조 검증·전체 테스트·화면 스모크를 통과했다. 기존 DB는 `V2 → V3 → V4 → V5 → V6 → V7 → V8 → V9 → V10 → V11 → V12` 순서로 적용한다.
 >
 > `V11_product_seed.sql`은 스키마가 아니라 개발용 상품 샘플이다(재실행해도 중복되지 않는다). 이 시드가 없으면 products가 비어 있어 로컬에서 장바구니 → 주문 → 결제 흐름을 확인할 수 없다.
+
+### 시드 구분 (로컬 vs 공용 RDS)
+
+시드는 두 종류뿐이고 기준은 **"없으면 앱이 동작하지 않는가"** 하나다.
+
+| 구분 | 기준 | 대상 | 공용 RDS |
+|---|---|---|---|
+| **필수 시드** | 없으면 화면·기능이 깨지는 마스터 데이터 | `categories` 4종(V1), 대표 매장 1행 + 7개 요일 영업시간(V1), `post_categories`(V2 상단) | **적용한다** |
+| **데모 시드** | 로컬에서 흐름을 눈으로 확인하기 위한 샘플 | 샘플 계정 2개(V1), 커뮤니티 샘플 글·댓글(V2 하단), 상품 샘플(V11), 주문제작 상품·옵션(V13 5절), 쿠폰 데모(V15 3절) | **적용하지 않는다** |
+
+- 대표 매장(`id = 1`)은 `StoreService.DEFAULT_STORE_ID`가 고정 참조하고 `getStoreView`가 7개 요일 행을 필수로 요구하므로 필수 시드다. 값은 RDS에서 관리자 화면으로 실제 매장 정보로 덮어쓴다.
+- 데모 시드는 전부 존재 여부를 확인하고 넣는 형태라 재실행해도 중복되지 않는다. 공용 RDS에 실수로 적용했다면 삭제해도 스키마에 영향이 없다.
+- 공용 RDS의 관리자 계정은 V1 시드(`admin@cakeshop.local / Admin1234!`)를 그대로 쓰지 않는다. 해시가 저장소에 공개돼 있으므로 별도 계정을 만들고 V1 샘플 계정은 넣지 않는다.
+- 상품·주문제작 옵션·쿠폰은 운영에서 관리자 화면으로 등록하는 데이터다. RDS가 비어 있는 것이 정상이며 시드로 채우지 않는다.
 
 기존 DB에 증분 파일을 적용할 때는 다음 도우미를 사용할 수 있다.
 
@@ -160,7 +174,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 
 ## 고객 화면 선이관
 
-프론트 원본 18개 화면 중 메인과 로그인은 각각 매장 조회와 Spring Security 연동을 유지한다. 나머지 화면은 아래 import 스크립트로 도메인별 Thymeleaf 템플릿과 GET 경로에 먼저 연결했다. 커뮤니티 3개와 채팅 1개 화면은 별도로 추가했으며, 이로써 `/screens` 기준 고객 화면은 총 22개다. 커뮤니티·회원·상품·장바구니·일반 주문/모의 결제·채팅·알림은 실제 DB 연동으로 전환됐고, 나머지 목업 화면의 폼은 브라우저 안에서만 실행되며 DB를 변경하지 않는다.
+프론트 원본 18개 화면 중 메인과 로그인은 각각 매장 조회와 Spring Security 연동을 유지한다. 나머지 화면은 아래 import 스크립트로 도메인별 Thymeleaf 템플릿과 GET 경로에 먼저 연결했다. 커뮤니티 3개와 채팅 1개 화면은 별도로 추가했으며, 이로써 `/screens` 기준 고객 화면은 총 22개다. 고객 화면은 전부 실제 DB 연동으로 전환됐고, 목업 스크립트(`customer-mockup.js`)에 의존하는 화면은 하나도 남아 있지 않다(`CustomerPageControllerTests`가 고정한다).
 
 | 기능 | 경로 | 현재 상태 |
 |---|---|---|
@@ -181,6 +195,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
 고객 화면은 후기를 마지막으로 **전부 실구현으로 전환**됐다. 따라서 `$screenMap`은 비어 있고, 아래 명령은 이제 전용 CSS·JavaScript만 다시 가져온다. 새 목업 화면을 이관할 때만 `$screenMap`에 항목을 추가하고, 실구현 전환 시 다시 제외한다.
+
+### 목업 JS 번들 취급
+
+`customer-mockup.js`·`admin-mockup.js`는 **파일로 남기되 어떤 화면도 로드하지 않는다**. 새 목업을 들여올 때 다시 쓰는 자산이라 지우지 않지만, 실구현 화면이 끌어다 쓰면 안 된다. 두 번들 모두 `[data-confirm]` 확인창 핸들러를 갖고 있어 `app.js`와 함께 로드되면 **확인창이 두 번 뜨기 때문이다.** `CustomerPageControllerTests`가 참조 0을 고정한다.
+
+`app.js`는 화면마다 붙이지 않고 공통 프래그먼트에서만 로드한다 — 고객은 `fragments/common/head`, 관리자는 `fragments/admin/header`다. 같은 스크립트를 두 번 붙이면 클릭 핸들러가 두 번 등록돼 같은 증상이 난다(테스트가 함께 고정한다).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1
