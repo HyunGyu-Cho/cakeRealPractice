@@ -217,7 +217,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 목업 표기 | 실제 | 담당 |
 |---|---|---|
 | 커뮤니티 글 `후기 / 질문 / 레시피 / 자유` | `posts.category` (`REVIEW/QUESTION/RECIPE/FREE`) — status와 별도 컬럼 | 현규 |
-| 알림 `주문 승인 / 결제 완료 …` | `NotificationType` enum (**현재 TODO, 채워야 함**) | 민정 |
+| 알림 `주문 승인 / 결제 완료 …` | `NotificationType` enum 12개 확정 — 고객 `CHAT_MESSAGE`/`ORDER_PAID`/`ORDER_IN_PRODUCTION`/`ORDER_READY_FOR_PICKUP`/`ORDER_PICKED_UP`/`ORDER_CANCELED`/`ORDER_REJECTED`/`CUSTOM_ORDER_QUOTE`/`PAYMENT_REQUESTED`, 관리자 `ADMIN_CHAT_MESSAGE`/`ADMIN_ORDER_PLACED`/`ADMIN_ORDER_CANCELED`. status와 별도 컬럼(`notification_type`) | 민정 |
 
 `type`/`category`도 저장값·라벨 규칙은 status와 동일하게 적용한다(영문 enum 이름 저장, 한글 라벨 미저장).
 
@@ -243,7 +243,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
 | 정후 | `coupons.status`(캠페인 상태) 값 확정 |
 | 현규 | `comments.status` / `reviews.status`(숨김) 값 확정 |
-| 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. **`NotificationType` enum 값 채우기**는 알림 도메인 후속 범위 |
+| 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. `NotificationType` enum 12개 확정 (`docs/specs/notification.md`) |
 
 > ☐ 항목을 확정하면 인벤토리의 해당 행을 "확정"으로 갱신하고, enum + DDL을 함께 커밋한다.
 
