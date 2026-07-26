@@ -59,7 +59,6 @@ class NotificationServiceTests {
 
         ArgumentCaptor<NotificationEvent> event = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(eventPublisher).publishEvent(event.capture());
-        assertThat(event.getValue().adminBroadcast()).isFalse();
         assertThat(event.getValue().receiverId()).isEqualTo(1L);
         assertThat(event.getValue().deliveryId()).isEqualTo(500L);
         assertThat(event.getValue().notification().id()).isEqualTo(100L);
@@ -76,17 +75,6 @@ class NotificationServiceTests {
         verify(memberService, never()).getProfile(any());
     }
 
-    /** 관리자 토픽은 수신자별 판정이 불가능해 전달 이력을 남기지 않는다(스펙 6장 규칙 1). */
-    @Test
-    void notifyAdminsDoesNotEnqueueDeliveries() {
-        when(memberService.findAdminMemberIds()).thenReturn(List.of(2L, 3L));
-
-        notificationService.notifyAdmins(NotificationCommand.toAdmins(
-            NotificationType.ADMIN_ORDER_PLACED, "신규 주문", "내용", "/admin/orders", 9L, null));
-
-        verify(deliveryService, never()).enqueue(any());
-    }
-
     @Test
     void notifyRejectsCommandWithoutReceiver() {
         assertThatThrownBy(() -> notificationService.notify(NotificationCommand.toAdmins(
@@ -97,9 +85,13 @@ class NotificationServiceTests {
         verify(notificationMapper, never()).insert(any());
     }
 
+    /** 관리자도 개인 큐로 받는다 — 수신자별로 저장·전달 이력·이벤트가 각각 하나씩 생긴다. */
     @Test
-    void notifyAdminsFansOutRowsButBroadcastsOnce() {
+    void notifyAdminsFansOutRowsDeliveriesAndEventsPerAdmin() {
         when(memberService.findAdminMemberIds()).thenReturn(List.of(2L, 3L));
+        givenInsertAssignsIds(100L, 101L);
+        when(deliveryService.enqueue(100L)).thenReturn(500L);
+        when(deliveryService.enqueue(101L)).thenReturn(501L);
 
         notificationService.notifyAdmins(NotificationCommand.toAdmins(
             NotificationType.ADMIN_CHAT_MESSAGE, "고객 문의", "새 메시지", "/admin/chat", null, 7L));
@@ -110,10 +102,13 @@ class NotificationServiceTests {
             .containsExactly(2L, 3L);
 
         ArgumentCaptor<NotificationEvent> event = ArgumentCaptor.forClass(NotificationEvent.class);
-        verify(eventPublisher).publishEvent(event.capture());
-        assertThat(event.getValue().adminBroadcast()).isTrue();
-        // 수신자마다 id가 달라 브로드캐스트 payload에는 id를 담지 않는다.
-        assertThat(event.getValue().notification().id()).isNull();
+        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(event.capture());
+        assertThat(event.getAllValues()).extracting(
+                NotificationEvent::receiverId, NotificationEvent::deliveryId,
+                published -> published.notification().id())
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple(2L, 500L, 100L),
+                org.assertj.core.groups.Tuple.tuple(3L, 501L, 101L));
     }
 
     @Test
@@ -171,6 +166,14 @@ class NotificationServiceTests {
         notificationService.markRead(100L, 1L);
 
         verify(notificationMapper).markRead(100L, 1L);
+    }
+
+    private void givenInsertAssignsIds(Long... ids) {
+        java.util.Iterator<Long> sequence = java.util.Arrays.asList(ids).iterator();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            invocation.getArgument(0, Notification.class).setId(sequence.next());
+            return 1;
+        }).when(notificationMapper).insert(any(Notification.class));
     }
 
     private void givenInsertAssignsId(Long id) {

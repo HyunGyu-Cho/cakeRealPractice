@@ -9,8 +9,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 커밋 후 즉시 푸시. 고객 알림은 결과를 전달 이력에 기록하고,
- * 실패분은 {@link com.cakeshop.domain.notification.service.NotificationDeliveryScheduler}가 재시도한다.
+ * 커밋 후 즉시 푸시. 결과를 전달 이력에 기록하고, 실패분은
+ * {@link com.cakeshop.domain.notification.service.NotificationDeliveryScheduler}가 재시도한다.
  */
 @Component
 public class NotificationBroadcaster {
@@ -28,10 +28,6 @@ public class NotificationBroadcaster {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void broadcast(NotificationEvent event) {
-        if (event.adminBroadcast()) {
-            broadcastToAdmins(event);
-            return;
-        }
         try {
             String recipient = pusher.pushToMember(event);
             deliveryService.markSent(event.deliveryId(), DeliveryStatus.REQUESTED, recipient);
@@ -40,16 +36,6 @@ public class NotificationBroadcaster {
             log.warn("알림 실시간 전달에 실패했습니다. type={}, receiverId={}",
                 event.notification().type(), event.receiverId(), e);
             recordFailure(event, e);
-        }
-    }
-
-    private void broadcastToAdmins(NotificationEvent event) {
-        try {
-            pusher.pushToAdminTopic(event);
-        } catch (RuntimeException e) {
-            // 관리자 토픽은 전달 이력을 남기지 않는다. 관리자는 REST 재조회로 복구한다.
-            log.warn("관리자 알림 브로드캐스트에 실패했습니다. type={}",
-                event.notification().type(), e);
         }
     }
 

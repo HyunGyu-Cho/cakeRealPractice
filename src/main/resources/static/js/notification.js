@@ -112,16 +112,6 @@
     });
   }
 
-  async function reload() {
-    const slice = await call("/api/notifications?size=20");
-    render(slice.content, null, false);
-    setUnread(slice.unreadCount);
-    if (moreButton) {
-      moreButton.hidden = !slice.hasNext;
-      moreButton.dataset.cursor = slice.nextCursor === null ? "" : slice.nextCursor;
-    }
-  }
-
   if (readAllButton) {
     readAllButton.addEventListener("click", async () => {
       try {
@@ -174,11 +164,6 @@
     onConnect: () => {
       client.subscribe(destination, (frame) => {
         const event = JSON.parse(frame.body);
-        // 관리자 브로드캐스트는 수신자별 알림 id가 없어 첫 페이지를 다시 읽는다.
-        if (event.adminBroadcast) {
-          reload().catch(() => {});
-          return;
-        }
         list.insertBefore(
           itemElement(event.notification, event.occurredAt),
           list.querySelector(".notification-item")

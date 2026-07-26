@@ -33,7 +33,7 @@
   - `NotificationType` 12개 확정(스펙 `docs/specs/notification.md`). 고객 9개 + 관리자 3개이며, 견적 도착·결제 요청은 값만 정의하고 발행은 주문제작 단계에서 연결한다.
   - 발행 지점: 채팅(발신자 반대편), 결제 완료, 주문 상태 전이, 취소·환불 완료. 업무 트랜잭션에서 저장하고 커밋 후 푸시한다.
   - 전달 이력·재시도 완료(이슈 #10, V12): `notification_deliveries`에 전달 결과를 남기고 실패분은 스케줄러가 최대 3회(백오프 1·2·4분) 재시도한다. `notify()`의 회원 조회는 커밋 후 `NotificationPusher`로 옮겼고, enum ↔ DDL CHECK 동기화 테스트를 뒀다.
-  - 남은 한계: 관리자 알림은 `/topic/admin/notifications` 1회 브로드캐스트라 수신자별 판정이 불가능해 전달 이력·재시도 대상이 아니다. 개인 큐로 통일하려면 `global/security` 변경(팀 PR 합의)이 필요하다.
+  - 전달 경로 통일 완료(이슈 #14): 관리자 공용 토픽을 폐기하고 고객·관리자 모두 `/user/queue/notifications` 개인 큐로 받는다. 관리자 알림도 전달 이력·재시도 대상이다.
 - [ ] **order(수제) + payment link** — 요청서 제출 → 관리자 검토·견적/반려 → 사용자 견적 수락 → 결제 링크 발급 → 결제 완료 → 제작 시작
   - 요청서: 이미지 첨부, 요구사항, 옵션, 희망 제작일, 희망 예산. 최종 가격은 관리자가 견적으로 제시한다.
   - 상태 흐름: `DRAFT` → `SUBMITTED` → `UNDER_REVIEW` → `REVISION_REQUESTED`/`REJECTED`/`QUOTED` → `QUOTE_ACCEPTED` → `PAYMENT_PENDING` → `PAID` → `IN_PRODUCTION`.

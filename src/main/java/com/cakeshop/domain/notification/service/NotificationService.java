@@ -59,9 +59,8 @@ public class NotificationService {
 
     /**
      * [공개 계약] 전체 관리자에게 알림을 발행한다.
-     * 저장은 관리자마다 한 건씩 하고, 실시간 전달은 공용 토픽으로 한 번만 한다.
-     * 토픽 브로드캐스트는 수신자별 성공·실패를 판정할 수 없어 전달 이력을 남기지 않는다
-     * (스펙 6장 규칙 1 — 관리자 경로 통일은 별도 과제).
+     * 저장·전달 모두 관리자마다 한 건씩 한다 — 공용 토픽 브로드캐스트로는 수신자별
+     * 성공·실패를 판정할 수 없어 전달 이력과 재시도를 걸 수 없기 때문이다(스펙 6장 규칙 1).
      */
     @Transactional
     public void notifyAdmins(NotificationCommand command) {
@@ -71,11 +70,11 @@ public class NotificationService {
             return;
         }
         for (Long adminId : adminIds) {
-            save(command.withReceiver(adminId));
+            Notification saved = save(command.withReceiver(adminId));
+            Long deliveryId = deliveryService.enqueue(saved.getId());
+            eventPublisher.publishEvent(NotificationEvent.toMember(
+                adminId, deliveryId, NotificationView.from(saved)));
         }
-        eventPublisher.publishEvent(NotificationEvent.toAdmins(new NotificationView(
-            null, command.type().name(), command.type().label(),
-            command.title(), command.content(), false, command.targetUrl(), null)));
     }
 
     /** [공개 계약] 헤더 미읽음 뱃지용 집계. 저장하지 않는 파생값이다. */
