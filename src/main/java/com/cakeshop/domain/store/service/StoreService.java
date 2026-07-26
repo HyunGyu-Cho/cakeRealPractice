@@ -40,6 +40,8 @@ public class StoreService {
 
     // 현재 서비스는 단일 매장을 운영하므로 초기 SQL에서 보장한 대표 행을 사용한다.
     public static final long DEFAULT_STORE_ID = 1L;
+    /** 일반 주문 픽업 예약 창. 결제 시 재고가 묶이므로 짧게 유지한다. */
+    public static final int DEFAULT_PICKUP_WINDOW_DAYS = 14;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     // 매장 도메인이 저장하는 이미지의 저장 하위 디렉토리 (/{directory}/{yyyyMM}/{uuid}.{ext})
@@ -47,16 +49,21 @@ public class StoreService {
 
     private final StoreMapper storeMapper;
     private final FileStorageClient fileStorageClient;
+    /** order가 끼워주는 예약 현황 조회. 없으면 정원·휴무일 충돌 검사를 건너뛴다(테스트·부분 기동 대비). */
+    private final PickupReservationPort pickupReservationPort;
     private final Clock clock;
 
     @Autowired
-    public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient) {
-        this(storeMapper, fileStorageClient, Clock.systemDefaultZone());
+    public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient,
+                        PickupReservationPort pickupReservationPort) {
+        this(storeMapper, fileStorageClient, pickupReservationPort, Clock.systemDefaultZone());
     }
 
-    public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient, Clock clock) {
+    public StoreService(StoreMapper storeMapper, FileStorageClient fileStorageClient,
+                        PickupReservationPort pickupReservationPort, Clock clock) {
         this.storeMapper = storeMapper;
         this.fileStorageClient = fileStorageClient;
+        this.pickupReservationPort = pickupReservationPort;
         this.clock = clock;
     }
 
@@ -113,11 +120,27 @@ public class StoreService {
 
     /**
      * 주문 도메인이 사용하는 픽업 슬롯 공개 계약.
-     * 준비 기간 이후부터 오늘 기준 14일 이내의 영업일·운영시간 슬롯만 반환한다.
+     * 준비 기간 이후부터 예약 창(기본 {@value #DEFAULT_PICKUP_WINDOW_DAYS}일) 이내의
+     * 영업일·운영시간 슬롯만 반환한다.
+     *
+     * <p><b>이미 예약된 슬롯은 여기서 걸러내지 않는다.</b> store가 orders를 조회하면
+     * order → store 위에 store → order가 얹혀 순환이 되므로, 정원 필터는 주문을 소유한
+     * order 도메인이 이 결과에 건다.
      */
     @Transactional(readOnly = true)
     public List<LocalDateTime> getAvailablePickupSlots(LocalDate date, int preparationDays) {
-        if (date == null || preparationDays < 0 || !isDateInPickupWindow(date, preparationDays)) {
+        return getAvailablePickupSlots(date, preparationDays, DEFAULT_PICKUP_WINDOW_DAYS);
+    }
+
+    /**
+     * 예약 창 상한을 호출측이 지정하는 변형. 일반 주문은 재고가 묶이므로 기본 14일을 쓰고,
+     * 재고를 관리하지 않는 주문제작은 더 긴 상한을 넘긴다(order-custom 스펙 6장 규칙 9).
+     */
+    @Transactional(readOnly = true)
+    public List<LocalDateTime> getAvailablePickupSlots(LocalDate date, int preparationDays,
+                                                       int windowDays) {
+        if (date == null || preparationDays < 0 || windowDays < 0
+            || !isDateInPickupWindow(date, preparationDays, windowDays)) {
             return List.of();
         }
 
@@ -154,15 +177,57 @@ public class StoreService {
             }
             slots.add(slot);
         }
+        // 슬롯 정원은 1건이다. 이미 픽업이 잡힌 시각은 목록에서 뺀다.
+        if (pickupReservationPort != null && !slots.isEmpty()) {
+            Set<LocalDateTime> reserved = pickupReservationPort.findReservedPickupAts(List.of(date));
+            slots.removeIf(reserved::contains);
+        }
         return List.copyOf(slots);
     }
 
     @Transactional(readOnly = true)
     public void validatePickupAt(LocalDateTime pickupAt, int preparationDays) {
-        if (pickupAt == null
-            || !getAvailablePickupSlots(pickupAt.toLocalDate(), preparationDays).contains(pickupAt)) {
+        validatePickupAt(pickupAt, preparationDays, DEFAULT_PICKUP_WINDOW_DAYS);
+    }
+
+    /**
+     * 실패 사유를 구분해 알린다. 휴무일·정기 휴무는 고객이 다른 날짜를 고르면 되는 상황이라
+     * "선택할 수 없다"는 뭉뚱그린 메시지보다 사유를 그대로 알려주는 편이 낫다.
+     */
+    @Transactional(readOnly = true)
+    public void validatePickupAt(LocalDateTime pickupAt, int preparationDays, int windowDays) {
+        if (pickupAt == null) {
             throw new BusinessException(StoreErrorCode.INVALID_PICKUP_AT);
         }
+        LocalDate date = pickupAt.toLocalDate();
+        if (isClosedDay(date)) {
+            throw new BusinessException(StoreErrorCode.PICKUP_DATE_CLOSED);
+        }
+        if (!getAvailablePickupSlots(date, preparationDays, windowDays).contains(pickupAt)) {
+            // 정원이 차서 빠진 것인지, 애초에 슬롯이 아닌지 구분해 알린다.
+            if (pickupReservationPort != null
+                && pickupReservationPort.findReservedPickupAts(List.of(date)).contains(pickupAt)) {
+                throw new BusinessException(StoreErrorCode.PICKUP_SLOT_TAKEN);
+            }
+            throw new BusinessException(StoreErrorCode.INVALID_PICKUP_AT);
+        }
+    }
+
+    /** 정기 휴무(요일)이거나 특정 휴무일인지. */
+    @Transactional(readOnly = true)
+    public boolean isClosedDay(LocalDate date) {
+        if (date == null) {
+            return false;
+        }
+        StoreBusinessHour businessHour = storeMapper.findBusinessHours(DEFAULT_STORE_ID).stream()
+            .filter(hour -> hour.getDayOfWeek() == date.getDayOfWeek())
+            .findFirst()
+            .orElse(null);
+        if (businessHour == null || businessHour.isClosed()) {
+            return true;
+        }
+        return storeMapper.findHolidays(DEFAULT_STORE_ID).stream()
+            .anyMatch(holiday -> date.equals(holiday.getHolidayDate()));
     }
 
     @Transactional(readOnly = true)
@@ -171,17 +236,18 @@ public class StoreService {
             validatePickupAt(pickupAt, preparationDays);
             return true;
         } catch (BusinessException exception) {
-            if (exception.getErrorCode() == StoreErrorCode.INVALID_PICKUP_AT) {
+            if (exception.getErrorCode() == StoreErrorCode.INVALID_PICKUP_AT
+                || exception.getErrorCode() == StoreErrorCode.PICKUP_DATE_CLOSED) {
                 return false;
             }
             throw exception;
         }
     }
 
-    private boolean isDateInPickupWindow(LocalDate date, int preparationDays) {
+    private boolean isDateInPickupWindow(LocalDate date, int preparationDays, int windowDays) {
         LocalDate today = LocalDate.now(clock);
         return !date.isBefore(today.plusDays(preparationDays))
-            && !date.isAfter(today.plusDays(14));
+            && !date.isAfter(today.plusDays(windowDays));
     }
 
     private LocalTime later(LocalTime left, LocalTime right) {
@@ -266,6 +332,16 @@ public class StoreService {
         findDefaultStore();
         if (storeMapper.existsHolidayDate(DEFAULT_STORE_ID, form.getHolidayDate())) {
             throw new BusinessException(StoreErrorCode.HOLIDAY_ALREADY_EXISTS);
+        }
+        // 이미 픽업이 잡힌 날을 휴무로 만들면 주문과 매장 일정이 조용히 어긋난다.
+        // 관리자가 주문을 먼저 정리하도록 막고, 몇 건인지 함께 알린다.
+        if (pickupReservationPort != null) {
+            long reserved = pickupReservationPort.countReservedPickups(form.getHolidayDate());
+            if (reserved > 0) {
+                throw new BusinessException(StoreErrorCode.HOLIDAY_HAS_PICKUP,
+                    "이 날짜에 픽업 예정 주문이 " + reserved + "건 있어 휴무일로 지정할 수 없습니다."
+                        + " 주문을 먼저 처리하거나 픽업 일시를 변경해 주세요.");
+            }
         }
 
         StoreHoliday holiday = new StoreHoliday();

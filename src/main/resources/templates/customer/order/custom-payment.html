@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주문 제작 결제 | 케이크 쇼핑몰</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body data-page-title="주문 제작 결제">
+  <header th:replace="~{fragments/common/header :: header}"></header>
+  <main class="page-container page-container--narrow">
+    <div th:replace="~{fragments/common/alert :: alert}"></div>
+    <h1>주문 제작 결제</h1>
+
+    <section class="section">
+      <h2 class="section-title">결제 내역</h2>
+      <div class="panel">
+        <div class="data-row">
+          <span class="data-row__label">요청 번호</span>
+          <span th:text="${request.orderNumber}">CUS-00000000-XXXX</span>
+        </div>
+        <div class="data-row">
+          <span class="data-row__label">상품</span>
+          <span th:text="${request.productName}">상품명</span>
+        </div>
+        <div class="data-row" th:each="option : ${request.options}">
+          <span class="data-row__label" th:text="${option.groupName}">옵션</span>
+          <span th:text="${option.optionName}">값</span>
+        </div>
+        <div class="data-row">
+          <span class="data-row__label">픽업 일시</span>
+          <span th:text="${#temporals.format(request.pickupAt, 'yyyy.MM.dd (E) HH:mm')}">-</span>
+        </div>
+        <div class="data-row">
+          <span class="data-row__label">결제 기한</span>
+          <span th:text="${#temporals.format(request.paymentExpiresAt, 'yyyy.MM.dd HH:mm')}">-</span>
+        </div>
+        <div class="data-row">
+          <span class="data-row__label">결제 금액</span>
+          <strong th:text="|${#numbers.formatInteger(request.latestQuote.quotedAmount, 3, 'COMMA')}원|">0원</strong>
+        </div>
+      </div>
+    </section>
+
+    <form th:action="@{|/orders/custom/pay/${token}|}" method="post" th:object="${paymentForm}">
+      <section class="section">
+        <h2 class="section-title">결제 수단</h2>
+        <div class="panel choice-list">
+          <label class="choice"><input type="radio" th:field="*{method}" value="CARD"> 신용·체크카드</label>
+          <label class="choice"><input type="radio" th:field="*{method}" value="KAKAO"> 카카오페이</label>
+          <label class="choice"><input type="radio" th:field="*{method}" value="NAVER"> 네이버페이</label>
+          <label class="choice"><input type="radio" th:field="*{method}" value="TOSS"> 토스페이</label>
+          <label class="choice"><input type="radio" th:field="*{method}" value="BANK"> 무통장 입금</label>
+        </div>
+        <p class="note">현재는 모의 결제입니다. 실제 결제는 이뤄지지 않습니다.</p>
+      </section>
+
+      <div class="cluster">
+        <button class="btn btn--primary" type="submit"
+                data-confirm="결제를 진행하시겠습니까?">결제하기</button>
+        <a class="btn" th:href="@{|/orders/custom/${request.orderId}|}">요청으로 돌아가기</a>
+      </div>
+    </form>
+  </main>
+  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+</body>
+</html>

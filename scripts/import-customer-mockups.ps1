@@ -10,11 +10,9 @@ $templateRoot = Join-Path $backendRoot "src\main\resources\templates"
 $staticRoot = Join-Path $backendRoot "src\main\resources\static"
 
 # Keep DB-backed and Security-backed pages intact.
-# member·product·cart·일반 order/payment·chat·notification 화면은 실구현으로 전환되어 제외한다.
+# member·product·cart·일반 order/payment·chat·notification·주문제작 화면은 실구현으로 전환되어 제외한다.
 # — 덮어쓰면 백엔드 바인딩과 전용 동작이 사라진다.
 $screenMap = [ordered]@{
-    "custom-option.html" = "customer\order\custom-option.html"
-    "custom-request.html" = "customer\order\custom-request.html"
     "review-form.html"   = "customer\review\form.html"
     "coupon-list.html"   = "customer\coupon\list.html"
 }

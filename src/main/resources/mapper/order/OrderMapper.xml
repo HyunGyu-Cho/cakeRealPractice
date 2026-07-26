@@ -12,6 +12,7 @@
         <result property="originalAmount" column="original_amount"/>
         <result property="discountAmount" column="discount_amount"/>
         <result property="finalAmount" column="final_amount"/>
+        <result property="desiredBudget" column="desired_budget"/>
         <result property="status" column="status"/>
         <result property="pickupAt" column="pickup_at"/>
         <result property="requestMessage" column="request_message"/>
@@ -45,7 +46,7 @@
 
     <sql id="orderColumns">
         id, order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
-        original_amount, discount_amount, final_amount, status, pickup_at, request_message,
+        original_amount, discount_amount, final_amount, desired_budget, status, pickup_at, request_message,
         reject_reason, rejected_at, ready_at, picked_up_at, completed_at, canceled_at,
         cancel_reason, canceled_by, pickup_reminder_sent_at, created_at, updated_at
     </sql>
@@ -53,10 +54,11 @@
     <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO orders
             (order_number, member_id, orderer_name, orderer_phone, pickup_name, pickup_phone,
-             original_amount, discount_amount, final_amount, status, pickup_at, request_message)
+             original_amount, discount_amount, final_amount, desired_budget, status, pickup_at, request_message)
         VALUES
             (#{orderNumber}, #{memberId}, #{ordererName}, #{ordererPhone}, #{pickupName}, #{pickupPhone},
-             #{originalAmount}, #{discountAmount}, #{finalAmount}, #{status}, #{pickupAt}, #{requestMessage})
+             #{originalAmount}, #{discountAmount}, #{finalAmount}, #{desiredBudget}, #{status}, #{pickupAt},
+             #{requestMessage})
     </insert>
 
     <insert id="insertOrderItem" useGeneratedKeys="true" keyProperty="id">
@@ -207,4 +209,27 @@
          WHERE id = #{orderId}
            AND status = #{currentStatus}
     </update>
+
+    <!-- 픽업 예약 현황. 취소·반려된 주문은 슬롯을 다시 열어야 하므로 제외한다. -->
+    <sql id="activePickupStatuses">
+        status NOT IN ('CANCELED', 'REJECTED')
+    </sql>
+
+    <select id="countActivePickupsOn" resultType="long">
+        SELECT COUNT(*)
+          FROM orders
+         WHERE <include refid="activePickupStatuses"/>
+           AND pickup_at &gt;= #{date}
+           AND pickup_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+    </select>
+
+    <select id="findActivePickupAts" resultType="java.time.LocalDateTime">
+        SELECT pickup_at
+          FROM orders
+         WHERE <include refid="activePickupStatuses"/>
+           AND DATE(pickup_at) IN
+        <foreach collection="dates" item="date" open="(" separator="," close=")">
+            #{date}
+        </foreach>
+    </select>
 </mapper>

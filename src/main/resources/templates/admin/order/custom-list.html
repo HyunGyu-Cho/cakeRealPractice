@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주문 제작 관리 | 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-layout">
+  <aside th:replace="~{fragments/admin/sidebar :: sidebar('custom-orders')}"></aside>
+  <div class="admin-main">
+    <header th:replace="~{fragments/admin/header :: header('주문 제작 관리')}"></header>
+    <main class="admin-content">
+      <div th:replace="~{fragments/common/alert :: alert}"></div>
+      <h1 class="admin-page-title">주문 제작 요청</h1>
+
+      <div class="admin-toolbar">
+        <form class="filter-form" method="get" th:action="@{/admin/custom-orders}">
+          <select class="form-control" name="status">
+            <option value="">상태 전체</option>
+            <option value="UNDER_REVIEW" th:selected="${currentStatus == 'UNDER_REVIEW'}">확인 중</option>
+            <option value="IN_PRODUCTION" th:selected="${currentStatus == 'IN_PRODUCTION'}">제작 중</option>
+            <option value="READY_FOR_PICKUP" th:selected="${currentStatus == 'READY_FOR_PICKUP'}">픽업 대기</option>
+            <option value="PICKED_UP" th:selected="${currentStatus == 'PICKED_UP'}">픽업 완료</option>
+            <option value="REJECTED" th:selected="${currentStatus == 'REJECTED'}">반려</option>
+            <option value="CANCELED" th:selected="${currentStatus == 'CANCELED'}">주문 취소</option>
+          </select>
+          <button class="btn" type="submit">검색</button>
+        </form>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+          <tr>
+            <th>요청 번호</th><th>회원</th><th>상품</th><th>희망 픽업</th>
+            <th>희망 예산</th><th>견적 금액</th><th>진행 상태</th><th>요청일</th><th>관리</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="row : ${pageResult.content}">
+            <td th:text="${row.orderNumber}">번호</td>
+            <td th:text="${row.memberName}">회원</td>
+            <td th:text="${row.productName}">상품</td>
+            <td th:text="${#temporals.format(row.pickupAt, 'yyyy.MM.dd HH:mm')}">-</td>
+            <td th:text="${row.desiredBudget != null}
+                         ? |${#numbers.formatInteger(row.desiredBudget, 3, 'COMMA')}원| : '-'">-</td>
+            <td th:text="${row.quotedAmount != null}
+                         ? |${#numbers.formatInteger(row.quotedAmount, 3, 'COMMA')}원| : '-'">-</td>
+            <td>
+              <!-- 주문 상태 + 최신 견적 상태를 조합한 파생 라벨 -->
+              <span class="badge"
+                    th:classappend="${row.status == 'REJECTED' or row.status == 'CANCELED'}
+                                    ? 'badge--danger' : (${row.status == 'UNDER_REVIEW'} ? 'badge--warning' : 'badge--success')"
+                    th:text="${row.progressLabel}">확인 중</span>
+            </td>
+            <td th:text="${#temporals.format(row.createdAt, 'yyyy.MM.dd')}">-</td>
+            <td><a class="btn" th:href="@{|/admin/custom-orders/${row.orderId}|}">상세</a></td>
+          </tr>
+          <tr th:if="${pageResult.content.isEmpty()}">
+            <td colspan="9" class="text-muted" style="text-align:center">조건에 맞는 요청이 없습니다.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <nav th:replace="~{fragments/common/pagination :: pagination(${pageResult}, '/admin/custom-orders', ${extraQuery})}"></nav>
+    </main>
+  </div>
+</div>
+<script defer th:src="@{/js/app.js}"></script>
+</body>
+</html>

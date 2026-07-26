@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -185,6 +186,39 @@ public class ChatService {
         publishMessageEvents(room, customer, created);
         notifyCustomerOfAdminMessage(room.getCustomerId(), created);
         return created;
+    }
+
+    /**
+     * [공개 계약] 상담 맥락에 시스템 카드를 남긴다. order(수제)의 견적·결제 링크 안내가 사용한다 —
+     * 시그니처 변경 시 사용처(민정↔주환) 합의 필요.
+     *
+     * <p>{@code uk_chat_rooms_customer} 덕분에 고객당 방이 1개이므로 요청서에 방 id를 들고 다니지 않고
+     * 고객 id로 찾는다. <b>방이 없으면 아무것도 하지 않는다</b> — 카드를 남길 상담 맥락 자체가 없는
+     * 경우이며, 이 때문에 견적 발송이 실패하면 안 된다(알림은 별도 경로로 정상 발행된다).
+     * 시스템 카드는 notification.md 규칙 4에 따라 알림을 발행하지 않는다.
+     */
+    @Transactional
+    public void postSystemCard(Long customerId, String content, String actionType, String actionUrl) {
+        ChatRoom room = chatMapper.findRoomByCustomerId(customerId).orElse(null);
+        if (room == null) {
+            return;
+        }
+        ChatMessage message = new ChatMessage();
+        message.setChatRoomId(room.getId());
+        message.setClientMessageId(UUID.randomUUID().toString());
+        message.setSenderId(null);
+        message.setSenderType(ChatSenderType.SYSTEM);
+        message.setMessageType(ChatMessageType.SYSTEM_CARD);
+        message.setContent(content);
+        message.setActionType(actionType);
+        message.setActionUrl(actionUrl);
+
+        StoredMessage stored = storeMessage(message, customerId, null);
+        if (!stored.created()) {
+            return;
+        }
+        MemberProfileView customer = memberService.getProfile(customerId);
+        publishMessageEvents(room, customer, stored.view());
     }
 
     @Transactional

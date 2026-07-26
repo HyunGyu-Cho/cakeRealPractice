@@ -34,12 +34,13 @@ class StorePickupPolicyTests {
 
     @Mock StoreMapper storeMapper;
     @Mock FileStorageClient fileStorageClient;
+    @Mock com.cakeshop.domain.store.service.PickupReservationPort pickupReservationPort;
 
     private StoreService service;
 
     @BeforeEach
     void setUp() {
-        service = new StoreService(storeMapper, fileStorageClient, CLOCK);
+        service = new StoreService(storeMapper, fileStorageClient, pickupReservationPort, CLOCK);
         when(storeMapper.findStoreById(1L)).thenReturn(Optional.of(store()));
         when(storeMapper.findBusinessHours(1L)).thenReturn(List.of(hour(
             DayOfWeek.SATURDAY, LocalTime.of(11, 0), LocalTime.of(17, 0), false)));

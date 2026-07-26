@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주문 제작 상세 | 관리자</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-layout">
+  <aside th:replace="~{fragments/admin/sidebar :: sidebar('custom-orders')}"></aside>
+  <div class="admin-main">
+    <header th:replace="~{fragments/admin/header :: header('주문 제작 상세')}"></header>
+    <main class="admin-content">
+      <div th:replace="~{fragments/common/alert :: alert}"></div>
+      <h1 class="admin-page-title" th:text="${request.orderNumber}">요청 번호</h1>
+
+      <section class="section">
+        <h2 class="section-title">요청 내용</h2>
+        <div class="panel">
+          <div class="data-row">
+            <span class="data-row__label">진행 상태</span>
+            <span><span class="badge" th:text="${request.progressLabel}">확인 중</span></span>
+          </div>
+          <div class="data-row">
+            <span class="data-row__label">상품</span><span th:text="${request.productName}">상품</span>
+          </div>
+          <div class="data-row" th:each="option : ${request.options}">
+            <span class="data-row__label" th:text="${option.groupName}">옵션</span>
+            <span>
+              <span th:text="${option.optionName}">값</span>
+              <span th:if="${option.additionalPrice > 0}"
+                    th:text="|+${#numbers.formatInteger(option.additionalPrice, 3, 'COMMA')}원|">+0원</span>
+            </span>
+          </div>
+          <div class="data-row" th:if="${request.lettering != null}">
+            <span class="data-row__label">레터링</span><span th:text="${request.lettering}">-</span>
+          </div>
+          <div class="data-row" th:if="${request.requirements != null}">
+            <span class="data-row__label">요청사항</span><span th:text="${request.requirements}">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-row__label">희망 픽업</span>
+            <span th:text="${#temporals.format(request.pickupAt, 'yyyy.MM.dd (E) HH:mm')}">-</span>
+          </div>
+          <div class="data-row" th:if="${request.desiredBudget != null}">
+            <span class="data-row__label">희망 예산</span>
+            <span th:text="|${#numbers.formatInteger(request.desiredBudget, 3, 'COMMA')}원|">0원</span>
+          </div>
+          <div class="data-row">
+            <span class="data-row__label">옵션 합산 예상가</span>
+            <span th:text="|${#numbers.formatInteger(request.estimatedAmount, 3, 'COMMA')}원|">0원</span>
+          </div>
+        </div>
+        <div class="panel cluster" th:if="${!request.referenceImageUrls.isEmpty()}">
+          <img th:each="url : ${request.referenceImageUrls}" th:src="${url}" alt="참고 이미지"
+               class="placeholder-image placeholder-image--sm" style="object-fit:cover">
+        </div>
+        <p class="note">
+          고객 상담 맥락은 <a th:href="@{/admin/chat}">채팅 관리</a>에서 확인할 수 있습니다.
+        </p>
+      </section>
+
+      <section class="section" th:if="${!request.quotes.isEmpty()}">
+        <h2 class="section-title">견적 이력</h2>
+        <!-- 재견적은 이전 회차를 수정하지 않고 SUPERSEDED로 내린 뒤 새 회차를 남긴다 -->
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>회차</th><th>금액</th><th>제작 가능일</th><th>안내</th><th>상태</th><th>발송</th></tr></thead>
+            <tbody>
+            <tr th:each="quote : ${request.quotes}">
+              <td th:text="|${quote.version}차|">1차</td>
+              <td th:text="|${#numbers.formatInteger(quote.quotedAmount, 3, 'COMMA')}원|">0원</td>
+              <td th:text="${#temporals.format(quote.producibleDate, 'yyyy.MM.dd')}">-</td>
+              <td th:text="${quote.adminNote}">-</td>
+              <td><span class="badge" th:text="${quote.statusLabel}">견적 발송</span></td>
+              <td th:text="${#temporals.format(quote.sentAt, 'yyyy.MM.dd HH:mm')}">-</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 검토 중일 때만 견적·반려가 가능하다 -->
+      <div th:if="${request.status == 'UNDER_REVIEW'}">
+        <section class="section">
+          <h2 class="section-title" th:text="${request.quotes.isEmpty()} ? '견적 발송' : '재견적 발송'">견적 발송</h2>
+          <form th:action="@{|/admin/custom-orders/${request.orderId}/quote|}" method="post"
+                th:object="${quoteForm}">
+            <div class="panel stack">
+              <p class="note" th:if="${!request.quotes.isEmpty()}">
+                새 견적을 보내면 이전 견적과 발급된 결제 링크는 무효화됩니다.
+              </p>
+              <div class="panel panel--danger" th:if="${#fields.hasGlobalErrors()}">
+                <p th:each="error : ${#fields.globalErrors()}" th:text="${error}">오류</p>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="quotedAmount">견적 금액 (원) <span class="required">*</span></label>
+                <input class="form-control" id="quotedAmount" type="number" min="1" step="1000"
+                       th:field="*{quotedAmount}">
+                <p class="form-help form-error" th:if="${#fields.hasErrors('quotedAmount')}"
+                   th:errors="*{quotedAmount}">오류</p>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="producibleDate">제작 가능일 <span class="required">*</span></label>
+                <input class="form-control" id="producibleDate" type="date" th:field="*{producibleDate}">
+                <p class="form-help">고객 픽업 일시의 하한이 됩니다. 희망일보다 늦으면 수락 시 픽업일이 조정됩니다.</p>
+                <p class="form-help form-error" th:if="${#fields.hasErrors('producibleDate')}"
+                   th:errors="*{producibleDate}">오류</p>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="adminNote">안내 문구</label>
+                <textarea class="form-control form-control--textarea" id="adminNote"
+                          th:field="*{adminNote}" placeholder="금액 산정 근거나 제작 안내"></textarea>
+                <p class="form-help form-error" th:if="${#fields.hasErrors('adminNote')}"
+                   th:errors="*{adminNote}">오류</p>
+              </div>
+              <div>
+                <button class="btn btn--primary" type="submit">견적 발송</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">반려</h2>
+          <form th:action="@{|/admin/custom-orders/${request.orderId}/reject|}" method="post"
+                th:object="${rejectForm}">
+            <div class="panel stack">
+              <div class="form-group">
+                <label class="form-label" for="reason">반려 사유 <span class="required">*</span></label>
+                <textarea class="form-control form-control--textarea" id="reason"
+                          th:field="*{reason}" placeholder="고객에게 그대로 표시됩니다."></textarea>
+                <p class="form-help form-error" th:if="${#fields.hasErrors('reason')}"
+                   th:errors="*{reason}">오류</p>
+              </div>
+              <div>
+                <button class="btn btn--danger" type="submit"
+                        data-confirm="요청을 반려하시겠습니까? 되돌릴 수 없습니다.">반려하기</button>
+              </div>
+              <p class="note">반려는 최종 상태입니다. 고객은 새 요청서를 작성해야 합니다.</p>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <section class="section" th:unless="${request.status == 'UNDER_REVIEW'}">
+        <div class="panel">
+          <p>결제 이후 제작·픽업 처리는 일반 주문과 같은 화면에서 진행합니다.</p>
+          <div class="cluster">
+            <a class="btn" th:href="@{|/admin/orders/${request.orderId}|}">주문 상세</a>
+            <a class="btn" th:href="@{/admin/fulfillment}">제작·픽업</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="cluster">
+        <a class="btn" th:href="@{/admin/custom-orders}">목록으로</a>
+      </div>
+    </main>
+  </div>
+</div>
+<script defer th:src="@{/js/app.js}"></script>
+</body>
+</html>

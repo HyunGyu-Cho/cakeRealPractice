@@ -17,6 +17,8 @@ public class Order {
     private Long originalAmount;
     private Long discountAmount;
     private Long finalAmount;
+    /** 주문제작 전용 — 고객 희망 예산. 일반 주문은 항상 null이다. */
+    private Long desiredBudget;
     private String status;
     private LocalDateTime pickupAt;
     private String requestMessage;

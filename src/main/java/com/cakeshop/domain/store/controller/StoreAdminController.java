@@ -76,7 +76,8 @@ public class StoreAdminController {
             try {
                 storeService.addHoliday(form);
             } catch (BusinessException e) {
-                if (e.getErrorCode() == StoreErrorCode.HOLIDAY_ALREADY_EXISTS) {
+                if (e.getErrorCode() == StoreErrorCode.HOLIDAY_ALREADY_EXISTS
+                    || e.getErrorCode() == StoreErrorCode.HOLIDAY_HAS_PICKUP) {
                     // 화면에서 바로 고칠 수 있는 업무 오류는 해당 입력 필드에 돌려준다.
                     bindingResult.rejectValue("holidayDate", e.getErrorCode().code(), e.getMessage());
                 } else {

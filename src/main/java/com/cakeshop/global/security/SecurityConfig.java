@@ -42,6 +42,9 @@ public class SecurityConfig {
                     // /mypage·/mypage/profile은 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
                     // 쿠폰함(/mypage/coupons)은 아직 목업이라 경로를 좁혀 남긴다.
                     // /notifications는 실구현으로 전환되어 preview 대상에서 제외했다(로그인 필수).
+                    // 주문제작(/orders/custom/**)도 실구현으로 전환되어 제외한다 — 요청·견적·결제는
+                    // 모두 소유자 검증이 필요하므로 preview에서도 로그인을 요구한다.
+                    auth.requestMatchers(HttpMethod.GET, "/orders/custom/**").authenticated();
                     auth.requestMatchers(HttpMethod.GET,
                         "/orders/**", "/mypage/coupons", "/reviews/**", "/community/new").permitAll();
                 }

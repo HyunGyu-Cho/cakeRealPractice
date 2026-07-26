@@ -28,7 +28,7 @@ class CustomerPageControllerTests {
 
     @BeforeEach
     void setUp() {
-        // 실제 구현된 member·product·cart·일반 order/payment·chat·notification 화면은
+        // 실제 구현된 member·product·cart·일반 order/payment·chat·notification·주문제작 화면은
         // 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
         mockMvc = MockMvcBuilders.standaloneSetup(
             new HomeController(mock(HomeService.class)),
@@ -37,8 +37,6 @@ class CustomerPageControllerTests {
         ).build();
 
         pages.put("/screens", "home/screens");
-        pages.put("/orders/custom/options", "customer/order/custom-option");
-        pages.put("/orders/custom/request", "customer/order/custom-request");
         pages.put("/reviews/new", "customer/review/form");
         pages.put("/mypage/coupons", "customer/coupon/list");
     }

@@ -41,11 +41,14 @@ class StoreServiceTests {
     @Mock
     private FileStorageClient fileStorageClient;
 
+    @Mock
+    private PickupReservationPort pickupReservationPort;
+
     private StoreService storeService;
 
     @BeforeEach
     void setUp() {
-        storeService = new StoreService(storeMapper, fileStorageClient);
+        storeService = new StoreService(storeMapper, fileStorageClient, pickupReservationPort);
     }
 
     @AfterEach
