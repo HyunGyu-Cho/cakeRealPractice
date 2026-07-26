@@ -10,9 +10,14 @@ import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
 import com.cakeshop.domain.order.controller.OrderController;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -54,6 +59,29 @@ class CustomerPageControllerTests {
         );
         assertThat(new ClassPathResource("static/css/customer-mockup.css").exists()).isTrue();
         assertThat(new ClassPathResource("static/js/customer-mockup.js").exists()).isTrue();
+    }
+
+    @Test
+    void noTemplateDependsOnMockupScript() throws IOException {
+        Path templateRoot = Path.of("src", "main", "resources", "templates");
+        try (Stream<Path> templates = Files.walk(templateRoot)) {
+            List<String> offenders = templates
+                .filter(path -> path.toString().endsWith(".html"))
+                .filter(path -> {
+                    try {
+                        return Files.readString(path, StandardCharsets.UTF_8).contains("customer-mockup.js");
+                    } catch (IOException error) {
+                        throw new UncheckedIOException(error);
+                    }
+                })
+                .map(templateRoot::relativize)
+                .map(Path::toString)
+                .toList();
+
+            assertThat(offenders)
+                .as("고객 화면은 전부 실구현이므로 목업 스크립트에 의존하면 안 된다")
+                .isEmpty();
+        }
     }
 
     @Test

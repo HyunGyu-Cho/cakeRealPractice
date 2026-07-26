@@ -63,11 +63,9 @@
 
     if (button.matches("[data-select]")) selectButton(button);
 
-    // 확인창을 취소하면 이후 상태 변경까지 중단한다.
-    if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) {
-      event.preventDefault();
-      return;
-    }
+    // [data-confirm] 확인창은 먼저 로드되는 app.js가 띄운다(확인창 중복 방지).
+    // 거기서 취소하면 preventDefault가 걸리므로 이후 목업 상태 변경까지 중단한다.
+    if (event.defaultPrevented) return;
 
     const status = button.closest("[data-set-status]");
     if (status) {
