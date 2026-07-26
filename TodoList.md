@@ -163,6 +163,29 @@
   - 양방향을 테스트로 고정하고 두 조건 모두 실제로 깨뜨려 실패를 확인했다 —
     `everyScreenUsesTheSharedHeadFragment`, `appScriptIsLoadedByTheHeadFragmentOnly`.
 
+- [x] **사용자 시나리오 E2E 테스트** — 여러 도메인을 가로지르는 한 세션의 흐름을 `src/test/java/com/cakeshop/e2e`에 고정
+  - 계획에 없던 추가 작업이다. 기존 테스트는 서비스 단위(mock mapper)이거나 화면 단건 렌더 스모크라,
+    **도메인 경계를 넘는 흐름이 실제로 이어지는지는 아무도 검증하지 않고 있었다** — 정작 버그가 나는 자리다.
+    `verify-merge.ps1`의 스모크도 GET이 200인지만 보고 버튼을 눌러 데이터가 바뀌는지는 확인하지 않는다.
+  - 4개 클래스 27개 테스트: `CustomerPurchaseFlowE2ETests`(회원가입→장바구니→픽업 슬롯→주문서→결제→취소·전액환불),
+    `CustomOrderFlowE2ETests`(요청→관리자 견적/반려→수락→결제 링크→픽업 준비·완료),
+    `CommunityAndReviewFlowE2ETests`(글·댓글·좋아요·신고→관리자 제재·해제→삭제, 후기 작성·중복 방지·답글·숨김),
+    `CustomerAuthGateE2ETests`(공개 6 / 회원 전용 15 / 관리자 12 경로의 접근 통제 + CSRF 범위).
+  - 확정: **MockMvc + 실제 local MariaDB**로 간다. 부팅된 서버에 HTTP를 쏘는 방식은 롤백이 안 돼서 반복
+    실행 시 재고·쿠폰이 오염되고, Playwright는 이 SSR 구성에서 검증하는 대상(JS) 대비 유지비가 크다.
+    `@Transactional` 롤백 + 새 의존성 0이라 `gradlew test`·`verify-merge.ps1`에 그대로 편입된다.
+  - 확정: 리다이렉트·flash·model에서 멈추지 않고 **DB 최종 상태까지 단정한다** — 주문 `PAID`/`CANCELED`,
+    결제 금액, 재고 차감·복구, 장바구니 비움, 게시글 `BLOCKED`/`DELETED`, 후기 `HIDDEN`. 픽스처는 타 도메인
+    Mapper 대신 `JdbcTemplate`으로 시드한다(`OrderPaymentIntegrationTests` 패턴).
+  - `local` 프로필은 `app.mockup.public-preview=true`라서 `GET /orders/**`가 비로그인에 열려 있다. 그 상태만
+    보면 rds의 실제 접근 통제를 알 수 없으므로 `CustomerAuthGateE2ETests`만 플래그를 false로 덮어쓴
+    별도 컨텍스트로 돌린다(`CartSecurityTests`와 같은 방식).
+  - **기능 결함은 나오지 않았다.** 작성 중 3번 실패한 것은 전부 테스트 쪽 가정 오류였다. 기록해 둘 실제 동작:
+    주문제작 `orders.final_amount`는 견적 **발송**이 아니라 고객 **수락** 시점에 견적 금액으로 덮어쓰고,
+    주문제작 픽업 일시는 임의 시각이 아닌 영업시간 슬롯이어야 하며 필수 옵션 그룹은 반드시 선택해야 접수된다.
+  - 범위 밖: JS 동작 자체(무한스크롤 DOM 렌더, 채팅 WebSocket UI, 알림 폴링). 좋아요·목록 JSON API는
+    서버 엔드포인트를 직접 호출해 검증했다. 브라우저 E2E는 프론트 상호작용이 늘거나 실결제를 붙일 때 재검토한다.
+
 ## 6단계 — 후속 (계획된 마일스톤을 모두 끝낸 뒤 진행)
 
 > 5단계까지가 "전 도메인 실구현" 목표선이고, 아래 둘은 그 뒤로 미뤄 둔 항목이다.
