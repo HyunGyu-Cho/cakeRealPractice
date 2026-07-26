@@ -259,4 +259,92 @@
             #{date}
         </foreach>
     </select>
+
+    <!-- ================= 통계 집계 =================
+         금액은 주문 금액(final_amount)이다. 순매출은 payments를 가진 payment 도메인이 계산한다.
+         기간은 [from, to) 반열린 구간으로 들어온다.
+         라벨 포맷은 ${} 금지 규칙 때문에 choose 분기의 리터럴로 둔다. -->
+    <select id="aggregateOrderStats"
+            resultType="com.cakeshop.domain.order.dto.view.OrderStatsView">
+        SELECT (SELECT COUNT(*) FROM orders
+                 WHERE created_at &gt;= #{from} AND created_at &lt; #{to})     AS order_count,
+               (SELECT COUNT(*) FROM orders
+                 WHERE picked_up_at &gt;= #{from} AND picked_up_at &lt; #{to}) AS completed_count,
+               (SELECT COUNT(*) FROM orders
+                 WHERE canceled_at &gt;= #{from} AND canceled_at &lt; #{to})   AS canceled_count,
+               (SELECT COALESCE(SUM(final_amount), 0) FROM orders
+                 WHERE created_at &gt;= #{from} AND created_at &lt; #{to})     AS order_amount
+    </select>
+
+    <sql id="trendLabel">
+        <choose>
+            <when test="period.name() == 'MONTH'">DATE_FORMAT(created_at, '%Y-%m')</when>
+            <when test="period.name() == 'WEEK'">DATE_FORMAT(created_at, '%x-W%v')</when>
+            <otherwise>DATE_FORMAT(created_at, '%m-%d')</otherwise>
+        </choose>
+    </sql>
+
+    <select id="aggregateOrderTrend"
+            resultType="com.cakeshop.domain.order.dto.view.OrderTrendPointView">
+        SELECT <include refid="trendLabel"/>          AS label,
+               COUNT(*)                              AS order_count,
+               COALESCE(SUM(final_amount), 0)        AS order_amount
+          FROM orders
+         WHERE created_at &gt;= #{from}
+           AND created_at &lt; #{to}
+         GROUP BY <include refid="trendLabel"/>
+         ORDER BY MIN(created_at)
+    </select>
+
+    <!-- 취소·반려 주문은 실적이 아니므로 제외한다. -->
+    <select id="aggregateProductSales"
+            resultType="com.cakeshop.domain.order.dto.view.ProductSalesStatsView">
+        SELECT oi.product_id                       AS product_id,
+               MAX(oi.product_name)                AS product_name,
+               COUNT(DISTINCT o.id)                AS order_count,
+               COALESCE(SUM(oi.quantity), 0)       AS quantity,
+               COALESCE(SUM(oi.total_amount), 0)   AS order_amount
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+         WHERE o.created_at &gt;= #{from}
+           AND o.created_at &lt; #{to}
+           AND o.status NOT IN ('CANCELED', 'REJECTED')
+         GROUP BY oi.product_id
+         ORDER BY quantity DESC, order_amount DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="aggregatePickupHours"
+            resultType="com.cakeshop.domain.order.dto.view.PickupHourCountView">
+        SELECT HOUR(pickup_at) AS hour,
+               COUNT(*)        AS pickup_count
+          FROM orders
+         WHERE <include refid="activePickupStatuses"/>
+           AND pickup_at &gt;= #{from}
+           AND pickup_at &lt; #{to}
+         GROUP BY HOUR(pickup_at)
+         ORDER BY hour
+    </select>
+
+    <select id="findActiveOrdersByPickupDate" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE <include refid="activePickupStatuses"/>
+           AND pickup_at &gt;= #{date}
+           AND pickup_at &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+         ORDER BY pickup_at, id
+    </select>
+
+    <select id="findRecentOrders" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         ORDER BY id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*)
+          FROM orders
+         WHERE status = #{status}
+    </select>
 </mapper>

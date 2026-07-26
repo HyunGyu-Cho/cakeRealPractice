@@ -11,6 +11,7 @@ import com.cakeshop.domain.review.dto.view.MyReviewView;
 import com.cakeshop.domain.review.dto.view.ProductReviewView;
 import com.cakeshop.domain.review.dto.view.RatingStatsRow;
 import com.cakeshop.domain.review.dto.view.ReviewRow;
+import com.cakeshop.domain.review.dto.view.ReviewStatsView;
 import com.cakeshop.domain.review.dto.view.ReviewSummaryView;
 import com.cakeshop.domain.review.entity.Review;
 import com.cakeshop.domain.review.entity.ReviewImage;
@@ -22,6 +23,7 @@ import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -154,6 +156,23 @@ public class ReviewService {
             return ReviewSummaryView.empty();
         }
         return new ReviewSummaryView(stats.reviewCount(), stats.averageRating());
+    }
+
+    /**
+     * [공개 계약] 기간 후기 요약(작성 수·평균 평점). statistics 통계 화면이 첫 사용처다.
+     * 숨김 후기는 두 값 모두에서 빠진다.
+     */
+    @Transactional(readOnly = true)
+    public ReviewStatsView getReviewStats(LocalDate from, LocalDate to) {
+        ReviewStatsView stats = reviewMapper.aggregateReviewStats(
+            from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+        return stats == null ? ReviewStatsView.empty() : stats;
+    }
+
+    /** [공개 계약] 답글이 없는 노출 후기 수. 대시보드의 "처리할 작업"이 쓴다. */
+    @Transactional(readOnly = true)
+    public long countUnansweredVisibleReviews() {
+        return reviewMapper.countUnansweredVisible();
     }
 
     /** 수정 화면용. 본인 후기가 아니면 거부한다. */

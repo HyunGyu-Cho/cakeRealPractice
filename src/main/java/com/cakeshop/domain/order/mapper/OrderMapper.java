@@ -1,9 +1,14 @@
 package com.cakeshop.domain.order.mapper;
 
 import com.cakeshop.domain.order.dto.form.OrderSearchForm;
+import com.cakeshop.domain.order.dto.view.OrderStatsView;
+import com.cakeshop.domain.order.dto.view.OrderTrendPointView;
+import com.cakeshop.domain.order.dto.view.PickupHourCountView;
+import com.cakeshop.domain.order.dto.view.ProductSalesStatsView;
 import com.cakeshop.domain.order.dto.view.ReviewableItemView;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
+import com.cakeshop.global.common.stats.StatsPeriod;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -55,6 +60,28 @@ public interface OrderMapper {
     long countActivePickupsOn(@Param("date") LocalDate date);
 
     List<LocalDateTime> findActivePickupAts(@Param("dates") Collection<LocalDate> dates);
+
+    // ---- 통계 집계 (statistics 도메인이 OrderStatsService 계약으로만 사용한다) ----
+    /** 기간 주문 요약. 매출이 아니라 주문 금액까지만 센다 — payments는 다른 도메인이다. */
+    OrderStatsView aggregateOrderStats(@Param("from") LocalDateTime from,
+                                       @Param("to") LocalDateTime to);
+
+    List<OrderTrendPointView> aggregateOrderTrend(@Param("from") LocalDateTime from,
+                                                  @Param("to") LocalDateTime to,
+                                                  @Param("period") StatsPeriod period);
+
+    List<ProductSalesStatsView> aggregateProductSales(@Param("from") LocalDateTime from,
+                                                      @Param("to") LocalDateTime to,
+                                                      @Param("limit") int limit);
+
+    List<PickupHourCountView> aggregatePickupHours(@Param("from") LocalDateTime from,
+                                                   @Param("to") LocalDateTime to);
+
+    List<Order> findActiveOrdersByPickupDate(@Param("date") LocalDate date);
+
+    List<Order> findRecentOrders(@Param("limit") int limit);
+
+    long countByStatus(@Param("status") String status);
 
     int updateStatus(@Param("orderId") Long orderId,
                      @Param("currentStatus") String currentStatus,

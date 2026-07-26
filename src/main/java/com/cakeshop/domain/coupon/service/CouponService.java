@@ -14,6 +14,7 @@ import com.cakeshop.domain.coupon.error.CouponErrorCode;
 import com.cakeshop.domain.coupon.mapper.CouponMapper;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -133,6 +134,16 @@ public class CouponService {
     @Transactional
     public void restoreByOrderId(Long orderId) {
         couponMapper.restoreByOrderId(orderId);
+    }
+
+    /**
+     * [공개 계약] 기간 내 쿠폰 사용 건수. statistics 통계 화면이 첫 사용처다.
+     * 주문 취소로 복구된 쿠폰은 used_at이 지워지므로 자연히 제외된다.
+     */
+    @Transactional(readOnly = true)
+    public long countUsedCoupons(LocalDate from, LocalDate to) {
+        return couponMapper.countUsedBetween(
+            from.atStartOfDay(), to.plusDays(1).atStartOfDay());
     }
 
     // ==================== 다운로드 ====================

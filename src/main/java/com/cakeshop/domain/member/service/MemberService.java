@@ -8,6 +8,7 @@ import com.cakeshop.domain.member.entity.Member;
 import com.cakeshop.domain.member.error.MemberErrorCode;
 import com.cakeshop.domain.member.mapper.MemberMapper;
 import com.cakeshop.global.error.BusinessException;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,16 @@ public class MemberService {
     @Transactional(readOnly = true)
     public List<Long> findAdminMemberIds() {
         return memberMapper.findActiveAdminIds();
+    }
+
+    /**
+     * [공개 계약] 기간 내 신규 가입 회원 수(경계 포함).
+     * statistics 통계 화면이 첫 사용처다 — 탈퇴자도 가입 시점 실적이므로 포함한다.
+     */
+    @Transactional(readOnly = true)
+    public long countNewMembers(LocalDate from, LocalDate to) {
+        return memberMapper.countCreatedBetween(
+            from.atStartOfDay(), to.plusDays(1).atStartOfDay());
     }
 
     /** 관리자 타 도메인 목록의 회원 닉네임·이메일 검색 공개 계약. */

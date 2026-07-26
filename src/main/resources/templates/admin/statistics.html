@@ -1,7 +1,141 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>통계 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body>
-<div class="admin-layout"><aside th:replace="~{fragments/admin/sidebar :: sidebar('statistics')}"></aside><div class="admin-main"><header th:replace="~{fragments/admin/header :: header('통계')}"></header><main class="admin-content">
-<div th:replace="~{fragments/admin/mock-notice :: notice}"></div><h1 class="admin-page-title">통계</h1><form class="admin-toolbar" method="get" th:action="@{/admin/statistics}"><input class="form-control" name="startDate" aria-label="통계 시작일" type="date" value="2025-01-01"><span>~</span><input class="form-control" name="endDate" aria-label="통계 종료일" type="date" value="2025-01-31"><div class="cluster" data-select-group><button class="btn is-active" data-select type="button">일별</button><button class="btn" data-select type="button">주별</button><button class="btn" data-select type="button">월별</button></div><button class="btn btn--primary" type="submit">조회</button></form>
-<section class="grid grid--4 section"><article class="metric-card"><p>총 주문 건수</p><strong>128건</strong></article><article class="metric-card"><p>완료 건수</p><strong>112건</strong></article><article class="metric-card"><p>취소 건수</p><strong>16건</strong></article><article class="metric-card"><p>총 매출</p><strong>4,820,000원</strong></article></section>
-<div class="grid grid--2 section"><section class="section"><h2 class="section-title">일별 주문 · 매출 (그래프)</h2><div class="chart-placeholder">꺾은선 그래프<br>일별 주문 건수 / 매출 금액</div></section><section class="section"><h2 class="section-title">상품별 주문 · 매출</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>상품명</th><th>주문 건수</th><th>매출</th></tr></thead><tbody><tr><td>딸기 생크림 케이크</td><td>42건</td><td>1,470,000원</td></tr><tr><td>레터링 주문 케이크</td><td>35건</td><td>2,100,000원</td></tr><tr><td>초코 가나슈 케이크</td><td>28건</td><td>1,120,000원</td></tr><tr><td>마카롱 케이크</td><td>15건</td><td>570,000원</td></tr></tbody></table></div></section></div>
-<div class="grid grid--3"><section class="section"><h2 class="section-title">인기 상품 TOP 5</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>순위</th><th>상품명</th><th>주문 수</th></tr></thead><tbody><tr><td>1위</td><td>딸기 생크림 케이크</td><td>42건</td></tr><tr><td>2위</td><td>레터링 주문 케이크</td><td>35건</td></tr><tr><td>3위</td><td>초코 가나슈 케이크</td><td>28건</td></tr><tr><td>4위</td><td>마카롱 케이크</td><td>15건</td></tr><tr><td>5위</td><td>생일 케이크 2호</td><td>8건</td></tr></tbody></table></div></section><section class="section"><h2 class="section-title">시간대별 픽업 건수 (그래프)</h2><div class="chart-placeholder">막대 그래프<br>시간대별 픽업 건수</div></section><section class="section"><h2 class="section-title">기타 지표</h2><div class="panel"><div class="data-row"><span class="data-row__label">신규 회원</span><span>23명</span></div><div class="data-row"><span class="data-row__label">후기 평균 평점</span><span>4.3 / 5.0</span></div><div class="data-row"><span class="data-row__label">환불 금액</span><span>320,000원</span></div><div class="data-row"><span class="data-row__label">쿠폰 사용 건수</span><span>47건</span></div><div class="data-row"><span class="data-row__label">평균 주문 금액</span><span>37,656원</span></div></div></section></div>
-</main></div></div></body></html>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>통계 | 관리자</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-layout">
+  <aside th:replace="~{fragments/admin/sidebar :: sidebar('statistics')}"></aside>
+  <div class="admin-main">
+    <header th:replace="~{fragments/admin/header :: header('통계')}"></header>
+    <main class="admin-content">
+      <div th:replace="~{fragments/common/alert :: alert}"></div>
+      <h1 class="admin-page-title">통계</h1>
+
+      <form class="admin-toolbar" method="get" th:action="@{/admin/statistics}" th:object="${search}">
+        <input class="form-control" aria-label="통계 시작일" type="date" th:field="*{startDate}">
+        <span>~</span>
+        <input class="form-control" aria-label="통계 종료일" type="date" th:field="*{endDate}">
+        <div class="cluster">
+          <button class="btn" type="submit" name="period" th:each="option : ${periods}"
+                  th:value="${option.name()}" th:text="${option.label}"
+                  th:classappend="${option == selectedPeriod} ? 'is-active'">일별</button>
+        </div>
+        <button class="btn btn--primary" type="submit"
+                th:name="period" th:value="${selectedPeriod.name()}">조회</button>
+      </form>
+
+      <section class="grid grid--4 section">
+        <article class="metric-card"><p>총 주문 건수</p>
+          <strong th:text="|${report.orderStats.orderCount}건|">0건</strong></article>
+        <article class="metric-card"><p>완료 건수</p>
+          <strong th:text="|${report.orderStats.completedCount}건|">0건</strong></article>
+        <article class="metric-card"><p>취소 건수</p>
+          <strong th:text="|${report.orderStats.canceledCount}건|">0건</strong></article>
+        <article class="metric-card"><p>순매출 (결제 − 환불)</p>
+          <strong th:text="|${#numbers.formatInteger(report.netSalesAmount, 0, 'COMMA')}원|">0원</strong></article>
+      </section>
+
+      <div class="grid grid--2 section">
+        <section class="section">
+          <h2 class="section-title" th:text="|${selectedPeriod.label} 주문 · 매출|">주문 · 매출</h2>
+          <div class="chart" th:if="${!report.trend.isEmpty()}">
+            <!-- 좌표와 viewBox 폭은 서버가 계산해 넘긴다(템플릿에 계산식을 두지 않는다).
+                 preserveAspectRatio를 기본값으로 둬 균일 배율로 그린다 — 늘려 맞추면
+                 x·y 배율이 달라져 점 마커가 타원으로 찌그러진다. -->
+            <svg class="chart__canvas" th:viewBox="${report.trend.viewBox()}"
+                 role="img" aria-label="기간별 주문 건수와 순매출 추이">
+              <line class="chart__grid" x1="0" y1="50" th:x2="${report.trend.width}" y2="50"></line>
+              <line class="chart__grid" x1="0" y1="100" th:x2="${report.trend.width}" y2="100"></line>
+              <polyline class="chart__line chart__line--sales"
+                        th:points="${report.trend.salesPolyline}"></polyline>
+              <polyline class="chart__line chart__line--orders"
+                        th:points="${report.trend.orderPolyline}"></polyline>
+              <!-- 구간이 하나뿐이면 꺾은선이 점 하나라 보이지 않으므로 마커를 함께 찍는다. -->
+              <circle class="chart__dot chart__dot--sales" th:each="point : ${report.trend.points}"
+                      th:cx="${point.x}" th:cy="${point.salesY}" r="2.4"></circle>
+              <circle class="chart__dot chart__dot--orders" th:each="point : ${report.trend.points}"
+                      th:cx="${point.x}" th:cy="${point.orderY}" r="2.4"></circle>
+            </svg>
+            <div class="chart__legend">
+              <span><i class="chart__legend-key"></i>주문 건수
+                <span th:text="|(최대 ${report.trend.maxOrderCount}건)|"></span></span>
+              <span><i class="chart__legend-key chart__legend-key--sales"></i>순매출
+                <span th:text="|(최대 ${#numbers.formatInteger(report.trend.maxNetSalesAmount, 0, 'COMMA')}원)|"></span></span>
+            </div>
+            <div class="chart__axis">
+              <span th:text="${report.trend.points[0].label}">시작</span>
+              <span th:text="${report.trend.points[report.trend.points.size() - 1].label}">종료</span>
+            </div>
+          </div>
+          <div class="chart-placeholder" th:if="${report.trend.isEmpty()}">
+            이 기간에는 주문·매출 데이터가 없습니다.
+          </div>
+        </section>
+        <section class="section"><h2 class="section-title">상품별 주문 · 주문 금액</h2>
+          <div class="table-wrap"><table class="data-table">
+            <thead><tr><th>상품명</th><th>주문 건수</th><th>수량</th><th>주문 금액</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${report.productSales}">
+              <td th:text="${row.productName}">-</td>
+              <td th:text="|${row.orderCount}건|">-</td>
+              <td th:text="|${row.quantity}개|">-</td>
+              <td th:text="|${#numbers.formatInteger(row.orderAmount, 0, 'COMMA')}원|">-</td>
+            </tr>
+            <tr th:if="${report.productSales.isEmpty()}">
+              <td colspan="4">이 기간에는 판매 실적이 없습니다.</td>
+            </tr>
+            </tbody></table></div>
+        </section>
+      </div>
+
+      <div class="grid grid--3">
+        <section class="section"><h2 class="section-title">인기 상품 TOP 5</h2>
+          <div class="table-wrap"><table class="data-table">
+            <thead><tr><th>순위</th><th>상품명</th><th>주문 수량</th></tr></thead>
+            <tbody>
+            <tr th:each="row, iter : ${report.popularProducts()}">
+              <td th:text="|${iter.count}위|">-</td>
+              <td th:text="${row.productName}">-</td>
+              <td th:text="|${row.quantity}개|">-</td>
+            </tr>
+            <tr th:if="${report.popularProducts().isEmpty()}">
+              <td colspan="3">집계할 주문이 없습니다.</td>
+            </tr>
+            </tbody></table></div>
+        </section>
+        <section class="section"><h2 class="section-title">시간대별 픽업 건수</h2>
+          <div class="bar-chart" role="img" aria-label="시간대별 픽업 건수">
+            <div class="bar-chart__item" th:each="bar : ${report.pickupHours}"
+                 th:title="|${bar.label}시 ${bar.value}건|">
+              <div class="bar-chart__bar" th:style="|height:${bar.heightPercent}%|"></div>
+              <span class="bar-chart__label" th:text="${bar.label}">00</span>
+            </div>
+          </div>
+        </section>
+        <section class="section"><h2 class="section-title">기타 지표</h2>
+          <div class="panel">
+            <div class="data-row"><span class="data-row__label">신규 회원</span>
+              <span th:text="|${report.newMemberCount}명|">0명</span></div>
+            <div class="data-row"><span class="data-row__label">후기 작성</span>
+              <span th:text="|${report.reviewCount}건|">0건</span></div>
+            <div class="data-row"><span class="data-row__label">후기 평균 평점</span>
+              <span th:text="|${report.averageRating} / 5.0|">0 / 5.0</span></div>
+            <div class="data-row"><span class="data-row__label">결제 금액</span>
+              <span th:text="|${#numbers.formatInteger(report.paymentStats.paidAmount, 0, 'COMMA')}원|">0원</span></div>
+            <div class="data-row"><span class="data-row__label">환불 금액</span>
+              <span th:text="|${#numbers.formatInteger(report.paymentStats.refundedAmount, 0, 'COMMA')}원|">0원</span></div>
+            <div class="data-row"><span class="data-row__label">쿠폰 사용 건수</span>
+              <span th:text="|${report.usedCouponCount}건|">0건</span></div>
+            <div class="data-row"><span class="data-row__label">주문 금액 합계</span>
+              <span th:text="|${#numbers.formatInteger(report.orderStats.orderAmount, 0, 'COMMA')}원|">0원</span></div>
+            <div class="data-row"><span class="data-row__label">평균 주문 금액</span>
+              <span th:text="|${#numbers.formatInteger(report.orderStats.averageOrderAmount(), 0, 'COMMA')}원|">0원</span></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</body></html>

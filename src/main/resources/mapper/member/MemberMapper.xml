@@ -106,4 +106,14 @@
          WHERE nickname LIKE CONCAT('%', #{keyword}, '%')
             OR email LIKE CONCAT('%', #{keyword}, '%')
     </select>
+
+    <!-- 통계용 신규 가입 수. 탈퇴자도 가입 시점의 실적이므로 status로 걸러내지 않고,
+         관리자 계정만 제외한다. -->
+    <select id="countCreatedBetween" resultType="long">
+        SELECT COUNT(*)
+          FROM members
+         WHERE role = 'USER'
+           AND created_at &gt;= #{from}
+           AND created_at &lt; #{to}
+    </select>
 </mapper>

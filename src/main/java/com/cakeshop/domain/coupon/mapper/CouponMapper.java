@@ -59,4 +59,7 @@ public interface CouponMapper {
 
     /** USED -> AVAILABLE 복구. 쓴 쿠폰이 없으면 0을 반환하고 취소는 그대로 진행한다. */
     int restoreByOrderId(@Param("orderId") Long orderId);
+
+    /** 통계용 — 기간 내 사용된 쿠폰 수(statistics가 CouponService 계약으로만 쓴다). */
+    long countUsedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

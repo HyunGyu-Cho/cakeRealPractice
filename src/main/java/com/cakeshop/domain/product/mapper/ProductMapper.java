@@ -2,6 +2,7 @@ package com.cakeshop.domain.product.mapper;
 
 import com.cakeshop.domain.product.dto.form.AdminProductSearchForm;
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
+import com.cakeshop.domain.product.dto.view.LowStockProductView;
 import com.cakeshop.domain.product.dto.view.ProductSummaryRow;
 import com.cakeshop.domain.product.dto.view.ProductTypeCountRow;
 import com.cakeshop.domain.product.entity.Category;
@@ -73,4 +74,7 @@ public interface ProductMapper {
     int insertProductImage(ProductImage image);
 
     int updateProductImageUrl(@Param("id") Long id, @Param("imageUrl") String imageUrl);
+
+    // ---- 재고 부족 (statistics 대시보드가 공개 계약으로 사용한다) ----
+    List<LowStockProductView> findLowStockProducts(@Param("threshold") int threshold);
 }

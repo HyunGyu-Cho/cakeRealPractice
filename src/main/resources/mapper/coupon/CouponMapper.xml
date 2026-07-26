@@ -166,4 +166,13 @@
          WHERE applied_order_id = #{orderId}
            AND status = 'USED'
     </update>
+
+    <!-- 통계용 사용 건수. 복구된 쿠폰은 used_at이 지워지므로 자연히 빠진다. -->
+    <select id="countUsedBetween" resultType="long">
+        SELECT COUNT(*)
+          FROM member_coupons
+         WHERE status = 'USED'
+           AND used_at &gt;= #{from}
+           AND used_at &lt; #{to}
+    </select>
 </mapper>

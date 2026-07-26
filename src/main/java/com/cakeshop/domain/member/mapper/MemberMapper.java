@@ -1,6 +1,7 @@
 package com.cakeshop.domain.member.mapper;
 
 import com.cakeshop.domain.member.entity.Member;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,4 +39,7 @@ public interface MemberMapper {
 
     // 공개 계약(findAdminMemberIds)용 — 알림 팬아웃 대상인 활성 관리자 id.
     List<Long> findActiveAdminIds();
+
+    // 공개 계약(countNewMembers)용 — statistics 신규 가입 집계.
+    long countCreatedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }
