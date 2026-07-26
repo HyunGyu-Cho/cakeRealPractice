@@ -52,7 +52,7 @@ com.cakeshop
 
 규격 정본은 `docs/frontend-template-format.md`. 고객 화면은 `fragments/common/head·header·footer`, 관리자 화면은 `fragments/admin/sidebar·header` 프래그먼트를 재사용하고 화면 고유 마크업만 작성한다. 공통 스타일·스크립트는 `static/css/app.css`·`static/js/app.js`에만 둔다. `successMessage`/`errorMessage`는 `fragments/common/alert.html`이 출력한다.
 
-목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. `scripts\import-customer-mockups.ps1`은 `$screenMap`에 남아 있는 목업만 덮어쓴다. 현재는 주문제작 2개·알림·후기·쿠폰 5개이며, 실구현 전환 시 반드시 `$screenMap`에서 해당 화면을 먼저 제외한다.
+목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. `scripts\import-customer-mockups.ps1`은 `$screenMap`에 남아 있는 목업만 덮어쓴다. 현재는 주문제작 2개·후기·쿠폰 4개이며, 실구현 전환 시 반드시 `$screenMap`에서 해당 화면을 먼저 제외한다.
 
 ## 3. 빌드/테스트
 
