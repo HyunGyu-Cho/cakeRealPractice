@@ -12,13 +12,14 @@
 
   <main class="page-container">
     <div th:replace="~{fragments/common/alert :: alert}"></div>
-    <h1 class="visually-hidden">케이크 쇼핑몰 메인</h1>
-
-    <section class="section" aria-labelledby="service-title">
-      <h2 id="service-title" class="section-title">서비스 안내</h2>
-      <div class="hero-placeholder">
-        <strong>정성을 담은 케이크를 원하는 날짜에 만나보세요.</strong>
-        <span>서비스 소개 배너 영역</span>
+    <section class="section" aria-labelledby="hero-title">
+      <div class="hero">
+        <h1 id="hero-title" class="hero__title">정성을 담은 케이크를 원하는 날짜에 만나보세요.</h1>
+        <p class="hero__desc">진열된 케이크는 바로 주문하고, 원하는 디자인은 주문제작으로 상담받을 수 있습니다.</p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" th:href="@{/products}">케이크 둘러보기</a>
+          <a class="btn" th:href="@{/orders/custom/options}">주문제작 시작하기</a>
+        </div>
       </div>
     </section>
 

@@ -165,9 +165,9 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `payment_cancellations.status` | 주환 | 취소 요청·완료·거절 | **`REQUESTED / DONE / REJECTED` (확정)** | ✅ 확정 (V8, 스펙 docs/specs/order-payment.md) |
 | `coupons.status` | 정후 | 발급 중 | **`ACTIVE / SUSPENDED / ENDED` (확정)** | ✅ 확정 (V15, 스펙 docs/specs/coupon.md) |
 | `member_coupons.status` | 정후 | 사용 가능 / 사용 완료 | **`AVAILABLE / USED` (확정)** | ✅ 확정 (V15, 스펙 docs/specs/coupon.md — 만료는 `expires_at` 파생값이라 저장하지 않는다) |
-| `posts.status` | 현규 | 정상 / 제재 | `ACTIVE / DELETED / BLOCKED` | 거의 확정 |
-| `comments.status` | 현규 | (표기 없음) | `ACTIVE / DELETED` ? | ☐ 열림 |
-| `post_reports.status` | 현규 | (신고 처리) | `PENDING / ACCEPTED / REJECTED` | 거의 확정 |
+| `posts.status` | 현규 | 정상 / 제재 | **`ACTIVE / DELETED / BLOCKED` (확정)** | ✅ 확정 (V2, 스펙 docs/specs/community.md — `PostStatus` enum) |
+| `comments.status` | 현규 | (표기 없음) | **`ACTIVE / DELETED` (확정)** | ✅ 확정 (V2, 스펙 docs/specs/community.md — `CommentStatus` enum. 댓글에는 제재가 없어 posts와 달리 `BLOCKED`를 두지 않는다) |
+| `post_reports.status` | 현규 | (신고 처리) | **`PENDING / ACCEPTED / REJECTED` (확정)** | ✅ 확정 (V2, 스펙 docs/specs/community.md). ⚠️ 유일하게 자바 enum 없이 문자열로 다루는 상태다 — `CommunityAdminService`가 라벨을 switch로 매핑한다 |
 | `reviews.status` | 현규 | 숨김 | **`VISIBLE / HIDDEN` (확정)** | ✅ 확정 (V16, 스펙 docs/specs/review.md — 삭제는 상태가 아니라 행 제거다) |
 | `chat_rooms.status` | 민정 | 상담 가능 / 상담 종료 | **`OPEN / CLOSED` (확정)** | ✅ 확정 (V9, 스펙 docs/specs/chat.md) |
 | `notification_deliveries.status` | 민정 | (화면 표기 없음 — 내부 전달 이력) | **`REQUESTED / SENT / FAILED / ABANDONED` (확정)** | ✅ 확정 (V12, 스펙 docs/specs/notification.md) |
@@ -240,17 +240,17 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 2. **DB 컬럼 규칙** — `VARCHAR(20) NOT NULL` + `chk_<table>_status CHECK IN(...)` + 시작 상태 `DEFAULT`.
 3. **함정 분류** — "재고·읽음·글종류·남의 status는 내 status 컬럼이 아니다"를 합의.
 
-### 담당자가 자기 DDL 짤 때 채우는 ☐
+### 담당자가 자기 DDL 짤 때 채우던 ☐ — 전부 확정 완료
 
-| 담당 | 채울 것 |
+| 담당 | 채운 결과 |
 |---|---|
-| 시은 | `product_options.status` 필요 여부 확정 |
-| 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
-| 정후 | `coupons.status` 확정 완료 (`ACTIVE / SUSPENDED / ENDED`), `member_coupons.status`는 `AVAILABLE / USED` |
-| 현규 | `comments.status` 확정(`ACTIVE / DELETED`), `reviews.status` 확정 완료 (`VISIBLE / HIDDEN`) |
-| 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. `NotificationType` enum 12개 확정 (`docs/specs/notification.md`) |
+| 시은 | `product_options.status` = `ACTIVE / INACTIVE` (V13 — product 스펙이 order(수제) 차례로 넘겼던 항목) |
+| 주환 | `payment_cancellations.status` = `REQUESTED / DONE / REJECTED` (V8) |
+| 정후 | `coupons.status` = `ACTIVE / SUSPENDED / ENDED`, `member_coupons.status` = `AVAILABLE / USED` (V15) |
+| 현규 | `comments.status` = `ACTIVE / DELETED`, `post_reports.status` = `PENDING / ACCEPTED / REJECTED` (V2), `reviews.status` = `VISIBLE / HIDDEN` (V16) |
+| 민정 | `chat_rooms.status` = `OPEN / CLOSED` (V9), `notification_deliveries.status` 4개 (V12), `NotificationType` 12개 (`docs/specs/notification.md`) |
 
-> ☐ 항목을 확정하면 인벤토리의 해당 행을 "확정"으로 갱신하고, enum + DDL을 함께 커밋한다.
+> 새 상태 컬럼을 추가할 때는 위 인벤토리에 행을 추가하고 enum + DDL을 함께 커밋한다.
 
 ## 한 줄 요약
 
