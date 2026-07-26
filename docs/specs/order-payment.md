@@ -2,7 +2,7 @@
 domain: order-payment
 owner: 주환
 status: approved
-last_updated: 2026-07-25
+approved-at: 2026-07-25
 ---
 
 # 일반 주문·모의 결제 명세
