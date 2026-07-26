@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -117,7 +118,7 @@ class StatisticsServiceTests {
     }
 
     @Test
-    void 추이_좌표는_0에서_100으로_정규화된다() {
+    void 추이_좌표는_viewBox_폭과_높이_100에_맞춰_정규화된다() {
         when(orderStatsService.getOrderTrend(any(), any(), any())).thenReturn(List.of(
             new OrderTrendPointView("07-19", 0, 0),
             new OrderTrendPointView("07-20", 10, 100000)));
@@ -125,11 +126,30 @@ class StatisticsServiceTests {
         TrendChartView trend = statisticsService.getReport(form()).trend();
 
         assertThat(trend.points().getFirst().x()).isZero();
-        assertThat(trend.points().getLast().x()).isEqualTo(100.0);
+        assertThat(trend.points().getLast().x()).isEqualTo(trend.width());
         // 값이 클수록 y는 작아진다(SVG는 위가 0이다).
         assertThat(trend.points().getFirst().orderY()).isEqualTo(100.0);
         assertThat(trend.points().getLast().orderY()).isZero();
-        assertThat(trend.orderPolyline()).isEqualTo("0.0,100.0 100.0,0.0");
+        assertThat(trend.orderPolyline()).isEqualTo("0.0,100.0 " + trend.width() + ".0,0.0");
+    }
+
+    @Test
+    void viewBox_폭은_구간_수에_따라_커지되_비율_범위_안에_묶인다() {
+        // 구간이 적으면 최소 폭(3:1)을 쓴다 — 좌표계가 정사각형에 가까우면 차트가 세로로 길어진다.
+        assertThat(trendOf(2).width()).isEqualTo(300);
+        assertThat(trendOf(2).viewBox()).isEqualTo("0 0 300 100");
+
+        // 구간이 늘면 폭도 늘고, 아무리 길어도 최대 폭(9:1)에서 멈춘다.
+        assertThat(trendOf(40).width()).isEqualTo(468);
+        assertThat(trendOf(400).width()).isEqualTo(900);
+    }
+
+    @Test
+    void 구간이_하나면_점을_좌표계_가운데_찍는다() {
+        TrendChartView trend = trendOf(1);
+
+        assertThat(trend.points()).hasSize(1);
+        assertThat(trend.points().getFirst().x()).isEqualTo(trend.width() / 2.0);
     }
 
     @Test
@@ -187,6 +207,16 @@ class StatisticsServiceTests {
 
         verify(memberService)
             .countNewMembers(eq(LocalDate.of(2026, 7, 1)), eq(LocalDate.of(2026, 7, 15)));
+    }
+
+    /** 라벨 n개짜리 주문 추이를 만들어 차트를 뽑는다. */
+    private TrendChartView trendOf(int labelCount) {
+        List<OrderTrendPointView> trend = new ArrayList<>(labelCount);
+        for (int i = 0; i < labelCount; i++) {
+            trend.add(new OrderTrendPointView(String.format("07-%02d", i + 1), i, i * 1000L));
+        }
+        when(orderStatsService.getOrderTrend(any(), any(), any())).thenReturn(trend);
+        return statisticsService.getReport(form()).trend();
     }
 
     private StatisticsSearchForm form() {

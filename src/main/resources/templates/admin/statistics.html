@@ -41,20 +41,22 @@
         <section class="section">
           <h2 class="section-title" th:text="|${selectedPeriod.label} 주문 · 매출|">주문 · 매출</h2>
           <div class="chart" th:if="${!report.trend.isEmpty()}">
-            <!-- 좌표는 서버가 0~100으로 정규화해 넘긴다(템플릿에 계산식을 두지 않는다). -->
-            <svg class="chart__canvas" viewBox="0 0 100 100" preserveAspectRatio="none"
+            <!-- 좌표와 viewBox 폭은 서버가 계산해 넘긴다(템플릿에 계산식을 두지 않는다).
+                 preserveAspectRatio를 기본값으로 둬 균일 배율로 그린다 — 늘려 맞추면
+                 x·y 배율이 달라져 점 마커가 타원으로 찌그러진다. -->
+            <svg class="chart__canvas" th:viewBox="${report.trend.viewBox()}"
                  role="img" aria-label="기간별 주문 건수와 순매출 추이">
-              <line class="chart__grid" x1="0" y1="50" x2="100" y2="50"></line>
-              <line class="chart__grid" x1="0" y1="100" x2="100" y2="100"></line>
+              <line class="chart__grid" x1="0" y1="50" th:x2="${report.trend.width}" y2="50"></line>
+              <line class="chart__grid" x1="0" y1="100" th:x2="${report.trend.width}" y2="100"></line>
               <polyline class="chart__line chart__line--sales"
                         th:points="${report.trend.salesPolyline}"></polyline>
               <polyline class="chart__line chart__line--orders"
                         th:points="${report.trend.orderPolyline}"></polyline>
               <!-- 구간이 하나뿐이면 꺾은선이 점 하나라 보이지 않으므로 마커를 함께 찍는다. -->
               <circle class="chart__dot chart__dot--sales" th:each="point : ${report.trend.points}"
-                      th:cx="${point.x}" th:cy="${point.salesY}" r="1.4"></circle>
+                      th:cx="${point.x}" th:cy="${point.salesY}" r="2.4"></circle>
               <circle class="chart__dot chart__dot--orders" th:each="point : ${report.trend.points}"
-                      th:cx="${point.x}" th:cy="${point.orderY}" r="1.4"></circle>
+                      th:cx="${point.x}" th:cy="${point.orderY}" r="2.4"></circle>
             </svg>
             <div class="chart__legend">
               <span><i class="chart__legend-key"></i>주문 건수

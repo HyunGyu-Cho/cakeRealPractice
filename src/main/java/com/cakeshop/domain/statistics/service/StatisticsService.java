@@ -45,6 +45,11 @@ public class StatisticsService {
     private static final int RECENT_ORDER_LIMIT = 5;
     private static final int PRODUCT_SALES_LIMIT = 10;
 
+    /** 추이 차트 좌표계: 구간 하나당 폭과 그 결과를 묶는 범위(가로:세로 3:1 ~ 9:1). */
+    private static final int TREND_STEP = 12;
+    private static final int TREND_MIN_WIDTH = 300;
+    private static final int TREND_MAX_WIDTH = 900;
+
     private final OrderStatsService orderStatsService;
     private final PaymentStatsService paymentStatsService;
     private final MemberService memberService;
@@ -149,11 +154,12 @@ public class StatisticsService {
         List<String> labels = merged.keySet().stream().sorted().toList();
         long maxOrderCount = merged.values().stream().mapToLong(v -> v[0]).max().orElse(0);
         long maxSales = merged.values().stream().mapToLong(v -> Math.max(v[2], 0)).max().orElse(0);
+        int width = viewBoxWidth(labels.size());
 
         List<TrendPointView> points = new ArrayList<>(labels.size());
         for (int i = 0; i < labels.size(); i++) {
             long[] values = merged.get(labels.get(i));
-            double x = labels.size() == 1 ? 50.0 : i * 100.0 / (labels.size() - 1);
+            double x = labels.size() == 1 ? width / 2.0 : i * (double) width / (labels.size() - 1);
             points.add(new TrendPointView(
                 labels.get(i), values[0], values[1], values[2],
                 round(x), round(toY(values[0], maxOrderCount)), round(toY(values[2], maxSales))));
@@ -162,7 +168,17 @@ public class StatisticsService {
             points,
             points.stream().map(p -> p.x() + "," + p.orderY()).collect(Collectors.joining(" ")),
             points.stream().map(p -> p.x() + "," + p.salesY()).collect(Collectors.joining(" ")),
-            maxOrderCount, maxSales);
+            maxOrderCount, maxSales, width);
+    }
+
+    /**
+     * 구간 수에 맞춘 좌표계 폭. 높이가 100이라 이 값이 곧 가로:세로 비율이므로,
+     * 너무 좁으면(정사각형에 가까우면) 차트가 세로로 길어지고 너무 넓으면 납작해진다.
+     * 그래서 구간당 {@link #TREND_STEP}을 주되 {@link #TREND_MIN_WIDTH}~{@link #TREND_MAX_WIDTH}로 묶는다.
+     */
+    private int viewBoxWidth(int labelCount) {
+        int spanned = Math.max(labelCount - 1, 0) * TREND_STEP;
+        return Math.clamp(spanned, TREND_MIN_WIDTH, TREND_MAX_WIDTH);
     }
 
     /** 24시간 전부를 자리로 남긴다 — 픽업이 없는 시간대도 막대 축에 있어야 분포가 읽힌다. */

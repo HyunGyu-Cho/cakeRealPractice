@@ -120,7 +120,9 @@ body{display:flex;flex-direction:column;min-height:100vh}body>main{flex:1 0 auto
 /* 통계 차트: 외부 라이브러리 없이 서버 데이터로 그리는 인라인 SVG 꺾은선 + 막대.
    좌표는 StatisticsService가 0~100으로 정규화해 넘기므로 여기서는 비율만 유지한다. */
 .chart{background:var(--color-background-soft);border:1px solid var(--color-border);padding:var(--space-2)}
-.chart__canvas{display:block;height:176px;width:100%}
+/* height:auto 로 두면 요소가 viewBox 비율(폭:100)을 그대로 따라가 여백 없이 균일 배율로 그려진다.
+   높이를 고정하면 비율이 어긋난 만큼 위아래 여백이 생긴다. */
+.chart__canvas{display:block;height:auto;max-height:240px;width:100%}
 .chart__grid{stroke:var(--color-border);stroke-width:.4;vector-effect:non-scaling-stroke}
 .chart__line{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
 .chart__line--orders{stroke:var(--color-info)}
