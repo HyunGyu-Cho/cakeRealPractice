@@ -80,6 +80,12 @@ public interface CustomOrderMapper {
 
     int updateFinalAmount(@Param("orderId") Long orderId, @Param("finalAmount") Long finalAmount);
 
+    /** 결제 확정용 — 견적 금액을 원가로 두고 쿠폰 할인과 최종 금액을 함께 기록한다. */
+    int updateAmounts(@Param("orderId") Long orderId,
+                      @Param("originalAmount") Long originalAmount,
+                      @Param("discountAmount") Long discountAmount,
+                      @Param("finalAmount") Long finalAmount);
+
     int updatePickupAt(@Param("orderId") Long orderId, @Param("pickupAt") LocalDateTime pickupAt);
 
     int reject(@Param("orderId") Long orderId,

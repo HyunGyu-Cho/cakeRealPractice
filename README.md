@@ -147,7 +147,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 주문 | `/admin/orders`, `/admin/orders/{id}` | 실제 조회·검색·상태/주문일/픽업일 필터·페이징 |
 | 제작·픽업 | `/admin/fulfillment` | 실제 픽업일 조회·`PAID → READY_FOR_PICKUP → PICKED_UP` 처리 |
 | 결제·환불 | `/admin/payments` | 실제 모의 결제·전액 취소/환불 내역 조회 및 관리자 취소 |
-| 쿠폰 | `/admin/coupons` | 목업 |
+| 쿠폰 | `/admin/coupons`, `/admin/coupons/new`, `/admin/coupons/{id}/edit`, `/admin/coupons/{id}/issue` | 실제 CRUD·페이징·발급 중지/재개/종료·회원 지정 발급 |
 | 회원 | `/admin/members` | 목업 |
 | 후기 | `/admin/reviews` | 목업 |
 | 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
@@ -173,12 +173,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 결제 | `/orders/payment` | 실제 UUID 멱등 모의 결제 (`DONE`, 결제 성공 시 `PAID` 주문 생성) |
 | 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
 | 1:1 채팅 | `/chat` | 실제 텍스트·이미지·읽음·상담 자동 재개·`/주문제작` 카드·STOMP 실시간 이벤트 |
-| 쿠폰함 | `/mypage/coupons` | 목업 |
+| 쿠폰함·쿠폰 받기 | `/mypage/coupons`, `/coupons` | 실제 구현 (사용 가능/사용 완료/기간 만료 분류, 정원·1인 1장 다운로드, 결제 적용·취소 복구) |
 | 알림 | `/notifications` | 실제 구현 (목록·키셋 더보기·개별/전체 읽음·헤더 미읽음 뱃지·STOMP 실시간 수신) |
 | 후기 | `/reviews/new` | 목업 |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 2개(후기·쿠폰)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림·주문제작 화면은 이 명령이 덮어쓰지 않는다.
+프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 1개(후기)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림·주문제작·쿠폰 화면은 이 명령이 덮어쓰지 않는다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1

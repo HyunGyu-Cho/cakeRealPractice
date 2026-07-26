@@ -375,13 +375,14 @@
 
     -- =========================================================
     -- 쿠폰 (정후)
-    -- 1차에는 관리자 쿠폰 CRUD 만. member_coupons(회원 지급)는 2차.
+    -- 1차에는 관리자 쿠폰 CRUD 만. member_coupons(회원 지급)는 V15에서 추가됐다.
+    -- 상태·할인 유형 값은 V15에서 확정해 여기에 소급 반영했다(스펙 docs/specs/coupon.md).
     -- =========================================================
 
     CREATE TABLE `coupons` (
         `id`                      BIGINT NOT NULL AUTO_INCREMENT,
         `name`                    VARCHAR(100) NOT NULL,
-        `discount_type`           VARCHAR(30) NOT NULL,
+        `discount_type`           VARCHAR(20) NOT NULL,
         `discount_value`          DECIMAL(12, 2) NOT NULL,
         `minimum_order_amount`    DECIMAL(12, 0) NOT NULL DEFAULT 0,
         `maximum_discount_amount` DECIMAL(12, 0) NULL,
@@ -389,15 +390,21 @@
         `issued_quantity`         INT UNSIGNED NOT NULL DEFAULT 0,
         `starts_at`               DATETIME(6) NOT NULL,
         `expires_at`              DATETIME(6) NOT NULL,
-        `status`                  VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+        `status`                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
         `created_by`              BIGINT NOT NULL,
         `created_at`              DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         `updated_at`              DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                                                 ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (`id`),
+        CONSTRAINT `chk_coupons_status`
+            CHECK (`status` IN ('ACTIVE', 'SUSPENDED', 'ENDED')),
+        CONSTRAINT `chk_coupons_discount_type`
+            CHECK (`discount_type` IN ('PERCENTAGE', 'FIXED_AMOUNT')),
         CONSTRAINT `fk_coupons_creator`
             FOREIGN KEY (`created_by`) REFERENCES `members` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE INDEX `idx_coupons_status_period` ON `coupons` (`status`, `starts_at`, `expires_at`);
 
     -- =========================================================
     -- 알림 (민정)

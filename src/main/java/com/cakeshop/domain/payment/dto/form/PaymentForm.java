@@ -15,4 +15,7 @@ public class PaymentForm {
     private boolean refundPolicyAgreed;
 
     private Long amount;
+
+    /** 선택한 쿠폰. 금액은 서버가 다시 계산하므로 id만 받는다. */
+    private Long memberCouponId;
 }

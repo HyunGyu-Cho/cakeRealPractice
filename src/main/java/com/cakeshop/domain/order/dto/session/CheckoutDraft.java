@@ -22,6 +22,11 @@ public class CheckoutDraft implements Serializable {
     private String pickupName;
     private String pickupPhone;
     private String requestMessage;
+    /**
+     * 고객이 고른 쿠폰. <b>id만</b> 담고 할인 금액은 담지 않는다 — 금액은 결제 시점에 서버가 다시 계산한다.
+     * 초안 단계에서는 쿠폰을 잡아두지 않으므로, 결제까지 가지 않은 초안이 쿠폰을 묶지 않는다.
+     */
+    private Long memberCouponId;
 
     public CheckoutDraft(Long memberId, List<Long> cartItemIds) {
         this.checkoutId = UUID.randomUUID().toString();

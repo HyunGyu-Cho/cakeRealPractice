@@ -2,4 +2,168 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.coupon.mapper.CouponMapper">
     <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <sql id="couponColumns">
+        SELECT c.id,
+               c.name,
+               c.discount_type,
+               c.discount_value,
+               c.minimum_order_amount,
+               c.maximum_discount_amount,
+               c.total_quantity,
+               c.issued_quantity,
+               c.starts_at,
+               c.expires_at,
+               c.status,
+               c.created_by,
+               c.created_at,
+               c.updated_at
+          FROM coupons c
+    </sql>
+
+    <!-- member_coupons + coupons 는 둘 다 coupon 도메인 소유라 조인해도 된다.
+         members·orders 는 남의 테이블이므로 절대 붙이지 않는다. -->
+    <sql id="memberCouponColumns">
+        SELECT mc.id             AS member_coupon_id,
+               c.id              AS coupon_id,
+               c.name            AS coupon_name,
+               c.discount_type,
+               c.discount_value,
+               c.minimum_order_amount,
+               c.maximum_discount_amount,
+               c.starts_at,
+               c.expires_at,
+               c.status          AS coupon_status,
+               mc.status,
+               mc.applied_order_id,
+               mc.issued_at,
+               mc.used_at
+          FROM member_coupons mc
+          JOIN coupons c ON c.id = mc.coupon_id
+    </sql>
+
+    <!-- ==================== 쿠폰(캠페인) ==================== -->
+
+    <insert id="insertCoupon" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.cakeshop.domain.coupon.entity.Coupon">
+        INSERT INTO coupons (name, discount_type, discount_value, minimum_order_amount,
+                             maximum_discount_amount, total_quantity, starts_at, expires_at,
+                             status, created_by)
+        VALUES (#{name}, #{discountType}, #{discountValue}, #{minimumOrderAmount},
+                #{maximumDiscountAmount}, #{totalQuantity}, #{startsAt}, #{expiresAt},
+                #{status}, #{createdBy})
+    </insert>
+
+    <!-- issued_quantity 는 발급 경로에서만 움직인다. 수정 화면이 되돌리지 못하게 여기서 뺀다.
+         updated_at 은 DDL 의 ON UPDATE 에 위임한다. -->
+    <update id="updateCoupon" parameterType="com.cakeshop.domain.coupon.entity.Coupon">
+        UPDATE coupons
+           SET name = #{name},
+               discount_type = #{discountType},
+               discount_value = #{discountValue},
+               minimum_order_amount = #{minimumOrderAmount},
+               maximum_discount_amount = #{maximumDiscountAmount},
+               total_quantity = #{totalQuantity},
+               starts_at = #{startsAt},
+               expires_at = #{expiresAt}
+         WHERE id = #{id}
+    </update>
+
+    <select id="findCouponById" resultType="com.cakeshop.domain.coupon.entity.Coupon">
+        <include refid="couponColumns"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="countCoupons" resultType="long">
+        SELECT COUNT(*) FROM coupons
+    </select>
+
+    <select id="findCouponPage" resultType="com.cakeshop.domain.coupon.entity.Coupon">
+        <include refid="couponColumns"/>
+        ORDER BY c.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <update id="updateCouponStatus">
+        UPDATE coupons
+           SET status = #{nextStatus}
+         WHERE id = #{id}
+           AND status = #{currentStatus}
+    </update>
+
+    <!-- 정원 초과를 앱이 아니라 DB 조건으로 막는다(상품 재고 차감과 같은 패턴). -->
+    <update id="increaseIssuedQuantity">
+        UPDATE coupons
+           SET issued_quantity = issued_quantity + 1
+         WHERE id = #{id}
+           AND status = 'ACTIVE'
+           AND issued_quantity &lt; total_quantity
+           AND starts_at &lt;= #{now}
+           AND expires_at &gt; #{now}
+    </update>
+
+    <select id="findIssuableCoupons" resultType="com.cakeshop.domain.coupon.entity.Coupon">
+        <include refid="couponColumns"/>
+        WHERE c.status = 'ACTIVE'
+          AND c.starts_at &lt;= #{now}
+          AND c.expires_at &gt; #{now}
+        ORDER BY c.expires_at ASC, c.id DESC
+    </select>
+
+    <!-- ==================== 회원 보유 쿠폰 ==================== -->
+
+    <insert id="insertMemberCoupon" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.cakeshop.domain.coupon.entity.MemberCoupon">
+        INSERT INTO member_coupons (coupon_id, member_id, status)
+        VALUES (#{couponId}, #{memberId}, #{status})
+    </insert>
+
+    <select id="existsMemberCoupon" resultType="boolean">
+        SELECT EXISTS (SELECT 1
+                         FROM member_coupons
+                        WHERE coupon_id = #{couponId}
+                          AND member_id = #{memberId})
+    </select>
+
+    <select id="findMemberCoupons" resultType="com.cakeshop.domain.coupon.dto.view.MemberCouponRow">
+        <include refid="memberCouponColumns"/>
+        WHERE mc.member_id = #{memberId}
+        ORDER BY mc.status ASC, c.expires_at ASC, mc.id DESC
+    </select>
+
+    <select id="findUsableMemberCoupons" resultType="com.cakeshop.domain.coupon.dto.view.MemberCouponRow">
+        <include refid="memberCouponColumns"/>
+        WHERE mc.member_id = #{memberId}
+          AND mc.status = 'AVAILABLE'
+          AND c.status = 'ACTIVE'
+          AND c.starts_at &lt;= #{now}
+          AND c.expires_at &gt; #{now}
+        ORDER BY c.expires_at ASC, mc.id DESC
+    </select>
+
+    <select id="findMemberCouponRow" resultType="com.cakeshop.domain.coupon.dto.view.MemberCouponRow">
+        <include refid="memberCouponColumns"/>
+        WHERE mc.id = #{memberCouponId}
+          AND mc.member_id = #{memberId}
+    </select>
+
+    <!-- 사용 확정. 소유자와 현재 상태를 WHERE 에 함께 넣어 한 번의 UPDATE 로 검증까지 끝낸다. -->
+    <update id="markUsed">
+        UPDATE member_coupons
+           SET status = 'USED',
+               applied_order_id = #{orderId},
+               used_at = #{now}
+         WHERE id = #{memberCouponId}
+           AND member_id = #{memberId}
+           AND status = 'AVAILABLE'
+    </update>
+
+    <update id="restoreByOrderId">
+        UPDATE member_coupons
+           SET status = 'AVAILABLE',
+               applied_order_id = NULL,
+               used_at = NULL
+         WHERE applied_order_id = #{orderId}
+           AND status = 'USED'
+    </update>
 </mapper>

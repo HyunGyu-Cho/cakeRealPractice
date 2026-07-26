@@ -2,6 +2,8 @@ package com.cakeshop.domain.order.service;
 
 import com.cakeshop.domain.cart.dto.view.CheckoutCartItem;
 import com.cakeshop.domain.cart.service.CartService;
+import com.cakeshop.domain.coupon.dto.view.AvailableCouponView;
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.dto.session.CheckoutDraft;
 import com.cakeshop.domain.order.dto.view.CheckoutItemView;
 import com.cakeshop.domain.order.dto.view.CheckoutView;
@@ -42,24 +44,27 @@ public class OrderService {
     private final ProductService productService;
     private final StoreService storeService;
     private final NotificationService notificationService;
+    private final CouponService couponService;
     private final Clock clock;
 
     @Autowired
     public OrderService(OrderMapper orderMapper, CartService cartService,
                         ProductService productService, StoreService storeService,
-                        NotificationService notificationService) {
+                        NotificationService notificationService, CouponService couponService) {
         this(orderMapper, cartService, productService, storeService, notificationService,
-            Clock.systemDefaultZone());
+            couponService, Clock.systemDefaultZone());
     }
 
     public OrderService(OrderMapper orderMapper, CartService cartService,
                         ProductService productService, StoreService storeService,
-                        NotificationService notificationService, Clock clock) {
+                        NotificationService notificationService, CouponService couponService,
+                        Clock clock) {
         this.orderMapper = orderMapper;
         this.cartService = cartService;
         this.productService = productService;
         this.storeService = storeService;
         this.notificationService = notificationService;
+        this.couponService = couponService;
         this.clock = clock;
     }
 
@@ -85,7 +90,21 @@ public class OrderService {
         long total = items.stream().mapToLong(CheckoutItemView::totalPrice).sum();
         int preparationDays = items.stream()
             .mapToInt(CheckoutItemView::preparationDays).max().orElse(0);
-        return new CheckoutView(draft.getCheckoutId(), items, total, preparationDays, draft.getPickupAt());
+
+        List<AvailableCouponView> coupons = couponService.getApplicableCoupons(memberId, total);
+        // 고른 쿠폰이 그 사이 만료·소진·사용됐으면 목록에서 빠진다. 결제를 막는 대신 선택을 지우고
+        // 정가로 진행한다 — 화면이 계산한 금액을 믿지 않으므로 잘못된 금액이 결제될 일은 없다.
+        Long requested = draft.getMemberCouponId();
+        AvailableCouponView selected = requested == null ? null : coupons.stream()
+            .filter(coupon -> coupon.memberCouponId().equals(requested))
+            .findFirst().orElse(null);
+        if (requested != null && selected == null) {
+            draft.setMemberCouponId(null);
+        }
+        long discount = selected == null ? 0L : selected.discountAmount();
+        return new CheckoutView(draft.getCheckoutId(), items, total, preparationDays,
+            draft.getPickupAt(), coupons,
+            selected == null ? null : selected.memberCouponId(), discount, total - discount);
     }
 
     @Transactional(readOnly = true)
@@ -120,8 +139,9 @@ public class OrderService {
         order.setPickupName(draft.getPickupName());
         order.setPickupPhone(draft.getPickupPhone());
         order.setOriginalAmount(checkout.totalAmount());
-        order.setDiscountAmount(0L);
-        order.setFinalAmount(checkout.totalAmount());
+        // 할인액은 CheckoutView가 들고 온 서버 계산값이다. 화면이 보낸 금액은 쓰지 않는다.
+        order.setDiscountAmount(checkout.discountAmount());
+        order.setFinalAmount(checkout.finalAmount());
         order.setStatus(OrderStatus.PAID.name());
         order.setPickupAt(draft.getPickupAt());
         order.setRequestMessage(draft.getRequestMessage());

@@ -132,7 +132,7 @@ class CustomOrderControllerTests {
 
     @Test
     void payRedirectsToOrderDetail() throws Exception {
-        when(customOrderPaymentService.pay("tok-xyz", 7L, "CARD")).thenReturn(100L);
+        when(customOrderPaymentService.pay("tok-xyz", 7L, "CARD", null)).thenReturn(100L);
 
         mockMvc.perform(post("/orders/custom/pay/tok-xyz").param("method", "CARD"))
             .andExpect(redirectedUrl("/orders/100"))
@@ -152,3 +152,4 @@ class CustomOrderControllerTests {
             5, 3, null, new BigDecimal("0.00"), 0, true);
     }
 }
+

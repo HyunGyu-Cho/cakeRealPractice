@@ -1,5 +1,6 @@
 package com.cakeshop.domain.payment.service;
 
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
 import com.cakeshop.domain.order.entity.OrderStatus;
@@ -30,22 +31,25 @@ public class RefundService {
     private final PaymentMapper paymentMapper;
     private final ProductService productService;
     private final NotificationService notificationService;
+    private final CouponService couponService;
     private final Clock clock;
 
     @Autowired
     public RefundService(OrderService orderService, PaymentMapper paymentMapper,
-                         ProductService productService, NotificationService notificationService) {
-        this(orderService, paymentMapper, productService, notificationService,
+                         ProductService productService, NotificationService notificationService,
+                         CouponService couponService) {
+        this(orderService, paymentMapper, productService, notificationService, couponService,
             Clock.systemDefaultZone());
     }
 
     public RefundService(OrderService orderService, PaymentMapper paymentMapper,
                          ProductService productService, NotificationService notificationService,
-                         Clock clock) {
+                         CouponService couponService, Clock clock) {
         this.orderService = orderService;
         this.paymentMapper = paymentMapper;
         this.productService = productService;
         this.notificationService = notificationService;
+        this.couponService = couponService;
         this.clock = clock;
     }
 
@@ -108,6 +112,8 @@ public class RefundService {
         if (paymentMapper.insertCancellation(cancellation) != 1) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
         }
+        // 쓴 쿠폰이 있으면 같은 트랜잭션에서 되돌린다. 기간이 남아 있으면 다시 쓸 수 있다.
+        couponService.restoreByOrderId(orderId);
         orderService.markCanceled(order, reason.trim(), admin ? "ADMIN" : "MEMBER:" + memberId);
         notifyCanceled(order, admin);
     }

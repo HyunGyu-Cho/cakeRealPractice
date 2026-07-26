@@ -125,6 +125,8 @@ public class CustomOrderController {
         model.addAttribute("request",
             customOrderPaymentService.getPayableRequest(token, member.getMemberId()));
         model.addAttribute("token", token);
+        model.addAttribute("coupons",
+            customOrderPaymentService.getApplicableCoupons(token, member.getMemberId()));
         model.addAttribute("paymentForm", new PaymentForm());
         return "customer/order/custom-payment";
     }
@@ -135,7 +137,7 @@ public class CustomOrderController {
                       @AuthenticationPrincipal MemberDetails member,
                       RedirectAttributes redirectAttributes) {
         Long orderId = customOrderPaymentService.pay(token, member.getMemberId(),
-            paymentForm.getMethod());
+            paymentForm.getMethod(), paymentForm.getMemberCouponId());
         redirectAttributes.addFlashAttribute("successMessage",
             "결제가 완료되었습니다. 제작을 시작합니다.");
         return "redirect:/orders/" + orderId;

@@ -14,8 +14,13 @@
       </p>
       <div class="data-row"><span class="data-row__label">픽업 일시</span>
         <span th:text="${#temporals.format(checkout.pickupAt, 'yyyy.MM.dd HH:mm')}">-</span></div>
+      <div class="data-row"><span class="data-row__label">상품 금액</span>
+        <span th:text="|${#numbers.formatInteger(checkout.totalAmount, 0, 'COMMA')}원|">0원</span></div>
+      <div class="data-row" th:if="${checkout.discountAmount > 0}">
+        <span class="data-row__label">쿠폰 할인</span>
+        <span th:text="|-${#numbers.formatInteger(checkout.discountAmount, 0, 'COMMA')}원|">0원</span></div>
       <div class="data-row"><span class="data-row__label">최종 결제 금액</span>
-        <strong><span th:text="${#numbers.formatInteger(checkout.totalAmount, 0, 'COMMA')}">0</span>원</strong></div>
+        <strong><span th:text="${#numbers.formatInteger(checkout.finalAmount, 0, 'COMMA')}">0</span>원</strong></div>
     </section>
     <section class="panel section"><h2 class="section-title">결제 수단</h2>
       <div class="stack">
@@ -34,9 +39,31 @@
       <p class="form-error" th:errors="*{refundPolicyAgreed}"></p>
     </section>
     <button class="btn btn--primary btn--block" type="submit">
-      <span th:text="${#numbers.formatInteger(checkout.totalAmount, 0, 'COMMA')}">0</span>원 결제하기
+      <span th:text="${#numbers.formatInteger(checkout.finalAmount, 0, 'COMMA')}">0</span>원 결제하기
     </button>
   </form>
+  <!-- 쿠폰 선택은 결제 폼과 분리한다. 선택을 초안에 저장한 뒤 화면을 다시 그려야
+       할인액을 서버 계산값으로 보여줄 수 있기 때문이다. -->
+  <section class="panel section" th:if="${checkout != null}">
+    <h2 class="section-title">쿠폰</h2>
+    <form method="post" th:action="@{/orders/coupon}">
+      <div class="stack">
+        <label class="choice">
+          <input type="radio" name="memberCouponId" value=""
+                 th:checked="${checkout.selectedMemberCouponId == null}"> 쿠폰 사용 안 함</label>
+        <label class="choice" th:each="coupon : ${checkout.availableCoupons}">
+          <input type="radio" name="memberCouponId" th:value="${coupon.memberCouponId}"
+                 th:checked="${checkout.selectedMemberCouponId == coupon.memberCouponId}">
+          <span th:text="${coupon.couponName}">쿠폰명</span>
+          (<span th:text="|-${#numbers.formatInteger(coupon.discountAmount, 0, 'COMMA')}원|">할인</span>)
+        </label>
+      </div>
+      <p class="text-muted" th:if="${#lists.isEmpty(checkout.availableCoupons)}">
+        이 주문에 사용할 수 있는 쿠폰이 없습니다.</p>
+      <button class="btn section" type="submit"
+              th:unless="${#lists.isEmpty(checkout.availableCoupons)}">쿠폰 적용</button>
+    </form>
+  </section>
   <div class="panel" th:unless="${checkout != null}">
     <p>주문서 작성을 마치면 이 화면에서 모의 결제를 진행할 수 있습니다.</p>
   </div>

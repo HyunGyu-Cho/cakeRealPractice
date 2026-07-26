@@ -45,6 +45,21 @@
 
     <form th:action="@{|/orders/custom/pay/${token}|}" method="post" th:object="${paymentForm}">
       <section class="section">
+        <h2 class="section-title">쿠폰</h2>
+        <!-- 표시된 할인액은 서버가 견적 금액으로 계산한 값이며, 결제 트랜잭션에서 다시 계산한다. -->
+        <div class="panel choice-list">
+          <label class="choice">
+            <input type="radio" th:field="*{memberCouponId}" value=""> 쿠폰 사용 안 함</label>
+          <label class="choice" th:each="coupon : ${coupons}">
+            <input type="radio" th:field="*{memberCouponId}" th:value="${coupon.memberCouponId}">
+            <span th:text="${coupon.couponName}">쿠폰명</span>
+            (<span th:text="|-${#numbers.formatInteger(coupon.discountAmount, 0, 'COMMA')}원|">할인</span>)
+          </label>
+        </div>
+        <p class="note" th:if="${#lists.isEmpty(coupons)}">사용할 수 있는 쿠폰이 없습니다.</p>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">결제 수단</h2>
         <div class="panel choice-list">
           <label class="choice"><input type="radio" th:field="*{method}" value="CARD"> 신용·체크카드</label>

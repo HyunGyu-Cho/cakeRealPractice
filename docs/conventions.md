@@ -150,7 +150,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 
 - 타입: **`VARCHAR(20) NOT NULL`** (긴 값이 필요하면 그 컬럼만 예외적으로 늘리고 이유를 주석으로 남긴다)
 - 제약: **`CONSTRAINT chk_<table>_status CHECK (status IN ('A','B', ...))`** — `store` DDL의 `chk_...` 네이밍 관례 준수
-- 기본값: 신규 행이 시작하는 상태를 `DEFAULT`로 지정 (예: `members` → `ACTIVE`, `member_coupons` → `ISSUED`)
+- 기본값: 신규 행이 시작하는 상태를 `DEFAULT`로 지정 (예: `members` → `ACTIVE`, `member_coupons` → `AVAILABLE`)
 - 컬럼명: 상태는 `status`, 종류는 `type` / `category` (아래 분류에 따름)
 
 ## status 자리 전수 인벤토리 (코드 + 목업 통합)
@@ -163,8 +163,8 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `orders.status` | 주환 | 결제완료/확인중/제작중/픽업대기/픽업완료/취소/반려 | **`OrderStatus` 7개 (확정)** | ✅ 코드 확정 |
 | `payments.status` | 주환 | 결제 완료 / 결제 대기 | **`PaymentStatus` 6개 (확정)** | ✅ 코드 확정 |
 | `payment_cancellations.status` | 주환 | 취소 요청·완료·거절 | **`REQUESTED / DONE / REJECTED` (확정)** | ✅ 확정 (V8, 스펙 docs/specs/order-payment.md) |
-| `coupons.status` | 정후 | 발급 중 | `ACTIVE / INACTIVE / ENDED` ? | ☐ 열림 |
-| `member_coupons.status` | 정후 | 사용 가능 / 사용 완료 | `ISSUED / USED / EXPIRED` | 거의 확정 |
+| `coupons.status` | 정후 | 발급 중 | **`ACTIVE / SUSPENDED / ENDED` (확정)** | ✅ 확정 (V15, 스펙 docs/specs/coupon.md) |
+| `member_coupons.status` | 정후 | 사용 가능 / 사용 완료 | **`AVAILABLE / USED` (확정)** | ✅ 확정 (V15, 스펙 docs/specs/coupon.md — 만료는 `expires_at` 파생값이라 저장하지 않는다) |
 | `posts.status` | 현규 | 정상 / 제재 | `ACTIVE / DELETED / BLOCKED` | 거의 확정 |
 | `comments.status` | 현규 | (표기 없음) | `ACTIVE / DELETED` ? | ☐ 열림 |
 | `post_reports.status` | 현규 | (신고 처리) | `PENDING / ACCEPTED / REJECTED` | 거의 확정 |
@@ -245,7 +245,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 |---|---|
 | 시은 | `product_options.status` 필요 여부 확정 |
 | 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
-| 정후 | `coupons.status`(캠페인 상태) 값 확정 |
+| 정후 | `coupons.status` 확정 완료 (`ACTIVE / SUSPENDED / ENDED`), `member_coupons.status`는 `AVAILABLE / USED` |
 | 현규 | `comments.status` / `reviews.status`(숨김) 값 확정 |
 | 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. `NotificationType` enum 12개 확정 (`docs/specs/notification.md`) |
 

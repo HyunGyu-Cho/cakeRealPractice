@@ -1,5 +1,8 @@
 package com.cakeshop.domain.payment.service;
 
+import com.cakeshop.domain.coupon.dto.view.AvailableCouponView;
+import com.cakeshop.domain.coupon.dto.view.CouponDiscount;
+import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.notification.entity.NotificationType;
 import com.cakeshop.domain.notification.service.NotificationCommand;
 import com.cakeshop.domain.notification.service.NotificationService;
@@ -21,6 +24,7 @@ import com.cakeshop.domain.payment.mapper.PaymentMapper;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -50,25 +54,42 @@ public class CustomOrderPaymentService {
     private final CustomOrderService customOrderService;
     private final PaymentMapper paymentMapper;
     private final NotificationService notificationService;
+    private final CouponService couponService;
     private final Clock clock;
 
     @Autowired
     public CustomOrderPaymentService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
                                      CustomOrderService customOrderService, PaymentMapper paymentMapper,
-                                     NotificationService notificationService) {
+                                     NotificationService notificationService,
+                                     CouponService couponService) {
         this(orderMapper, customOrderMapper, customOrderService, paymentMapper,
-            notificationService, Clock.systemDefaultZone());
+            notificationService, couponService, Clock.systemDefaultZone());
     }
 
     public CustomOrderPaymentService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
                                      CustomOrderService customOrderService, PaymentMapper paymentMapper,
-                                     NotificationService notificationService, Clock clock) {
+                                     NotificationService notificationService,
+                                     CouponService couponService, Clock clock) {
         this.orderMapper = orderMapper;
         this.customOrderMapper = customOrderMapper;
         this.customOrderService = customOrderService;
         this.paymentMapper = paymentMapper;
         this.notificationService = notificationService;
+        this.couponService = couponService;
         this.clock = clock;
+    }
+
+    /**
+     * 결제 화면의 쿠폰 선택지. 원가는 견적 금액({@code links.amount})이다 —
+     * 요청서 단계에는 확정 금액이 없어 쿠폰을 붙이지 않는다(스펙 6장 규칙 11).
+     */
+    @Transactional(readOnly = true)
+    public List<AvailableCouponView> getApplicableCoupons(String token, Long memberId) {
+        CustomOrderPaymentLink link = customOrderMapper.findLinkByToken(token)
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
+        Order order = requireOwnedOrder(link, memberId);
+        requirePayable(link, order);
+        return couponService.getApplicableCoupons(memberId, link.getAmount());
     }
 
     /**
@@ -88,7 +109,7 @@ public class CustomOrderPaymentService {
      * 결제 {@code DONE}을 한 트랜잭션으로 처리한다.
      */
     @Transactional
-    public Long pay(String token, Long memberId, String requestedMethod) {
+    public Long pay(String token, Long memberId, String requestedMethod, Long memberCouponId) {
         String method = normalizeMethod(requestedMethod);
         CustomOrderPaymentLink link = customOrderMapper.findLinkByTokenForUpdate(token)
             .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
@@ -101,7 +122,11 @@ public class CustomOrderPaymentService {
             throw new BusinessException(CustomOrderErrorCode.LINK_NOT_PAYABLE);
         }
 
-        customOrderMapper.updateFinalAmount(order.getId(), link.getAmount());
+        // 쿠폰 사용도 이 트랜잭션에서 확정한다. 실패하면 링크·주문 상태까지 함께 롤백된다.
+        CouponDiscount discount =
+            couponService.use(memberId, memberCouponId, order.getId(), link.getAmount());
+        customOrderMapper.updateAmounts(order.getId(), link.getAmount(),
+            discount.discountAmount(), discount.finalAmount());
         if (orderMapper.updateStatus(order.getId(), OrderStatus.UNDER_REVIEW.name(),
             OrderStatus.IN_PRODUCTION.name()) != 1) {
             throw new BusinessException(CustomOrderErrorCode.NOT_UNDER_REVIEW);
@@ -114,7 +139,7 @@ public class CustomOrderPaymentService {
         // 토큰을 멱등 키로 써서 같은 링크의 중복 결제가 DB에서 걸리게 한다.
         payment.setIdempotencyKey(token);
         payment.setMethod(method);
-        payment.setAmount(link.getAmount());
+        payment.setAmount(discount.finalAmount());
         payment.setStatus(PaymentStatus.DONE.name());
         payment.setProviderStatus("MOCK_DONE");
         payment.setApprovedAt(now);
