@@ -115,6 +115,15 @@ public class MemberService {
         return memberMapper.findIdsByNicknameLike(keyword);
     }
 
+    /**
+     * [공개 계약] 활성 관리자 회원 id 목록.
+     * notification 관리자 알림 팬아웃이 첫 사용처다 — 시그니처 변경 시 사용처(수민↔민정) 합의 필요.
+     */
+    @Transactional(readOnly = true)
+    public List<Long> findAdminMemberIds() {
+        return memberMapper.findActiveAdminIds();
+    }
+
     /** 관리자 타 도메인 목록의 회원 닉네임·이메일 검색 공개 계약. */
     @Transactional(readOnly = true)
     public List<Long> searchMemberIds(String keyword) {
