@@ -15,6 +15,9 @@ import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.domain.payment.entity.Payment;
 import com.cakeshop.domain.payment.entity.PaymentCancellation;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
@@ -38,12 +41,14 @@ class RefundServiceTests {
     @Mock OrderService orderService;
     @Mock PaymentMapper paymentMapper;
     @Mock ProductService productService;
+    @Mock NotificationService notificationService;
 
     private RefundService refundService;
 
     @BeforeEach
     void setUp() {
-        refundService = new RefundService(orderService, paymentMapper, productService, CLOCK);
+        refundService = new RefundService(orderService, paymentMapper, productService,
+            notificationService, CLOCK);
     }
 
     @Test
@@ -66,6 +71,38 @@ class RefundServiceTests {
         assertThat(captor.getValue().getCancelAmount()).isEqualTo(82_000L);
         assertThat(captor.getValue().getStatus()).isEqualTo("DONE");
         assertThat(captor.getValue().getIdempotencyKey()).isEqualTo("CANCEL-ORDER-9");
+
+        ArgumentCaptor<NotificationCommand> customer =
+            ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService).notify(customer.capture());
+        assertThat(customer.getValue().receiverId()).isEqualTo(1L);
+        assertThat(customer.getValue().type()).isEqualTo(NotificationType.ORDER_CANCELED);
+        // 고객이 직접 취소하면 관리자에게도 알린다.
+        verify(notificationService).notifyAdmins(any(NotificationCommand.class));
+    }
+
+    @Test
+    void adminCancellationNotifiesOnlyTheCustomer() {
+        Order order = order("PAID", LocalDateTime.of(2026, 7, 29, 13, 20));
+        when(orderService.lockOrder(9L)).thenReturn(order);
+        when(orderService.getOrderItems(9L)).thenReturn(List.of(item(7L, 2, 3)));
+        when(paymentMapper.findByOrderIdForUpdate(9L)).thenReturn(Optional.of(payment()));
+        when(paymentMapper.cancelPayment(20L, "DONE")).thenReturn(1);
+        when(paymentMapper.insertCancellation(any(PaymentCancellation.class))).thenReturn(1);
+
+        refundService.cancelByAdmin(9L, "재료 소진");
+
+        verify(notificationService).notify(any(NotificationCommand.class));
+        verify(notificationService, never()).notifyAdmins(any(NotificationCommand.class));
+    }
+
+    @Test
+    void repeatedCancellationDoesNotNotifyAgain() {
+        when(orderService.lockOrder(9L)).thenReturn(order("CANCELED", LocalDateTime.now(CLOCK)));
+
+        refundService.cancelByCustomer(1L, 9L, "반복 요청");
+
+        verify(notificationService, never()).notify(any(NotificationCommand.class));
     }
 
     @Test

@@ -41,6 +41,23 @@ class ChatWebSocketSecurityTests {
             message(SimpMessageType.MESSAGE, "/topic/admin/chat-events"))).isFalse();
     }
 
+    @Test
+    void notificationQueueIsOpenToBothRolesButAdminTopicIsNot() {
+        Authentication customer = authentication("ROLE_USER");
+        Authentication admin = authentication("ROLE_ADMIN");
+
+        assertThat(authorized(customer,
+            message(SimpMessageType.SUBSCRIBE, "/user/queue/notifications"))).isTrue();
+        assertThat(authorized(admin,
+            message(SimpMessageType.SUBSCRIBE, "/user/queue/notifications"))).isTrue();
+        assertThat(authorized(customer,
+            message(SimpMessageType.SUBSCRIBE, "/topic/admin/notifications"))).isFalse();
+        assertThat(authorized(admin,
+            message(SimpMessageType.SUBSCRIBE, "/topic/admin/notifications"))).isTrue();
+        assertThat(authorized(admin,
+            message(SimpMessageType.MESSAGE, "/user/queue/notifications"))).isFalse();
+    }
+
     private boolean authorized(Authentication authentication, Message<?> message) {
         return messageAuthorizationManager.authorize(() -> authentication, message).isGranted();
     }
