@@ -127,8 +127,10 @@
     `.chat-msg--me .chat-msg__meta{text-align:right}`, `.chat-msg__read`. 옮기며 `8px` 리터럴은 `--radius-sm`으로 바꿨다.
   - 정리한 사용처 없는 규칙 5개: `.chat-date-divider`(+span), `.chat-msg--other__content-wrap`,
     `.chat-input-area`, `.chat-sidebar`, `.chat-order-item` — 템플릿·JS 어디서도 쓰지 않는다.
-  - **유일한 실제 변화**: app.css의 `.chat-messages{max-height:480px}`가 chat.css의 `height:min(56vh,560px)`를
-    480px로 깎고 있었다. 이 캡을 없애 chat.css 의도대로 최대 560px까지 늘어난다.
+  - **화면 변화 0.** app.css의 `.chat-messages{max-height:480px}`가 chat.css의 `height:min(56vh,560px)`를
+    깎아 실제 높이는 360~480px였다. app.css를 걷어내면 상한이 560으로 풀리므로, 두 속성이 싸우던 것을
+    `height:min(56vh,480px)` 한 곳으로 합쳐 480 상한을 chat.css가 직접 갖게 했다(좁은 화면 규칙도 동일).
+    상한을 560으로 올리는 건 별개의 디자인 판단이라 이 리팩터링에 섞지 않았다.
   - 양방향을 테스트로 고정했다(`chatStylesLiveOnlyInChatCss`) — app.css에 `.chat-*` 금지, 그리고
     `.chat-*` 를 쓰는 화면은 chat.css를 반드시 링크. 두 조건 모두 실제로 깨뜨려 실패하는 것을 확인했다.
 
