@@ -173,6 +173,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `notification_deliveries.status` | 민정 | (화면 표기 없음 — 내부 전달 이력) | **`REQUESTED / SENT / FAILED / ABANDONED` (확정)** | ✅ 확정 (V12, 스펙 docs/specs/notification.md) |
 | `custom_order_quotes.status` | 주환 | 승인 대기 / 승인됨 / 거절됨 | **`SENT / ACCEPTED / SUPERSEDED` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md). 주문 상태가 아니라 **견적 회차의 상태**다 — `orders.status`는 확정 7개 그대로 |
 | `custom_order_payment_links.status` | 주환 | (화면 표기 없음 — 내부 링크 상태) | **`ISSUED / USED / EXPIRED / REVOKED` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md) |
+| (statistics — status 자리 없음) | 현규 | 일별 / 주별 / 월별 | **`StatsPeriod`는 status가 아니다** | ✅ 확정 (스펙 docs/specs/statistics.md — 집계 단위는 DB에 저장하지 않는 조회 파라미터이고 지표는 전부 파생값이라 statistics는 테이블도 status도 소유하지 않는다. 여러 도메인이 공유하므로 `global/common/stats`에 둔다) |
 
 ### 이미 확정된 두 enum
 
