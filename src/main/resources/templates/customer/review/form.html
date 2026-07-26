@@ -1,21 +1,110 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>후기 작성 | 케이크 쇼핑몰</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
-  <link rel="stylesheet" th:href="@{/css/customer-mockup.css}">
-  <script defer th:src="@{/js/app.js}"></script>
-  <script defer th:src="@{/js/customer-mockup.js}"></script>
-</head>
-<body data-page-title="후기 작성">
-  <header th:replace="~{fragments/common/header :: header}"></header>
-  <main class="page-container page-container--form">
-    <div th:replace="~{fragments/customer/mock-notice :: notice}"></div>
-    <h1>후기 작성</h1><section class="section"><h2 class="section-title">주문 상품</h2><div class="panel cluster"><div class="placeholder-image placeholder-image--sm">상품 이미지</div><div><strong>딸기 생크림 케이크</strong><p class="text-muted">ORD-20250110-003 | 픽업 완료</p></div></div></section><form data-mock-form data-success-url="/orders/1"><section class="section"><h2 class="section-title">평점 선택</h2><div class="panel stack" data-select-group><div class="cluster"><span style="width:45px">맛</span><button class="btn" data-select type="button">1점</button><button class="btn" data-select type="button">2점</button><button class="btn" data-select type="button">3점</button><button class="btn" data-select type="button">4점</button><button class="btn" data-select type="button">5점</button></div><div class="cluster"><span style="width:45px">디자인</span><button class="btn" type="button">1점</button><button class="btn" type="button">2점</button><button class="btn" type="button">3점</button><button class="btn" type="button">4점</button><button class="btn" type="button">5점</button></div><div class="cluster"><span style="width:45px">포장</span><button class="btn" type="button">1점</button><button class="btn" type="button">2점</button><button class="btn" type="button">3점</button><button class="btn" type="button">4점</button><button class="btn" type="button">5점</button></div><div class="cluster"><span style="width:45px">응대</span><button class="btn" type="button">1점</button><button class="btn" type="button">2점</button><button class="btn" type="button">3점</button><button class="btn" type="button">4점</button><button class="btn" type="button">5점</button></div></div></section><section class="section"><h2 class="section-title">후기 내용</h2><div class="panel"><div class="form-group"><label class="form-label" for="review-content">내용 <span class="required">*</span></label><textarea class="form-control form-control--textarea" id="review-content" minlength="10" placeholder="후기를 작성해 주세요 (최소 10자 이상)" required></textarea></div><div class="form-group"><label class="form-label" for="review-image">이미지 첨부 (선택, 최대 3장)</label><input class="form-control" id="review-image" type="file" accept="image/*" multiple></div></div></section><div class="cluster"><button class="btn btn--primary" type="submit">후기 등록</button><button class="btn" type="button">수정하기</button><button class="btn btn--danger" type="button" data-confirm="후기를 삭제하시겠습니까?">삭제하기</button></div></form>
-  </main>
-  <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+<head th:replace="~{fragments/common/head :: head('후기 작성')}"></head>
+<body>
+<header th:replace="~{fragments/common/header :: header}"></header>
+<main class="page-container page-container--form">
+  <div th:replace="~{fragments/common/alert :: alert}"></div>
+  <h1 th:text="${editingReviewId == null} ? '후기 작성' : '후기 수정'">후기 작성</h1>
+
+  <section class="section" th:if="${target != null}">
+    <h2 class="section-title">주문 상품</h2>
+    <div class="panel">
+      <strong th:text="${target.productName}">상품명</strong>
+      <p class="text-muted">
+        <span th:text="${target.orderNumber}">주문번호</span> |
+        <span th:text="|${#temporals.format(target.pickupAt, 'yyyy.MM.dd')} 픽업 완료|">픽업 완료</span>
+      </p>
+    </div>
+  </section>
+
+  <form method="post" enctype="multipart/form-data" th:object="${reviewForm}"
+        th:action="${editingReviewId == null}
+                   ? @{/reviews(orderItemId=${reviewForm.orderItemId})}
+                   : @{|/reviews/${editingReviewId}/edit|}">
+    <p class="form-error" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+    <input type="hidden" th:field="*{orderItemId}">
+
+    <section class="section">
+      <h2 class="section-title">평점 선택</h2>
+      <!-- 종합만 필수다. 세부 3축을 강제하면 작성률이 떨어진다(스펙 6장 규칙 3). -->
+      <div class="panel stack">
+        <div class="form-group">
+          <label for="overallRating">종합 <span class="required">*</span></label>
+          <select class="form-control" th:field="*{overallRating}">
+            <option value="">선택</option>
+            <option th:each="score : ${#numbers.sequence(5, 1)}"
+                    th:value="${score}" th:text="|${score}점|">5점</option>
+          </select>
+          <p class="form-error" th:errors="*{overallRating}"></p>
+        </div>
+        <div class="grid grid--3">
+          <div class="form-group">
+            <label for="tasteRating">맛 (선택)</label>
+            <select class="form-control" th:field="*{tasteRating}">
+              <option value="">선택 안 함</option>
+              <option th:each="score : ${#numbers.sequence(5, 1)}"
+                      th:value="${score}" th:text="|${score}점|">5점</option>
+            </select>
+            <p class="form-error" th:errors="*{tasteRating}"></p>
+          </div>
+          <div class="form-group">
+            <label for="designRating">디자인 (선택)</label>
+            <select class="form-control" th:field="*{designRating}">
+              <option value="">선택 안 함</option>
+              <option th:each="score : ${#numbers.sequence(5, 1)}"
+                      th:value="${score}" th:text="|${score}점|">5점</option>
+            </select>
+            <p class="form-error" th:errors="*{designRating}"></p>
+          </div>
+          <div class="form-group">
+            <label for="serviceRating">응대 (선택)</label>
+            <select class="form-control" th:field="*{serviceRating}">
+              <option value="">선택 안 함</option>
+              <option th:each="score : ${#numbers.sequence(5, 1)}"
+                      th:value="${score}" th:text="|${score}점|">5점</option>
+            </select>
+            <p class="form-error" th:errors="*{serviceRating}"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">후기 내용</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label class="form-label" for="content">내용 <span class="required">*</span></label>
+          <textarea class="form-control form-control--textarea" th:field="*{content}"
+                    placeholder="후기를 작성해 주세요 (최소 10자 이상)"></textarea>
+          <p class="form-error" th:errors="*{content}"></p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="images">이미지 첨부 (선택, 최대 3장)</label>
+          <div class="cluster" th:if="${currentImageUrls != null and !currentImageUrls.isEmpty()}">
+            <img class="placeholder-image placeholder-image--sm" style="object-fit:cover"
+                 th:each="url : ${currentImageUrls}" th:src="${url}" alt="첨부 이미지">
+          </div>
+          <input class="form-control" id="images" type="file" name="images"
+                 accept="image/jpeg,image/png" multiple>
+          <p class="form-help">새 파일을 선택할 때만 기존 이미지가 교체됩니다. 장당 5MB 이하 JPG·PNG.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cluster">
+      <button class="btn btn--primary" type="submit"
+              th:text="${editingReviewId == null} ? '후기 등록' : '수정 저장'">후기 등록</button>
+      <a class="btn" th:href="@{/reviews}">내 후기함</a>
+    </div>
+  </form>
+
+  <form method="post" th:if="${editingReviewId != null}" class="section"
+        th:action="@{|/reviews/${editingReviewId}/delete|}"
+        data-confirm-submit="후기를 삭제하시겠습니까? 삭제하면 같은 주문 상품에 다시 작성할 수 있습니다.">
+    <button class="btn btn--danger" type="submit">삭제하기</button>
+  </form>
+</main>
+<footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
 </html>
-

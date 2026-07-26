@@ -168,7 +168,7 @@ DB 모델과 화면 모델을 분리해, 화면 검증 규칙이 영속 모델�
 | `posts.status` | 현규 | 정상 / 제재 | `ACTIVE / DELETED / BLOCKED` | 거의 확정 |
 | `comments.status` | 현규 | (표기 없음) | `ACTIVE / DELETED` ? | ☐ 열림 |
 | `post_reports.status` | 현규 | (신고 처리) | `PENDING / ACCEPTED / REJECTED` | 거의 확정 |
-| `reviews.status` | 현규 | 숨김 | `VISIBLE / HIDDEN` ? | ☐ 열림 |
+| `reviews.status` | 현규 | 숨김 | **`VISIBLE / HIDDEN` (확정)** | ✅ 확정 (V16, 스펙 docs/specs/review.md — 삭제는 상태가 아니라 행 제거다) |
 | `chat_rooms.status` | 민정 | 상담 가능 / 상담 종료 | **`OPEN / CLOSED` (확정)** | ✅ 확정 (V9, 스펙 docs/specs/chat.md) |
 | `notification_deliveries.status` | 민정 | (화면 표기 없음 — 내부 전달 이력) | **`REQUESTED / SENT / FAILED / ABANDONED` (확정)** | ✅ 확정 (V12, 스펙 docs/specs/notification.md) |
 | `custom_order_quotes.status` | 주환 | 승인 대기 / 승인됨 / 거절됨 | **`SENT / ACCEPTED / SUPERSEDED` (확정)** | ✅ 확정 (V13, 스펙 docs/specs/order-custom.md). 주문 상태가 아니라 **견적 회차의 상태**다 — `orders.status`는 확정 7개 그대로 |
@@ -246,7 +246,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 시은 | `product_options.status` 필요 여부 확정 |
 | 주환 | `payment_cancellations.status` 확정 완료 (`REQUESTED / DONE / REJECTED`) |
 | 정후 | `coupons.status` 확정 완료 (`ACTIVE / SUSPENDED / ENDED`), `member_coupons.status`는 `AVAILABLE / USED` |
-| 현규 | `comments.status` / `reviews.status`(숨김) 값 확정 |
+| 현규 | `comments.status` 확정(`ACTIVE / DELETED`), `reviews.status` 확정 완료 (`VISIBLE / HIDDEN`) |
 | 민정 | `chat_rooms.status`는 `OPEN / CLOSED`로 확정. `NotificationType` enum 12개 확정 (`docs/specs/notification.md`) |
 
 > ☐ 항목을 확정하면 인벤토리의 해당 행을 "확정"으로 갱신하고, enum + DDL을 함께 커밋한다.

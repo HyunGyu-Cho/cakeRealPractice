@@ -174,6 +174,14 @@
            AND stock_quantity &gt;= #{quantity}
     </update>
 
+    <!-- 후기 집계. 계산은 review 도메인이 자기 테이블로 하고 여기서는 쓰기만 한다. -->
+    <update id="updateRatingStats">
+        UPDATE products
+           SET review_count = #{reviewCount},
+               average_rating = #{averageRating}
+         WHERE id = #{id}
+    </update>
+
     <update id="increaseStock">
         UPDATE products
            SET stock_quantity = stock_quantity + #{quantity}

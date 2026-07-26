@@ -8,6 +8,7 @@ import com.cakeshop.domain.product.entity.Product;
 import com.cakeshop.domain.product.entity.ProductImage;
 import com.cakeshop.domain.product.entity.ProductOption;
 import com.cakeshop.domain.product.entity.ProductOptionGroup;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,11 @@ public interface ProductMapper {
     int decreaseStockIfAvailable(@Param("id") Long id, @Param("quantity") int quantity);
 
     int increaseStock(@Param("id") Long id, @Param("quantity") int quantity);
+
+    /** 후기 집계 반영. 값은 review 도메인이 계산해 넘긴다. */
+    int updateRatingStats(@Param("id") Long id,
+                          @Param("reviewCount") long reviewCount,
+                          @Param("averageRating") BigDecimal averageRating);
 
     // ---- 옵션 (order(수제) 요청서가 공개 계약으로 사용한다) ----
     List<ProductOptionGroup> findOptionGroups(@Param("productId") Long productId);

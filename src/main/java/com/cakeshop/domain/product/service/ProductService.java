@@ -16,6 +16,7 @@ import com.cakeshop.domain.product.mapper.ProductMapper;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +92,18 @@ public class ProductService {
         if (quantity < 1 || productMapper.increaseStock(productId, quantity) != 1) {
             throw new BusinessException(ProductErrorCode.STOCK_UPDATE_FAILED);
         }
+    }
+
+    /**
+     * [공개 계약] 후기 집계를 반영한다. review 도메인이 자기 테이블에서 계산한 값을 받아 쓰기만 한다 —
+     * 시그니처 변경 시 사용처(시은↔현규) 합의 필요.
+     *
+     * <p>상품이 지워졌으면 영향 행이 0이지만 예외로 올리지 않는다. 후기 저장·삭제 트랜잭션이
+     * 집계 때문에 통째로 되돌아갈 이유는 없다.
+     */
+    @Transactional
+    public void refreshRatingStats(Long productId, long reviewCount, BigDecimal averageRating) {
+        productMapper.updateRatingStats(productId, reviewCount, averageRating);
     }
 
     /**

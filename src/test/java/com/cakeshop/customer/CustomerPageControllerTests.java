@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cakeshop.domain.home.controller.HomeController;
 import com.cakeshop.domain.home.service.HomeService;
 import com.cakeshop.domain.order.controller.OrderController;
-import com.cakeshop.domain.review.controller.ReviewController;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -27,16 +26,14 @@ class CustomerPageControllerTests {
 
     @BeforeEach
     void setUp() {
-        // 실제 구현된 member·product·cart·일반 order/payment·chat·notification·주문제작·쿠폰 화면은
-        // 각 도메인 전용 테스트가 담당하므로 이 목업 스모크에서 제외한다.
+        // 고객 화면은 전부 실구현으로 전환됐고 각 도메인 전용 테스트가 담당한다.
+        // 이 스모크에는 도메인 서비스가 필요 없는 안내 화면(/screens)만 남는다.
         mockMvc = MockMvcBuilders.standaloneSetup(
             new HomeController(mock(HomeService.class)),
-            new OrderController(),
-            new ReviewController()
+            new OrderController()
         ).build();
 
         pages.put("/screens", "home/screens");
-        pages.put("/reviews/new", "customer/review/form");
     }
 
     @Test

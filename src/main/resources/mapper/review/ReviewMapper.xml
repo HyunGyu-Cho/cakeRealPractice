@@ -2,4 +2,208 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.review.mapper.ReviewMapper">
     <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+
+    <!-- 답글은 후기당 1개(UNIQUE)라 LEFT JOIN으로 함께 읽는다.
+         members는 조인하지 않는다 — 닉네임은 MemberService.getNicknameMap으로 채운다. -->
+    <sql id="reviewColumns">
+        SELECT r.id,
+               r.order_item_id,
+               r.product_id,
+               r.member_id,
+               r.overall_rating,
+               r.taste_rating,
+               r.design_rating,
+               r.service_rating,
+               r.content,
+               r.status,
+               r.created_at,
+               rr.content    AS reply_content,
+               rr.created_at AS reply_created_at
+          FROM reviews r
+          LEFT JOIN review_replies rr ON rr.review_id = r.id
+    </sql>
+
+    <!-- 상품명이 필요한 목록(관리자·내 후기함)만 products를 조인한다. -->
+    <sql id="adminReviewColumns">
+        SELECT r.id,
+               r.member_id,
+               r.product_id,
+               p.name AS product_name,
+               r.overall_rating,
+               r.taste_rating,
+               r.design_rating,
+               r.service_rating,
+               r.content,
+               r.status,
+               r.created_at,
+               rr.content    AS reply_content,
+               rr.created_at AS reply_created_at
+          FROM reviews r
+          JOIN products p ON p.id = r.product_id
+          LEFT JOIN review_replies rr ON rr.review_id = r.id
+    </sql>
+
+    <!-- ==================== 후기 ==================== -->
+
+    <insert id="insertReview" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.cakeshop.domain.review.entity.Review">
+        INSERT INTO reviews (order_item_id, product_id, member_id, overall_rating,
+                             taste_rating, design_rating, service_rating, content, status)
+        VALUES (#{orderItemId}, #{productId}, #{memberId}, #{overallRating},
+                #{tasteRating}, #{designRating}, #{serviceRating}, #{content}, #{status})
+    </insert>
+
+    <!-- 주문 항목·상품·작성자는 바뀌지 않는다. updated_at은 DDL의 ON UPDATE에 위임한다. -->
+    <update id="updateReview" parameterType="com.cakeshop.domain.review.entity.Review">
+        UPDATE reviews
+           SET overall_rating = #{overallRating},
+               taste_rating = #{tasteRating},
+               design_rating = #{designRating},
+               service_rating = #{serviceRating},
+               content = #{content}
+         WHERE id = #{id}
+    </update>
+
+    <!-- 하드 삭제. 소프트 삭제로 남기면 uk_reviews_order_item 때문에 재작성이 막힌다. -->
+    <delete id="deleteReview">
+        DELETE FROM reviews WHERE id = #{id}
+    </delete>
+
+    <select id="findById" resultType="com.cakeshop.domain.review.entity.Review">
+        SELECT id, order_item_id, product_id, member_id, overall_rating,
+               taste_rating, design_rating, service_rating, content, status,
+               created_at, updated_at
+          FROM reviews
+         WHERE id = #{id}
+    </select>
+
+    <select id="countVisibleByProductId" resultType="long">
+        SELECT COUNT(*)
+          FROM reviews
+         WHERE product_id = #{productId}
+           AND status = 'VISIBLE'
+    </select>
+
+    <select id="findVisibleByProductId" resultType="com.cakeshop.domain.review.dto.view.ReviewRow">
+        <include refid="reviewColumns"/>
+        WHERE r.product_id = #{productId}
+          AND r.status = 'VISIBLE'
+        ORDER BY r.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findByMemberId" resultType="com.cakeshop.domain.review.dto.view.AdminReviewRow">
+        <include refid="adminReviewColumns"/>
+        WHERE r.member_id = #{memberId}
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="findWrittenOrderItemIds" resultType="long">
+        SELECT order_item_id
+          FROM reviews
+         WHERE order_item_id IN
+        <foreach collection="orderItemIds" item="orderItemId" open="(" separator="," close=")">
+            #{orderItemId}
+        </foreach>
+    </select>
+
+    <!-- 집계는 증분이 아니라 재계산이다. 숨김·복구가 섞여도 값이 어긋나지 않는다. -->
+    <select id="findRatingStats" resultType="com.cakeshop.domain.review.dto.view.RatingStatsRow">
+        SELECT COUNT(*) AS review_count,
+               ROUND(AVG(overall_rating), 2) AS average_rating
+          FROM reviews
+         WHERE product_id = #{productId}
+           AND status = 'VISIBLE'
+    </select>
+
+    <update id="updateStatus">
+        UPDATE reviews
+           SET status = #{nextStatus}
+         WHERE id = #{id}
+           AND status = #{currentStatus}
+    </update>
+
+    <!-- ==================== 관리자 목록 ==================== -->
+
+    <sql id="adminSearchWhere">
+        <where>
+            <if test="cond.normalizedKeyword != null">
+                AND p.name LIKE CONCAT('%', #{cond.normalizedKeyword}, '%')
+            </if>
+            <if test="cond.normalizedStatus != null">
+                AND r.status = #{cond.normalizedStatus}
+            </if>
+            <if test="cond.normalizedRating != null">
+                AND r.overall_rating = #{cond.normalizedRating}
+            </if>
+        </where>
+    </sql>
+
+    <select id="countAdminReviews" resultType="long">
+        SELECT COUNT(*)
+          FROM reviews r
+          JOIN products p ON p.id = r.product_id
+        <include refid="adminSearchWhere"/>
+    </select>
+
+    <select id="findAdminReviewPage" resultType="com.cakeshop.domain.review.dto.view.AdminReviewRow">
+        <include refid="adminReviewColumns"/>
+        <include refid="adminSearchWhere"/>
+        ORDER BY r.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- ==================== 이미지 ==================== -->
+
+    <insert id="insertImage" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.cakeshop.domain.review.entity.ReviewImage">
+        INSERT INTO review_images (review_id, image_url, sort_order)
+        VALUES (#{reviewId}, #{imageUrl}, #{sortOrder})
+    </insert>
+
+    <select id="findImagesByReviewId" resultType="com.cakeshop.domain.review.entity.ReviewImage">
+        SELECT id, review_id, image_url, sort_order
+          FROM review_images
+         WHERE review_id = #{reviewId}
+         ORDER BY sort_order, id
+    </select>
+
+    <select id="findImagesByReviewIds" resultType="com.cakeshop.domain.review.entity.ReviewImage">
+        SELECT id, review_id, image_url, sort_order
+          FROM review_images
+         WHERE review_id IN
+        <foreach collection="reviewIds" item="reviewId" open="(" separator="," close=")">
+            #{reviewId}
+        </foreach>
+         ORDER BY review_id, sort_order, id
+    </select>
+
+    <delete id="deleteImagesByReviewId">
+        DELETE FROM review_images WHERE review_id = #{reviewId}
+    </delete>
+
+    <!-- ==================== 답글 ==================== -->
+
+    <insert id="insertReply" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.cakeshop.domain.review.entity.ReviewReply">
+        INSERT INTO review_replies (review_id, admin_id, content)
+        VALUES (#{reviewId}, #{adminId}, #{content})
+    </insert>
+
+    <update id="updateReply">
+        UPDATE review_replies
+           SET admin_id = #{adminId},
+               content = #{content}
+         WHERE review_id = #{reviewId}
+    </update>
+
+    <select id="findReplyByReviewId" resultType="com.cakeshop.domain.review.entity.ReviewReply">
+        SELECT id, review_id, admin_id, content, created_at, updated_at
+          FROM review_replies
+         WHERE review_id = #{reviewId}
+    </select>
+
+    <delete id="deleteReplyByReviewId">
+        DELETE FROM review_replies WHERE review_id = #{reviewId}
+    </delete>
 </mapper>

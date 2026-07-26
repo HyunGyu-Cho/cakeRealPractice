@@ -10,6 +10,7 @@ import com.cakeshop.domain.order.dto.view.CheckoutView;
 import com.cakeshop.domain.order.dto.view.OrderDetailView;
 import com.cakeshop.domain.order.dto.view.OrderItemView;
 import com.cakeshop.domain.order.dto.view.OrderReferenceView;
+import com.cakeshop.domain.order.dto.view.ReviewableItemView;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderItem;
 import com.cakeshop.domain.order.entity.OrderStatus;
@@ -29,6 +30,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -178,6 +180,22 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderDetailView getOrder(Long orderId) {
         return toDetail(findOrder(orderId));
+    }
+
+    /**
+     * [공개 계약] 후기를 쓸 수 있는 주문 항목 — 본인 주문 중 {@code PICKED_UP}인 것만.
+     * review 도메인이 orders·order_items를 직접 읽지 않도록 order가 내보내는 창구다.
+     * 이미 후기를 쓴 항목을 거르는 일은 자기 테이블을 아는 review가 한다.
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewableItemView> getReviewableItems(Long memberId) {
+        return List.copyOf(orderMapper.findPickedUpItemsByMemberId(memberId));
+    }
+
+    /** [공개 계약] 단건 자격 검증용. 남의 주문 항목이면 비어 있다. */
+    @Transactional(readOnly = true)
+    public Optional<ReviewableItemView> findReviewableItem(Long memberId, Long orderItemId) {
+        return orderMapper.findPickedUpItem(memberId, orderItemId);
     }
 
     @Transactional(readOnly = true)

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cakeshop.domain.product.dto.form.ProductSearchForm;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
 import com.cakeshop.domain.product.service.ProductService;
+import com.cakeshop.domain.review.service.ReviewService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.common.paging.PageResult;
 import java.math.BigDecimal;
@@ -28,12 +29,15 @@ class ProductControllerTests {
 
     @Mock
     private ProductService productService;
+    @Mock
+    private ReviewService reviewService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ProductController(productService)).build();
+        mockMvc = MockMvcBuilders
+            .standaloneSetup(new ProductController(productService, reviewService)).build();
     }
 
     @Test
@@ -51,13 +55,16 @@ class ProductControllerTests {
     }
 
     @Test
-    void detailProvidesProductView() throws Exception {
+    void detailProvidesProductViewAndPublicReviews() throws Exception {
         when(productService.getProductDetail(5L)).thenReturn(detailView());
+        // 후기는 컨트롤러에서 조합한다 — ProductService가 ReviewService를 부르면 서비스 간 순환이 된다.
+        when(reviewService.getProductReviews(eq(5L), any(PageRequest.class)))
+            .thenReturn(new PageResult<>(List.of(), new PageRequest(1, 5), 0));
 
         mockMvc.perform(get("/products/5"))
             .andExpect(status().isOk())
             .andExpect(view().name("customer/product/detail"))
-            .andExpect(model().attributeExists("product"));
+            .andExpect(model().attributeExists("product", "reviewPage"));
     }
 
     @Test

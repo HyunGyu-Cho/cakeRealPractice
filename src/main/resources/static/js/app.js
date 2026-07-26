@@ -35,6 +35,12 @@ document.addEventListener("click", (event) => {
   if (tab) activatePanelTab(tab);
 });
 
+/** 되돌릴 수 없는 제출 확인. 목업 스크립트의 [data-confirm]과 이름을 달리해 확인창이 겹치지 않게 한다. */
+document.addEventListener("submit", (event) => {
+  const message = event.target.dataset && event.target.dataset.confirmSubmit;
+  if (message && !window.confirm(message)) event.preventDefault();
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const currentYear = String(new Date().getFullYear());
   document.querySelectorAll("[data-current-year]").forEach((element) => {

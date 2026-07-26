@@ -75,13 +75,38 @@
       </div>
     </section>
     <section class="section">
-      <h2 class="section-title">후기 <span class="badge">예시 데이터</span></h2>
+      <h2 class="section-title">후기</h2>
       <div class="cluster">
         <strong style="font-size:24px" th:text="${product.averageRating}">0.0</strong>
         <span class="text-muted" th:text="|(${product.reviewCount}개 후기)|">(0개 후기)</span>
       </div>
-      <!-- 아래 후기 목록은 review 도메인 구현 전 예시 데이터다. review 완성 시 공개 View로 교체한다. -->
-      <div class="stack"><article class="panel"><div class="cluster cluster--between text-muted"><span>김OO | ★★★★★</span><time>2025.01.15</time></div><p>맛있고 예뻐요.</p></article><article class="panel"><div class="cluster cluster--between text-muted"><span>이OO | ★★★★☆</span><time>2025.01.10</time></div><p>달지 않고 좋아요.</p></article></div>
+      <!-- 공개(VISIBLE) 후기만 나온다. 숨긴 후기는 평점 집계에서도 빠진다. -->
+      <div class="stack">
+        <article class="panel" th:each="review : ${reviewPage.content}">
+          <div class="cluster cluster--between text-muted">
+            <span>
+              <span th:text="${review.writerNickname}">작성자</span> |
+              <span th:text="|종합 ${review.overallRating}점|">종합 5점</span>
+              <span th:if="${review.tasteRating != null}" th:text="|· 맛 ${review.tasteRating}|"></span>
+              <span th:if="${review.designRating != null}" th:text="|· 디자인 ${review.designRating}|"></span>
+              <span th:if="${review.serviceRating != null}" th:text="|· 응대 ${review.serviceRating}|"></span>
+            </span>
+            <time th:text="${#temporals.format(review.createdAt, 'yyyy.MM.dd')}">2026.01.01</time>
+          </div>
+          <p th:text="${review.content}">후기 내용</p>
+          <div class="cluster" th:if="${!#lists.isEmpty(review.imageUrls)}">
+            <img class="placeholder-image placeholder-image--sm" style="object-fit:cover"
+                 th:each="url : ${review.imageUrls}" th:src="${url}" alt="후기 이미지">
+          </div>
+          <div class="panel panel--soft" th:if="${review.hasReply()}">
+            <strong>사장님 답글</strong>
+            <p th:text="${review.replyContent}">답글</p>
+          </div>
+        </article>
+        <p class="text-muted" th:if="${reviewPage.content.isEmpty()}">아직 등록된 후기가 없습니다.</p>
+      </div>
+      <nav th:if="${reviewPage.totalPages > 1}"
+           th:replace="~{fragments/common/pagination :: pagination(${reviewPage}, ${'/products/' + product.id}, '')}"></nav>
     </section>
   </main>
   <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>

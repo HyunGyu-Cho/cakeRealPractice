@@ -425,9 +425,10 @@ CREATE TABLE `reviews` (
     `product_id`     BIGINT NOT NULL,
     `member_id`      BIGINT NOT NULL,
     `overall_rating` TINYINT UNSIGNED NOT NULL,
-    `taste_rating`   TINYINT UNSIGNED NOT NULL,
-    `design_rating`  TINYINT UNSIGNED NOT NULL,
-    `service_rating` TINYINT UNSIGNED NOT NULL,
+    -- 세부 3축은 선택이다(V16). 네 축을 모두 강제하면 작성률이 떨어진다.
+    `taste_rating`   TINYINT UNSIGNED NULL,
+    `design_rating`  TINYINT UNSIGNED NULL,
+    `service_rating` TINYINT UNSIGNED NULL,
     `content`        TEXT NULL,
     `status`         VARCHAR(20) NOT NULL DEFAULT 'VISIBLE',
     `created_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -436,6 +437,10 @@ CREATE TABLE `reviews` (
     PRIMARY KEY (`id`),
     CONSTRAINT `chk_reviews_status`
         CHECK (`status` IN ('VISIBLE', 'HIDDEN')),
+    CONSTRAINT `chk_reviews_overall_rating` CHECK (`overall_rating` BETWEEN 1 AND 5),
+    CONSTRAINT `chk_reviews_taste_rating`   CHECK (`taste_rating`   BETWEEN 1 AND 5),
+    CONSTRAINT `chk_reviews_design_rating`  CHECK (`design_rating`  BETWEEN 1 AND 5),
+    CONSTRAINT `chk_reviews_service_rating` CHECK (`service_rating` BETWEEN 1 AND 5),
     CONSTRAINT `uk_reviews_order_item` UNIQUE (`order_item_id`),
     CONSTRAINT `fk_reviews_order_item`
         FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`id`),
@@ -444,6 +449,9 @@ CREATE TABLE `reviews` (
     CONSTRAINT `fk_reviews_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX `idx_reviews_product_status` ON `reviews` (`product_id`, `status`, `id`);
+CREATE INDEX `idx_reviews_member` ON `reviews` (`member_id`, `id`);
 
 CREATE TABLE `review_images` (
     `id`         BIGINT NOT NULL AUTO_INCREMENT,
@@ -454,6 +462,8 @@ CREATE TABLE `review_images` (
     CONSTRAINT `fk_review_images_review`
         FOREIGN KEY (`review_id`) REFERENCES `reviews` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX `idx_review_images_review` ON `review_images` (`review_id`, `sort_order`);
 
 CREATE TABLE `review_replies` (
     `id`         BIGINT NOT NULL AUTO_INCREMENT,

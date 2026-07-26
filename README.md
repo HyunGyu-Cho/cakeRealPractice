@@ -149,7 +149,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 결제·환불 | `/admin/payments` | 실제 모의 결제·전액 취소/환불 내역 조회 및 관리자 취소 |
 | 쿠폰 | `/admin/coupons`, `/admin/coupons/new`, `/admin/coupons/{id}/edit`, `/admin/coupons/{id}/issue` | 실제 CRUD·페이징·발급 중지/재개/종료·회원 지정 발급 |
 | 회원 | `/admin/members` | 목업 |
-| 후기 | `/admin/reviews` | 목업 |
+| 후기 | `/admin/reviews` | 실제 목록·검색(상품명·노출·평점)·숨김/복구·답글 등록/수정 |
 | 커뮤니티 | `/admin/community`, `/admin/community/{id}` | 실제 목록·검색·제재 처리 |
 | 채팅 | `/admin/chat` | 실제 고객별 1:1 상담·검색/필터·읽음·종료·STOMP 실시간 이벤트 |
 | 알림 | `/admin/notifications` | 실제 내 알림·읽음 처리 + 전체 발송 내역(유형·읽음 필터·페이징) |
@@ -175,10 +175,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 1:1 채팅 | `/chat` | 실제 텍스트·이미지·읽음·상담 자동 재개·`/주문제작` 카드·STOMP 실시간 이벤트 |
 | 쿠폰함·쿠폰 받기 | `/mypage/coupons`, `/coupons` | 실제 구현 (사용 가능/사용 완료/기간 만료 분류, 정원·1인 1장 다운로드, 결제 적용·취소 복구) |
 | 알림 | `/notifications` | 실제 구현 (목록·키셋 더보기·개별/전체 읽음·헤더 미읽음 뱃지·STOMP 실시간 수신) |
-| 후기 | `/reviews/new` | 목업 |
+| 후기 | `/reviews`, `/reviews/new`, `/reviews/{id}/edit` | 실제 구현 (픽업 완료 주문 항목당 1개, 작성·수정·삭제, 이미지 3장, 상품 평점 집계 반영) |
 | 커뮤니티 목록·상세·글쓰기 | `/community`, `/community/{id}`, `/community/new` | 실제 구현 (페이징·무한스크롤·댓글·좋아요) |
 
-프론트 저장소가 갱신되면 다음 명령으로 `$screenMap`에 남은 목업 1개(후기)와 전용 CSS·JavaScript를 다시 가져온다. 메인·로그인, 별도로 추가한 커뮤니티·채팅, 실구현으로 전환된 회원·상품·장바구니·일반 주문/결제·알림·주문제작·쿠폰 화면은 이 명령이 덮어쓰지 않는다.
+고객 화면은 후기를 마지막으로 **전부 실구현으로 전환**됐다. 따라서 `$screenMap`은 비어 있고, 아래 명령은 이제 전용 CSS·JavaScript만 다시 가져온다. 새 목업 화면을 이관할 때만 `$screenMap`에 항목을 추가하고, 실구현 전환 시 다시 제외한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\import-customer-mockups.ps1
