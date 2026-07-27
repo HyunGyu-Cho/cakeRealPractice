@@ -58,7 +58,7 @@ payment 도메인은 `orders`·`custom_order_*` 테이블을 직접 보지 않�
   - **요청서 전용 테이블을 새로 만들지 않는다.** V0 ERD가 이미 주문제작을 `orders` 계열에 담도록 설계했다.
     요청서 = `orders`(`UNDER_REVIEW`) 1행 + `order_items` 1행 + `order_item_options` N행 + `order_item_images` N행.
     반려 사유는 기존 `orders.reject_reason`/`rejected_at`, 요구사항은 기존 `order_items.requirements`를 쓴다.
-- 스키마 변경 필요 여부: **필요** — `docs/sql/V13_custom_order.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
+- 스키마 변경 필요 여부: **필요** — `docs/sql/legacy/V13_custom_order.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
 
   1. `order_item_options`, `order_item_images` — **V0 ERD에 설계만 있고 생성된 적 없는 테이블을 실제로 만든다**
      (V12가 `notification_deliveries`에 한 것과 같은 상황). 컬럼은 ERD 원안 그대로.

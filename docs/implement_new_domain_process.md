@@ -150,13 +150,13 @@ approved-at: 2026-07-26
 
 ### 3단계 — DB
 
-스키마 변경이 필요하면 새 증분 파일 `docs/sql/V10_notification.sql`을 만든다.
+스키마 변경이 필요하면 `src/main/resources/db/migration/`에 새 마이그레이션 파일 하나만 만든다.
+파일명은 Flyway 규칙 `V<다음번호>__<설명>.sql` — **언더바 2개**다(예: `V20__notification_topic.sql`).
 
-절대규칙 두 가지가 걸린다.
+절대규칙 하나가 걸린다.
 
-- 이미 적용된 증분 SQL(V2 이상)은 **수정하지 않고** 새 V번호를 추가한다
-- 단 `V0_ERD.sql`(전체 스펙 보관)과 `V1_first_MVC_table.sql`(1차 MVP 보관)은 보관용 정본이므로
-  **확정 변경을 소급 반영한다** — 즉 "증분 V파일 + V0/V1" 두 곳을 함께 고친다
+- 이미 커밋된 마이그레이션 파일은 **수정하지 않고** 새 V번호를 추가한다. Flyway가 체크섬을
+  검증하므로 고치면 이미 적용한 팀원의 DB에서 부팅이 실패한다. 소급 반영할 정본은 없다.
 
 상태 컬럼이 있다면 형식이 정해져 있다.
 
@@ -296,12 +296,14 @@ $isMerge = ($command -match '(?i)\bgh\s+pr\s+merge(?![-\w])') -or
 
 검증이 DB 미반영으로 실패하면 복구 경로는 이렇다.
 
+파일을 만든 뒤 앱을 재시작하면 Flyway가 알아서 적용한다. 손으로 SQL을 돌리지 않는다.
+
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V10_notification.sql
+.\gradlew.bat bootRun --args="--spring.profiles.active=local"
 ```
 
-이 실행기는 `.env`의 `LOCAL_DB_*`를 사용하고 `docs/sql/V*.sql` 밖의 파일은 거부한다.
-적용 전에 경로·설정만 확인하려면 `-ValidateOnly`를 붙인다.
+기동 로그의 `Migrating schema ... to version 20 - notification topic` 줄로 적용을 확인한다.
+실패하면 앱이 뜨지 않으므로, 반쯤 적용된 채로 모르고 지나가는 일은 없다.
 
 ---
 

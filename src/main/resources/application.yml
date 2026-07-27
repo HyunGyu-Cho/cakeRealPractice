@@ -14,6 +14,17 @@ spring:
       # 매장·상품 등의 이미지 업로드 상한. 기본값(1MB)은 사진에 너무 작다.
       max-file-size: 5MB
       max-request-size: 10MB
+  flyway:
+    enabled: true
+    # 운영에도 필요한 스키마·코드값만 여기 둔다. 개발용 더미 시드는 local 프로필이 db/seed를 더한다.
+    locations: classpath:db/migration
+    # 전환 이전부터 쓰던 DB(각자 로컬 + 공용 RDS)는 이미 스키마가 있어 "빈 스키마가 아니다"로 부팅이
+    # 막힌다. V1(베이스라인)이 적용된 것으로 표시하고 V2부터 이어가게 한다.
+    # 전원이 한 번씩 부팅해 baseline 기록을 남긴 뒤에는 false로 되돌린다(빈 DB 오인 baseline 방지).
+    baseline-on-migrate: true
+    baseline-version: 1
+    # 이미 적용된 마이그레이션 파일을 고치면 체크섬 불일치로 부팅을 막는다. 도입 목적 그 자체다.
+    validate-on-migrate: true
   task:
     scheduling:
       # @Scheduled 기본 풀은 1개라 배치가 둘 이상이면 서로 밀린다(알림 재시도 + 결제 상태 대조).
@@ -64,6 +75,9 @@ spring:
   # 로컬 개발에서는 템플릿 수정 즉시 반영되도록 캐시를 끈다.
   thymeleaf:
     cache: false
+  flyway:
+    # 개발용 샘플 데이터(db/seed/R__dev_seed.sql)는 로컬에서만 적용한다. 공용 RDS에는 넣지 않는다.
+    locations: classpath:db/migration,classpath:db/seed
   datasource:
     url: jdbc:mariadb://${LOCAL_DB_HOST:localhost}:${LOCAL_DB_PORT}/${LOCAL_DB_DATABASE}
     username: ${LOCAL_DB_USERNAME}
@@ -75,6 +89,11 @@ spring:
   config:
     activate:
       on-profile: rds
+  flyway:
+    # 공용 RDS 스키마가 아무나의 bootRun으로 바뀌면 안 된다. 반영은 스키마 담당자가 의도적으로,
+    # 다음처럼 한 번만 켜서 수행한다.
+    #   .\gradlew.bat bootRun --args="--spring.profiles.active=rds --spring.flyway.enabled=true"
+    enabled: false
   datasource:
     # 공용 개발 RDS의 require_secure_transport=ON 대응: TLS로 암호화해 연결한다.
     url: "jdbc:mariadb://${RDS_ENDPOINT}:${RDS_PORT:3306}/${RDS_DATABASE}?sslMode=trust"

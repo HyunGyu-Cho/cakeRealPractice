@@ -1,11 +1,18 @@
 ﻿<#
 .SYNOPSIS
-    docs/sql의 증분 SQL 한 파일을 .env의 로컬 DB에 적용한다.
+    [레거시] docs/sql의 SQL 한 파일을 .env의 로컬 DB에 적용한다.
 
 .DESCRIPTION
+    ⚠️ 일상적인 스키마 반영에는 더 이상 쓰지 않는다. 마이그레이션은 Flyway가 앱 부팅 시
+    src/main/resources/db/migration에서 자동 적용한다(README, docs/sql/README.md 참조).
+
+    이 스크립트는 docs/sql/legacy에 보관된 전환 이전 V파일을 예외적으로 다시 돌려봐야 할 때만
+    남겨둔 도구다. 새 마이그레이션을 여기로 적용하면 Flyway 이력에 기록되지 않아
+    "DB에는 있는데 Flyway는 모르는" 어긋난 상태가 된다.
+
     PowerShell 5.1에서 지원하지 않는 '< file.sql' 입력 리다이렉션과
     경로·계정·비밀번호 하드코딩을 피하기 위한 공용 실행기다.
-    대상은 프로젝트의 docs/sql/V*.sql 파일로 제한한다.
+    대상은 프로젝트의 docs/sql 아래 V*.sql 파일로 제한한다.
 
 .PARAMETER File
     적용할 SQL 파일. 프로젝트 루트 기준 상대 경로나 절대 경로를 받을 수 있다.

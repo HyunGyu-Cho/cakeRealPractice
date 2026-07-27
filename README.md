@@ -12,20 +12,22 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 `dev`·`main`으로 향하는 PR과 push마다 GitHub Actions가 다음을 검증한다(`.github/workflows/ci.yml`).
 
-1. **스키마 재현성** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`과 개발용 시드 `docs/sql/V18_dev_seed.sql`을 적용한다. 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
+1. **마이그레이션 재생성** — 빈 MariaDB 컨테이너에 앱을 띄우면 Flyway가 `db/migration` 전체를 처음부터 순서대로 적용한다. 마이그레이션이 빠졌거나 순서·의존이 어긋나면 여기서 걸린다.
 2. **빌드·전체 테스트** — 위에서 만든 DB를 대상으로 `./gradlew build`를 실행한다.
 3. **부트 jar 보관** — `dev`·`main` push일 때 실행 가능한 jar를 Actions 아티팩트로 남긴다.
 
 CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이너다. 공용 RDS나 각자의 로컬 MariaDB는 건드리지 않는다.
 
-**로컬은 통과하는데 CI만 실패한다면** 자기 로컬 DB가 정본과 어긋났을 가능성이 높다. 새 스키마로 테스트할 DB를 하나 만들어 `V0_ERD.sql`만 적용해보면 구분된다.
+**로컬은 통과하는데 CI만 실패한다면** 자기 로컬 DB가 마이그레이션 결과와 어긋났을 가능성이 높다(예전에 손으로 고쳤거나, 베이스라인 이전의 흔적이 남았거나). 빈 DB를 하나 만들어 거기로 `bootRun` 해보면 구분된다.
 
 ## 로컬 DB 준비
 
 1. 각 PC에 MariaDB 11.4를 설치하고 실행한다.
 2. `cakeshop` 데이터베이스와 접속 계정을 생성한다.
 3. `.env_sample`을 `.env`로 복사하고 `LOCAL_DB_*` 값을 자신의 MariaDB에 맞춘다.
-4. `docs/sql/V0_ERD.sql`(전체 스펙 정본)과 `docs/sql/V18_dev_seed.sql`(개발용 시드)을 순서대로 적용한다. 이미 예전 V파일로 세팅해둔 DB라면 아직 적용하지 않은 증분 V파일만 번호 순으로 적용한 뒤 `V18`을 얹는다. **증분 V파일을 `V0_ERD.sql` 위에 다시 적용하면 안 된다** — 자세한 규칙은 [`docs/sql/README.md`](docs/sql/README.md).
+4. **SQL은 손으로 적용하지 않는다.** 빈 데이터베이스 상태로 `bootRun` 하면 Flyway가 스키마와 시드를 자동 구성한다.
+
+   이미 예전 V파일로 세팅해둔 DB도 그대로 쓰면 된다. 첫 실행에서 Flyway가 `flyway_schema_history` 테이블을 만들고 "베이스라인(V1)까지 적용됨"으로 기록한 뒤 그 이후 것만 적용한다. 자세한 규칙은 [`docs/sql/README.md`](docs/sql/README.md).
 
 ## 실행 프로필 선택
 
@@ -43,7 +45,7 @@ CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이�
 
 정상 실행 로그에는 `The following 1 profile is active: "local"`과 `Tomcat started on port 8080`이 표시된다. 실행 후 `http://localhost:8080/`에서 고객 화면을 확인한다.
 
-전체 화면 경로는 `http://localhost:8080/screens`에서 확인한다. `local` 프로필에서는 공개 고객 화면을 로그인 없이 열 수 있다. 모든 관리자 화면(`/admin/**`)은 관리자 로그인이 필요하며, 로컬에서는 `docs/sql/V1_first_MVC_table.sql`로 만든 `admin@cakeshop.local / Admin1234!` 계정으로 로그인해 확인한다. `rds` 프로필에서는 고객 목업 공개 조회도 비활성화된다.
+전체 화면 경로는 `http://localhost:8080/screens`에서 확인한다. `local` 프로필에서는 공개 고객 화면을 로그인 없이 열 수 있다. 모든 관리자 화면(`/admin/**`)은 관리자 로그인이 필요하며, 로컬에서는 베이스라인 마이그레이션이 만든 `admin@cakeshop.local / Admin1234!` 계정으로 로그인해 확인한다. `rds` 프로필에서는 고객 목업 공개 조회도 비활성화된다.
 
 ### 공용 RDS로 실행
 
@@ -89,11 +91,21 @@ Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
 
 ## DB 스키마 관리
 
-Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 로컬 DB에 수동으로 동일하게 적용한다.
+Flyway로 관리한다. 앱이 부팅할 때 미적용 마이그레이션을 순서대로 적용하고 `flyway_schema_history`에 기록하므로, 각자 손으로 SQL을 돌릴 일이 없다.
 
-- `V0_ERD.sql`: 전체 스키마 정본(35개 테이블). **보관용 정본이라 확정 변경을 소급 반영한다.**
-- `V1_first_MVC_table.sql`: 1차 병렬 착수용 테이블 18개. 마찬가지로 보관용 정본이며, 로그인 가능한 공통 샘플 계정과 매장 필수 시드(대표 매장 1행 + 7개 요일 요일 영업시간)를 포함한다.
-- `V2` 이후: 이미 만들어진 DB에 적용하는 **증분 마이그레이션**. 적용된 파일은 수정하지 않고 새 번호를 추가한다.
+| 위치 | 내용 | 적용 대상 |
+|---|---|---|
+| `src/main/resources/db/migration/V1__baseline_schema.sql` | 전환 시점의 전체 스키마(35개 테이블) + 필수 시드(카테고리, 공통 샘플 계정 `admin@cakeshop.local`·`user@cakeshop.local`, 대표 매장 1행 + 7개 요일 영업시간) | 모든 환경 |
+| `src/main/resources/db/migration/V2__…` 이후 | 이후의 모든 스키마 변경 | 모든 환경 |
+| `src/main/resources/db/seed/R__dev_seed.sql` | 개발용 샘플 상품 | **`local` 전용** |
+| `docs/sql/legacy/` | 전환 이전 V0~V19 이력 | ❌ 보관용 |
+
+- **커밋된 마이그레이션 파일은 수정하지 않는다.** 변경은 새 `V<다음번호>__<설명>.sql`(언더바 2개)로 추가한다. 고치면 체크섬 검증에 걸려 이미 적용한 팀원의 부팅이 실패한다.
+- **공용 RDS는 자동 실행이 꺼져 있다**(`rds` 프로필 `spring.flyway.enabled: false`). 아무나의 `bootRun`이 공용 스키마를 바꾸지 못하게 하기 위해서다. 반영은 스키마 담당자가 의도적으로 한 번만 켜서 수행한다.
+
+  ```powershell
+  .\gradlew.bat bootRun --args="--spring.profiles.active=rds --spring.flyway.enabled=true"
+  ```
 
 ### 적용 방법
 
@@ -110,25 +122,26 @@ Flyway를 사용하지 않는다. `docs/sql`의 DDL을 RDS와 각 개발자의 �
 
 ### 시드 구분 (로컬 vs 공용 RDS)
 
-시드는 두 종류뿐이고 기준은 **"없으면 앱이 동작하지 않는가"** 하나다.
+시드는 두 종류뿐이고 기준은 **"없으면 앱이 동작하지 않는가"** 하나다. 이제 이 구분은 문서가 아니라
+**파일 위치로 강제된다** — `db/seed`는 `local` 프로필에서만 `flyway.locations`에 들어간다.
 
-| 구분 | 기준 | 대상 | 공용 RDS |
-|---|---|---|---|
-| **필수 시드** | 없으면 화면·기능이 깨지는 마스터 데이터 | `categories` 4종(V1), 대표 매장 1행 + 7개 요일 영업시간(V1), `post_categories`(V2 상단) | **적용한다** |
-| **데모 시드** | 로컬에서 흐름을 눈으로 확인하기 위한 샘플 | 샘플 계정 2개(V1), 커뮤니티 샘플 글·댓글(V2 하단), 상품 샘플(V11), 주문제작 상품·옵션(V13 5절), 쿠폰 데모(V15 3절) | **적용하지 않는다** |
+| 구분 | 기준 | 위치 | 대상 | 공용 RDS |
+|---|---|---|---|---|
+| **필수 시드** | 없으면 화면·기능이 깨지는 마스터 데이터 | `db/migration` | `categories` 4종·대표 매장 1행 + 7개 요일 영업시간(V1), `post_categories`(V2) | **적용된다** |
+| **데모 시드** | 로컬에서 흐름을 눈으로 확인하기 위한 샘플 | `db/seed` | 샘플 계정 2개, 상품·주문제작 샘플 | **적용되지 않는다** |
 
 - 대표 매장(`id = 1`)은 `StoreService.DEFAULT_STORE_ID`가 고정 참조하고 `getStoreView`가 7개 요일 행을 필수로 요구하므로 필수 시드다. 값은 RDS에서 관리자 화면으로 실제 매장 정보로 덮어쓴다.
-- 데모 시드는 전부 존재 여부를 확인하고 넣는 형태라 재실행해도 중복되지 않는다. 공용 RDS에 실수로 적용했다면 삭제해도 스키마에 영향이 없다.
-- 공용 RDS의 관리자 계정은 V1 시드(`admin@cakeshop.local / Admin1234!`)를 그대로 쓰지 않는다. 해시가 저장소에 공개돼 있으므로 별도 계정을 만들고 V1 샘플 계정은 넣지 않는다.
+- 데모 시드는 반복 실행되는 repeatable 마이그레이션(`R__`)이라 전부 멱등하게 작성한다. 존재를 확인하고 넣는 형태이므로 재실행해도 중복되지 않는다.
+- 공용 RDS의 관리자 계정은 샘플 계정(`admin@cakeshop.local / Admin1234!`)을 쓰지 않는다. **해시가 저장소에 공개돼 있어서** 이 계정을 아예 `db/seed`로 내렸다. RDS에는 별도 계정을 직접 만든다.
 - 상품·주문제작 옵션·쿠폰은 운영에서 관리자 화면으로 등록하는 데이터다. RDS가 비어 있는 것이 정상이며 시드로 채우지 않는다.
 
-기존 DB에 증분 파일을 적용할 때는 다음 도우미를 사용할 수 있다.
+`docs/sql/legacy`의 옛 파일을 예외적으로 돌려야 할 때는 다음 도우미를 쓴다(일상적인 스키마 반영에는 쓰지 않는다).
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V2_community_status_and_seed.sql
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\legacy\V2_community_status_and_seed.sql
 ```
 
-적용 후 `scripts\verify-merge.ps1`가 증분 SQL의 최종 구조와 로컬 DB를 대조한다.
+`scripts\verify-merge.ps1`는 머지 후 `db/migration`의 V2 이후 마이그레이션 산출물이 실제 로컬 DB 구조와 일치하는지 대조한다. Flyway 이력이 "적용했다"고 말하는 것과 DB가 실제로 그런지는 다른 문제라서, 이 대조는 전환 후에도 남겨 뒀다.
 
 상태값(`status`) 컬럼은 도메인마다 흩어지지 않도록 `docs/conventions.md`의 상태값 공통 규칙(영문 enum 이름 저장·한글 라벨 미저장·전이는 service)을 따른다.
 
@@ -143,7 +156,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 
 ### 적용 순서
 
-1. `docs/sql/V1_first_MVC_table.sql`을 적용해 테이블과 필수 시드(공통 샘플 계정 `admin@cakeshop.local`·`user@cakeshop.local`, 대표 매장 1행 + 7개 요일 영업시간)를 생성한다.
+1. 앱을 실행해 Flyway가 테이블과 필수 시드(공통 샘플 계정 `admin@cakeshop.local`·`user@cakeshop.local`, 대표 매장 1행 + 7개 요일 영업시간)를 생성하게 한다.
 2. `admin@cakeshop.local / Admin1234!`로 로그인한다.
 3. `GET /admin/store`에서 매장 정보를 조회한다.
 4. 폼 저장은 `StoreUpdateForm` 검증 → `StoreService` 트랜잭션 → `StoreMapper.xml`의 `#{}` 바인딩 순서로 처리된다.

@@ -204,7 +204,7 @@ git diff dev...<브랜치> --stat
 - PR base가 `dev`인지
 - PR이 열려 있고 충돌이 없는지
 - 필수 리뷰와 CI가 통과했는지
-- `docs/sql`의 V번호가 중복되지 않는지
+- `db/migration`의 V번호가 중복되지 않는지
 - 공통 파일이 의미상 충돌하지 않는지
 
 ### 머지와 검증
@@ -368,9 +368,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-merge.ps1
 
 - Git의 unmerged path 확인
 - `<<<<<<<`, `>>>>>>>` 충돌 표시 확인
-- `docs/sql/V*.sql`의 동일 V번호 중복 확인
+- `src/main/resources/db/migration/V*.sql`의 동일 V번호 중복 확인
 
-서로 다른 브랜치가 `V6_x.sql`, `V6_y.sql`을 각각 추가하면 Git은 파일명이 달라 충돌로 보지 않는다. 이 검사는 파일명이 아니라 V번호를 기준으로 중복을 찾는다.
+서로 다른 브랜치가 `V6__x.sql`, `V6__y.sql`을 각각 추가하면 Git은 파일명이 달라 충돌로 보지 않는다. 이 검사는 파일명이 아니라 V번호를 기준으로 중복을 찾는다.
 
 ### 2단계: 로컬 DB 마이그레이션 반영 확인
 
@@ -426,23 +426,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-merge.ps1
 
 ### 목적
 
-Flyway를 사용하지 않는 환경에서 `docs/sql`의 증분 SQL 한 파일을 안전하게 로컬 MariaDB에 적용한다.
+**[레거시]** `docs/sql/legacy`에 보관된 전환 이전 SQL 한 파일을 예외적으로 로컬 MariaDB에 적용한다. 일상적인 스키마 반영에는 쓰지 않는다 — Flyway가 부팅 시 `db/migration`을 자동 적용하며, 이 스크립트로 적용한 변경은 Flyway 이력에 남지 않는다.
 
 ### 실행
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V6_example.sql
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\legacy\V6_example.sql
 ```
 
 실제 적용 없이 경로·설정·클라이언트만 검증:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V6_example.sql -ValidateOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\legacy\V6_example.sql -ValidateOnly
 ```
 
 ### 보호 장치
 
-- `docs/sql` 밖의 파일은 거부한다.
+- `docs/sql` 밖의 파일은 거부한다(`legacy` 하위는 허용).
 - `V<번호>_<이름>.sql` 규칙에 맞지 않는 파일은 거부한다.
 - 프로젝트 루트 `.env`의 `LOCAL_DB_*` 값을 사용한다.
 - MariaDB CLI가 설치되어 있는지 확인한다.

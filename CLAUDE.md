@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB 케이크샵 팀 프로젝트. Docker와 Flyway는 사용하지 않는다.
+Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB 케이크샵 팀 프로젝트. Docker는 사용하지 않는다. DB 스키마는 Flyway로 관리한다.
 
 **작업 목적**: 팀원 간 역할 분담은 정해져 있지만(4장 참조), 이 저장소에서는 현규가 **전 도메인을 우선 완성해 팀원들에게 표준 예시로 제공**하는 것을 목표로 한다. 따라서 담당 도메인(community·review) 밖의 작업도 정상이며, 모든 구현은 다른 팀원이 그대로 따라할 수 있도록 store 표준 슬라이스와 코딩 컨벤션(5장)을 충실히 지켜 "예시 품질"로 작성한다.
 
@@ -17,8 +17,9 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 - JPA를 쓰지 않는다. 엔티티는 순수 POJO이며 저장은 MyBatis mapper 호출로만 한다.
 - 상태값(status)은 영문 enum 이름(UPPER_SNAKE)으로만 저장한다. 한글 라벨은 절대 저장하지 않고 화면에서만 매핑하며, 상태 전이 검증은 service가 소유한다.
 - 다른 도메인의 테이블을 직접 JOIN하거나 다른 도메인의 Mapper를 호출하지 않는다. 상대 도메인이 공개한 Service 인터페이스로만 연동한다.
-- DB에 이미 적용된 증분 SQL(V2 이후)은 수정하지 않고 새 V번호 파일을 추가한다. 단 `V0_ERD.sql`(전체 스펙 보관)과 `V1_first_MVC_table.sql`(1차 MVP 보관)은 보관용 정본이므로 확정 변경을 소급 반영한다 — 확정 변경 시 "증분 V파일 + V0/V1" 두 곳을 함께 고친다.
-- 증분 V파일은 자기 앞 번호까지 적용된 DB를 전제로 한다. V0 정본은 이미 모든 확정 변경을 담고 있으므로 **그 위에 증분을 재적용하지 않는다**(재적용하면 V9는 이미 있는 FK를, V14는 이미 바뀐 카테고리 코드를 다시 건드려 실패한다 — 정상이다). 새 DB는 `V0_ERD.sql` + 최신 시드로 세운다. 자세한 내용은 `docs/sql/README.md`.
+- `src/main/resources/db/migration`의 마이그레이션 파일은 **한 번 커밋되면 수정하지 않는다**. 스키마 변경은 항상 새 `V<다음번호>__<설명>.sql`(언더바 2개)을 추가한다. Flyway가 체크섬을 검증하므로 수정하면 이미 적용한 팀원의 DB에서 부팅이 실패한다. 소급 반영할 "정본"은 더 이상 없다.
+- 개발용 더미 시드는 `src/main/resources/db/seed/R__dev_seed.sql`에만 둔다(`local` 프로필 전용). 운영에도 필요한 코드값은 `db/migration`의 V파일에 넣는다 — 공용 RDS에 샘플 데이터가 들어가면 안 된다.
+- 공용 RDS는 Flyway 자동 실행이 꺼져 있다(`rds` 프로필 `spring.flyway.enabled: false`). 스키마 반영은 담당자가 의도적으로 한 번만 켜서 수행한다. 임의로 켜지 않는다. 자세한 내용은 `docs/sql/README.md`.
 - `created_at`/`updated_at`을 자바 코드나 UPDATE 문에서 직접 세팅하지 않는다. DDL의 `DEFAULT`/`ON UPDATE CURRENT_TIMESTAMP(6)`에 위임한다.
 - `global/*`·`store`·`home` 공통 코드는 팀 합의(PR) 없이 변경하지 않는다.
 - 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). frontmatter가 `status: approved`가 아닌 도메인의 운영 코드 생성·수정은 훅이 차단한다(`home` 조합 계층 제외).
@@ -75,7 +76,7 @@ com.cakeshop
 - DB 접속값은 프로젝트 루트 `.env`에서 읽는다(`LOCAL_DB_*`, `RDS_*`).
 - 실행 중 프로필 전환 불가 — 서버를 `Ctrl+C`로 종료 후 재실행한다(안 하면 `Port 8080 was already in use`).
 - 실행 후 `http://localhost:8080/screens`에서 전체 화면 목록 확인. 관리자 화면은 `admin@cakeshop.local / Admin1234!`(V1 시드 계정)로 로그인.
-- **DB 스키마**: Flyway 미사용. `docs/sql`의 V파일을 로컬 DB와 RDS에 수동으로 번호 순서대로 적용한다(적용 규칙은 절대규칙 참조).
+- **DB 스키마**: Flyway가 관리한다. 빈 DB(`CREATE DATABASE cakeshop`)만 만들어 두면 `bootRun` 시 `db/migration`이 자동 적용된다(`local`은 `db/seed`의 샘플까지). 수동 적용은 하지 않는다. 변경 규칙은 절대규칙, 상세는 `docs/sql/README.md` 참조.
 
 ## 4. 도메인 컨텍스트
 

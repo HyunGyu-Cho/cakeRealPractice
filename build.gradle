@@ -30,6 +30,12 @@ dependencies {
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     implementation 'org.webjars.npm:stomp__stompjs:7.3.0'
+    // Boot 4는 자동설정을 기술별 모듈로 쪼갰다. spring-boot-flyway가 없으면 flyway-core를 넣어도
+    // 자동설정이 등록되지 않아 마이그레이션이 조용히 실행되지 않는다(앱은 그냥 뜬다).
+    implementation 'org.springframework.boot:spring-boot-flyway'
+    implementation 'org.flywaydb:flyway-core'
+    // MariaDB/MySQL 계열 지원은 별도 모듈이다. 빠뜨리면 부팅 시 "Unsupported Database"로 죽는다.
+    implementation 'org.flywaydb:flyway-mysql'
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

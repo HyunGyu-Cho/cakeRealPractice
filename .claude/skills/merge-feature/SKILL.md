@@ -26,7 +26,7 @@ git diff dev...<브랜치> --stat          # 무엇이 들어오는지
 특히 확인할 것:
 - **작업 트리 청결** — `git checkout dev`·`git pull`을 방해하거나 다른 사람의 변경을 섞을 미커밋 파일이 없어야 한다. 있으면 먼저 사용자에게 범위와 처리 방법을 확인한다.
 - **PR 상태** — base가 `dev`, PR이 열림 상태, 충돌 없음, 필수 리뷰·CI 통과인지 확인한다.
-- **V파일 번호 충돌** — `docs/sql`에 dev와 브랜치가 같은 V번호를 각각 추가하지 않았는지.
+- **V파일 번호 충돌** — `src/main/resources/db/migration`에 dev와 브랜치가 같은 V번호를 각각 추가하지 않았는지. Flyway는 같은 버전이 둘이면 부팅에 실패한다.
 - **공통 파일 동시 수정** — `global/security/**`, `domain/home/**`, `README.md`, `CLAUDE.md`, `TodoList.md`, 목업 스모크 테스트. git이 자동 병합에 성공해도 의미상 깨질 수 있는 지점이다.
 
 ## 2단계. 머지와 동기화
@@ -61,11 +61,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-merge.ps1
 ## 4단계. 실패했을 때
 
 1. 출력의 실패 항목과 `.claude/state/merge-gate.log`·`verify-boot.log`로 원인을 좁힌다.
-2. **미적용 마이그레이션이 원인이면** `docs/sql`의 새 V파일을 로컬 DB에 번호 순서로 적용하고 다시 검증한다.
+2. **미적용 마이그레이션이 원인이면** 앱을 한 번 띄우면 Flyway가 적용한다(스모크 단계가 이미 띄우므로, 여기까지 왔다면 적용 자체는 실패한 것이다). 기동 로그의 Flyway 오류를 먼저 읽는다.
    ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\V<번호>_<이름>.sql
+   .\gradlew.bat bootRun --args="--spring.profiles.active=local"
    ```
-   이 실행기는 `.env`의 `LOCAL_DB_*`를 사용하고 `docs/sql/V*.sql` 밖의 파일을 거부한다. 적용 전에 경로·설정만 확인하려면 `-ValidateOnly`를 붙인다.
+   체크섬 불일치(`Migration checksum mismatch`)라면 **이미 커밋된 마이그레이션 파일을 누가 고친 것**이다. 파일을 원래대로 되돌리고 변경은 새 V번호로 옮긴다.
 3. 코드 문제면 dev에서 고쳐 커밋한다(작은 수정) — 되돌려야 할 만큼 크면 사용자에게 상황을 보고하고 판단을 받는다.
 4. **검증을 통과시킬 수 없는 예외 상황에서만** 사유를 남기고 해제한다. 사유 없이 상태 파일을 지우지 않는다.
    ```powershell
