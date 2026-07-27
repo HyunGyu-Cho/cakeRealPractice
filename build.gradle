@@ -24,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Boot 4에서 HTTP 클라이언트가 web 스타터에서 분리됐다. 결제 제공자 API 호출(RestClient)에 필요하다.
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
     implementation 'org.springframework.security:spring-security-messaging'
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
@@ -35,4 +37,9 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform()
+    // 테스트는 외부 결제 API를 절대 호출하지 않는다. .env에 PAYMENT_PROVIDER=toss가 있어도
+    // 환경변수가 config import보다 우선하므로 여기서 mock으로 고정한다.
+    environment 'PAYMENT_PROVIDER', 'mock'
+}

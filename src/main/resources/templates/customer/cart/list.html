@@ -32,9 +32,11 @@
         </section>
 
         <section class="stack cart-items" aria-live="polite">
-          <article class="panel cart-item" th:each="item : ${cart.items}"
+          <!-- data-cart-item은 정적 속성으로 둔다. th:attr는 값이 빈 문자열이면 속성을 렌더링하지
+               않아, 선택 금액을 계산하는 cart.js가 항목을 찾지 못한다. -->
+          <article class="panel cart-item" data-cart-item th:each="item : ${cart.items}"
                    th:classappend="${!item.selectable} ? 'is-disabled'"
-                   th:attr="data-cart-item='',data-unit-price=${item.currentUnitPrice},data-quantity=${item.quantity}">
+                   th:attr="data-unit-price=${item.currentUnitPrice},data-quantity=${item.quantity}">
             <input class="cart-item__check" type="checkbox" name="itemIds"
                    th:value="${item.cartItemId}" form="cart-selection-form"
                    data-cart-item-check th:disabled="${!item.selectable}"

@@ -240,7 +240,7 @@
     승인 성공 후에야 주문을 만든다. 외부 호출은 전부 DB 트랜잭션 밖이다.
   - **제공자는 설정으로 고른다** — `cakeshop.payment.provider`(`mock` 기본 / `toss`). 도메인 로직은 하나이고
     `PaymentGateway` 구현만 갈린다. 테스트·CI·스모크는 `mock`으로 돌아 외부 의존이 없다.
-  - 비어 있던 클래스 4개를 모두 채웠다 — `TossPaymentClient`(RestClient, 새 의존성 없음),
+  - 비어 있던 클래스 4개를 모두 채웠다 — `TossPaymentClient`(RestClient),
     `TossWebhookController`, `WebhookEvent`, `WebhookEventMapper`(+ XML).
   - **보상**: 승인은 됐는데 확정 트랜잭션이 실패하면 즉시 취소를 호출하고 `ABORTED`로 마감한다.
     돈만 빠져나간 상태를 만들지 않는다. 취소까지 실패하면 로그로 남기고 대조 배치가 다시 집는다.
@@ -249,8 +249,21 @@
   - **대조 배치**(`PaymentReconciliationScheduler`)가 방치된 `READY`를 정리한다. `PaymentStatus` 6개는 그대로 두고
     `TossStatusMapper`가 외부 상태를 매핑하며 원본 문자열은 `provider_status`에 남긴다.
   - 일반 주문과 주문제작 결제 링크를 **함께** 전환했다.
-  - ⚠️ **남은 것**: 토스 테스트 키가 없어 `provider=toss`에서의 실승인·실취소·실웹훅은 검증하지 못했다.
-    키 확보 후 별도로 수행한다. 그때까지 운영 기본값은 `mock`이다.
+
+- [x] **토스 실결제 실검증 (테스트 키)** — 개발자센터 테스트 키로 `provider=toss` 경로를 실제로 실행
+  - 결제창 → 실승인 → `PAID` 주문 생성 → 재고 차감 → 장바구니 정리 → 알림까지 확인했고, 관리자 전액 환불로
+    실취소까지 확인했다. **토스 조회 API로 대조**해 `status=CANCELED`·잔액 0원·취소 1건을 확인했다(이중 취소 없음).
+  - 금액 위변조(콜백 `amount` 조작)는 **승인 호출 자체를 하지 않고** 400으로 차단되는 것을 확인했다.
+  - 테스트로는 못 잡고 실행해야만 드러난 결함 3건을 고쳤다:
+    1. **`provider=toss`면 앱이 기동조차 못 했다.** Boot 4에서 HTTP 클라이언트가 web 스타터에서 분리돼
+       `RestClient.Builder` 빈이 없었다 → `spring-boot-starter-restclient` 추가. 기존 테스트가 못 잡은 이유는
+       `TossPaymentClientTests`가 `RestClient`를 직접 주입하는 생성자를 써서 자동설정 경로를 안 타기 때문이다.
+    2. **장바구니 → 주문 진입이 막혀 있었다**(토스와 무관한 기존 버그). `th:attr`는 값이 빈 문자열이면 속성을
+       렌더링하지 않아 `data-cart-item`이 사라졌고, `cart.js`가 예외로 죽어 주문 버튼이 계속 `disabled`였다.
+    3. **`.env`에 `PAYMENT_PROVIDER=toss`를 두면 테스트 3건이 실제 토스 API를 호출해 깨졌다.** `.env`는
+       `spring.config.import`로 테스트 JVM에도 들어온다 → test 태스크에서 `PAYMENT_PROVIDER=mock`으로 고정했다.
+  - ⚠️ **남은 것**: 웹훅 실전송은 미검증이다. 토스가 우리 쪽으로 요청을 보내는 방향이라 localhost에 도달하지
+    못한다. 터널(ngrok) 또는 배포 서버에 엔드포인트를 등록해 별도로 수행한다. 운영 기본값은 `mock`이다.
 
 - [ ] **후기 답글 알림** — 관리자가 후기에 답글을 달면 작성자에게 알림
   - review 스펙(`docs/specs/review.md`)에서 "알림은 범위 밖"으로 명시하고 미뤄 둔 항목이다.
