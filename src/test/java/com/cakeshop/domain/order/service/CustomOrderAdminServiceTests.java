@@ -12,10 +12,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cakeshop.domain.chat.service.ChatService;
+import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.order.dto.form.QuoteForm;
 import com.cakeshop.domain.order.dto.form.RejectForm;
+import com.cakeshop.domain.order.dto.view.CustomOrderAdminDetailView;
+import com.cakeshop.domain.order.dto.view.CustomOrderDetailView;
+import com.cakeshop.domain.order.dto.view.CustomOrderListView;
 import com.cakeshop.domain.order.entity.CustomOrderQuote;
 import com.cakeshop.domain.order.entity.Order;
 import com.cakeshop.domain.order.entity.OrderStatus;
@@ -23,11 +27,15 @@ import com.cakeshop.domain.order.entity.QuoteStatus;
 import com.cakeshop.domain.order.error.CustomOrderErrorCode;
 import com.cakeshop.domain.order.mapper.CustomOrderMapper;
 import com.cakeshop.domain.order.mapper.OrderMapper;
+import com.cakeshop.global.common.paging.PageRequest;
+import com.cakeshop.global.common.paging.PageResult;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -190,6 +198,62 @@ class CustomOrderAdminServiceTests {
         assertThatThrownBy(() -> adminService.reject(100L, form))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.NOT_UNDER_REVIEW);
+    }
+
+    @Test
+    void requestDetailCarriesOrderingMemberContact() {
+        when(customOrderService.getRequest(100L)).thenReturn(detailView(9L));
+        when(memberService.getProfileMap(List.of(9L))).thenReturn(Map.of(9L,
+            new MemberProfileView(9L, "케이크러버", "lover@example.com", "010-1234-5678", NOW)));
+
+        CustomOrderAdminDetailView detail = adminService.getRequestDetail(100L);
+
+        assertThat(detail.memberId()).isEqualTo(9L);
+        assertThat(detail.memberNickname()).isEqualTo("케이크러버");
+        assertThat(detail.memberEmail()).isEqualTo("lover@example.com");
+        assertThat(detail.memberPhone()).isEqualTo("010-1234-5678");
+        assertThat(detail.request().orderNumber()).isEqualTo("CUS-20260801-ABC");
+    }
+
+    @Test
+    void requestDetailFallsBackWhenMemberRowIsGone() {
+        when(customOrderService.getRequest(100L)).thenReturn(detailView(9L));
+        when(memberService.getProfileMap(List.of(9L))).thenReturn(Map.of());
+
+        CustomOrderAdminDetailView detail = adminService.getRequestDetail(100L);
+
+        assertThat(detail.memberNickname()).isEqualTo("탈퇴 회원");
+        assertThat(detail.memberEmail()).isNull();
+        assertThat(detail.memberPhone()).isNull();
+    }
+
+    @Test
+    void listShowsFallbackNameWhenNicknameMissing() {
+        Order order = new Order();
+        order.setId(100L);
+        order.setOrderNumber("CUS-20260801-ABC");
+        order.setMemberId(9L);
+        order.setStatus(OrderStatus.UNDER_REVIEW.name());
+        order.setCreatedAt(NOW);
+        when(customOrderMapper.countCustomOrders(null)).thenReturn(1L);
+        when(customOrderMapper.findCustomOrderIdPage(null, 10, 0)).thenReturn(List.of(100L));
+        when(orderMapper.findByIds(List.of(100L))).thenReturn(List.of(order));
+        when(orderMapper.findItemsByOrderIds(List.of(100L))).thenReturn(List.of());
+        when(customOrderMapper.findLatestQuotesByOrderIds(List.of(100L))).thenReturn(List.of());
+        when(memberService.getNicknameMap(List.of(9L))).thenReturn(Map.of());
+
+        PageResult<CustomOrderListView> page =
+            adminService.getRequestPage(null, new PageRequest(1, 10));
+
+        assertThat(page.getContent()).singleElement()
+            .extracting(CustomOrderListView::memberName).isEqualTo("탈퇴 회원");
+    }
+
+    private CustomOrderDetailView detailView(Long memberId) {
+        return new CustomOrderDetailView(100L, "CUS-20260801-ABC", memberId, "3호 생크림", null,
+            List.of(), null, null, List.of(), NOW.plusDays(7), 150_000L, 150_000L, null,
+            OrderStatus.UNDER_REVIEW.name(), "확인 중", "확인 중", null, List.of(), null,
+            null, null, false, false, true, NOW);
     }
 
     private void givenOrder(OrderStatus status) {

@@ -1,12 +1,14 @@
 package com.cakeshop.domain.order.service;
 
 import com.cakeshop.domain.chat.service.ChatService;
+import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.service.MemberService;
 import com.cakeshop.domain.notification.entity.NotificationType;
 import com.cakeshop.domain.notification.service.NotificationCommand;
 import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.order.dto.form.QuoteForm;
 import com.cakeshop.domain.order.dto.form.RejectForm;
+import com.cakeshop.domain.order.dto.view.CustomOrderAdminDetailView;
 import com.cakeshop.domain.order.dto.view.CustomOrderDetailView;
 import com.cakeshop.domain.order.dto.view.CustomOrderListView;
 import com.cakeshop.domain.order.entity.CustomOrderQuote;
@@ -39,6 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class CustomOrderAdminService {
+
+    /** 회원 행이 없을 때(탈퇴·삭제) 화면에 빈칸 대신 내보내는 표시명. */
+    private static final String WITHDRAWN_MEMBER_NAME = "탈퇴 회원";
 
     private final OrderMapper orderMapper;
     private final CustomOrderMapper customOrderMapper;
@@ -104,7 +109,7 @@ public class CustomOrderAdminService {
                 OrderStatus orderStatus = OrderStatus.valueOf(order.getStatus());
                 return new CustomOrderListView(
                     order.getId(), order.getOrderNumber(), order.getMemberId(),
-                    nicknames.get(order.getMemberId()),
+                    nicknames.getOrDefault(order.getMemberId(), WITHDRAWN_MEMBER_NAME),
                     items.isEmpty() ? null : items.getFirst().getProductName(),
                     order.getPickupAt(), order.getDesiredBudget(),
                     latest == null ? null : latest.getQuotedAmount(),
@@ -116,9 +121,21 @@ public class CustomOrderAdminService {
         return new PageResult<>(content, pageRequest, total);
     }
 
+    /**
+     * 상세는 고객용 요청 내용에 요청 회원 정보를 덧붙여 내려준다.
+     * 관리자가 요청 번호로 회원을 따로 대조하지 않고 이 화면에서 상담·안내를 끝낼 수 있게 한다.
+     */
     @Transactional(readOnly = true)
-    public CustomOrderDetailView getRequestDetail(Long orderId) {
-        return customOrderService.getRequest(orderId);
+    public CustomOrderAdminDetailView getRequestDetail(Long orderId) {
+        CustomOrderDetailView request = customOrderService.getRequest(orderId);
+        // 회원 정보는 member 공개 계약으로만 읽는다(members 테이블 JOIN 금지).
+        MemberProfileView profile = memberService.getProfileMap(List.of(request.memberId()))
+            .get(request.memberId());
+        return new CustomOrderAdminDetailView(
+            request, request.memberId(),
+            profile == null ? WITHDRAWN_MEMBER_NAME : profile.nickname(),
+            profile == null ? null : profile.email(),
+            profile == null ? null : profile.phone());
     }
 
     /**

@@ -78,7 +78,7 @@
     </select>
 
     <select id="findProfilesByIds" resultMap="memberResultMap">
-        SELECT id, nickname, email, created_at
+        SELECT id, nickname, email, phone, created_at
           FROM members
          WHERE id IN
         <foreach collection="ids" item="memberId" open="(" separator="," close=")">
