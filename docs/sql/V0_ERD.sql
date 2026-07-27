@@ -666,7 +666,7 @@ CREATE TABLE `notifications` (
         CHECK (`notification_type` IN (
             'CHAT_MESSAGE', 'ORDER_PAID', 'ORDER_IN_PRODUCTION', 'ORDER_READY_FOR_PICKUP',
             'ORDER_PICKED_UP', 'ORDER_CANCELED', 'ORDER_REJECTED',
-            'CUSTOM_ORDER_QUOTE', 'PAYMENT_REQUESTED',
+            'CUSTOM_ORDER_QUOTE', 'PAYMENT_REQUESTED', 'REVIEW_REPLY',
             'ADMIN_CHAT_MESSAGE', 'ADMIN_ORDER_PLACED', 'ADMIN_ORDER_CANCELED'
         )),
     CONSTRAINT `fk_notifications_receiver`

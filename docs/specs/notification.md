@@ -26,7 +26,7 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 
 | 컬럼 | 값(영문 enum 이름) | 시작 상태 | 최종 상태 | 전이 규칙 요약 |
 |---|---|---|---|---|
-| `notifications.notification_type` | `NotificationType` 12개(아래 표) | 해당 없음(생성 시 확정) | 해당 없음 | 전이 없음 — 생성 후 불변 |
+| `notifications.notification_type` | `NotificationType` 13개(아래 표) | 해당 없음(생성 시 확정) | 해당 없음 | 전이 없음 — 생성 후 불변 |
 | `notifications.is_read` | BOOLEAN (status 아님) | `false` (DDL DEFAULT 0) | `true` | 수신자 본인만 `false → true` 단방향, 되돌리기 없음 |
 | `notification_deliveries.status` | `DeliveryStatus` — `REQUESTED / SENT / FAILED / ABANDONED` | `REQUESTED` (DDL DEFAULT) | `SENT` / `ABANDONED` | `REQUESTED → SENT\|FAILED`, `FAILED → SENT\|FAILED\|ABANDONED`. 전이는 `DeliveryStatus.canTransitionTo()`가 소유 |
 | `notification_deliveries.channel` | `DeliveryChannel` — `WEBSOCKET` (status 아님, 종류) | 해당 없음(생성 시 확정) | 해당 없음 | 전이 없음 — 생성 후 불변 |
@@ -44,6 +44,7 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 | `ORDER_REJECTED` | 주문 거절 | 주문 상태 전이 → `REJECTED` |
 | `CUSTOM_ORDER_QUOTE` | 견적 도착 | 주문제작 견적 등록 (주문제작 실구현 시 발행) |
 | `PAYMENT_REQUESTED` | 결제 요청 | 주문제작 결제 링크 발송 (주문제작 실구현 시 발행) |
+| `REVIEW_REPLY` | 후기 답글 | 관리자가 후기에 답글 **최초 등록** (V19에서 추가. 답글 수정은 재발행하지 않는다) |
 | `ADMIN_CHAT_MESSAGE` | 고객 문의 | 고객이 채팅 메시지 전송 → 전체 관리자 |
 | `ADMIN_ORDER_PLACED` | 신규 주문 | 고객 결제 성공 → 전체 관리자 |
 | `ADMIN_ORDER_CANCELED` | 주문 취소 | 고객이 주문 취소·환불 → 전체 관리자 |
@@ -61,7 +62,8 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 - 사용할 테이블 (V0 기준): `notifications` 단일 테이블
   - `id`, `receiver_id`(FK members), `order_id`(FK orders, NULL), `chat_message_id`(FK chat_messages, NULL — V9에서 추가), `notification_type VARCHAR(50)`, `title VARCHAR(200)`, `content TEXT`, `is_read TINYINT(1) DEFAULT 0`, `read_at DATETIME(6) NULL`, `target_url VARCHAR(500) NULL`, `created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)`
 - 스키마 변경 필요 여부: **필요** — `docs/sql/V10_notification.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
-  - `chk_notifications_type CHECK (notification_type IN (...))` — 12개 값
+  - `chk_notifications_type CHECK (notification_type IN (...))` — V10에서 12개 값,
+    `docs/sql/V19_notification_review_reply.sql`에서 `REVIEW_REPLY`를 더해 13개 (V0/V1 소급 반영)
   - `idx_notifications_receiver (receiver_id, id DESC)` — 목록 키셋 페이징
   - `idx_notifications_unread (receiver_id, is_read)` — 헤더 미읽음 카운트
   - 컬럼 타입 변경 없음. `created_at`은 DDL DEFAULT에 위임(자바에서 세팅 금지).
@@ -83,7 +85,8 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
   - `MemberService.getProfileMap` / `searchMemberIds` — 관리자 발송 내역의 대상 회원 표시·검색. **members 테이블 JOIN 금지.**
   - `MemberService.findAdminMemberIds()` — **신규 공개 계약**(member 도메인에 추가). 관리자 알림 팬아웃 대상 조회용. 시그니처 변경 시 수민↔민정 합의 필요.
   - `MemberService.getProfile(...)` — 푸시 대상 username(이메일) 해석용. **업무 트랜잭션이 아니라 `NotificationPusher`(커밋 후·스케줄러)에서만 호출한다.**
-- 호출 방향: `ChatService`·`OrderService`·`CheckoutPaymentProcessor`·`RefundService` → `NotificationService` (단방향). notification은 업무 도메인을 역참조하지 않는다.
+- 호출 방향: `ChatService`·`OrderService`·`CheckoutPaymentProcessor`·`RefundService`·`ReviewAdminService`
+  → `NotificationService` (단방향). notification은 업무 도메인을 역참조하지 않는다.
 
 ## 5. 화면
 

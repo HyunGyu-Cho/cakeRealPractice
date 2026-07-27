@@ -236,7 +236,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 목업 표기 | 실제 | 담당 |
 |---|---|---|
 | 커뮤니티 글 `후기 / 질문 / 레시피 / 자유` | `posts.category` (`REVIEW/QUESTION/RECIPE/FREE`) — status와 별도 컬럼 | 현규 |
-| 알림 `주문 승인 / 결제 완료 …` | `NotificationType` enum 12개 확정 — 고객 `CHAT_MESSAGE`/`ORDER_PAID`/`ORDER_IN_PRODUCTION`/`ORDER_READY_FOR_PICKUP`/`ORDER_PICKED_UP`/`ORDER_CANCELED`/`ORDER_REJECTED`/`CUSTOM_ORDER_QUOTE`/`PAYMENT_REQUESTED`, 관리자 `ADMIN_CHAT_MESSAGE`/`ADMIN_ORDER_PLACED`/`ADMIN_ORDER_CANCELED`. status와 별도 컬럼(`notification_type`) | 민정 |
+| 알림 `주문 승인 / 결제 완료 …` | `NotificationType` enum 13개 확정 — 고객 `CHAT_MESSAGE`/`ORDER_PAID`/`ORDER_IN_PRODUCTION`/`ORDER_READY_FOR_PICKUP`/`ORDER_PICKED_UP`/`ORDER_CANCELED`/`ORDER_REJECTED`/`CUSTOM_ORDER_QUOTE`/`PAYMENT_REQUESTED`/`REVIEW_REPLY`(V19), 관리자 `ADMIN_CHAT_MESSAGE`/`ADMIN_ORDER_PLACED`/`ADMIN_ORDER_CANCELED`. status와 별도 컬럼(`notification_type`) | 민정 |
 | 알림 전달 경로 | `notification_deliveries.channel` (`DeliveryChannel` — 현재 `WEBSOCKET` 하나). 같은 테이블의 `status`(REQUESTED/SENT/FAILED/ABANDONED)와 별도 컬럼 | 민정 |
 
 `type`/`category`도 저장값·라벨 규칙은 status와 동일하게 적용한다(영문 enum 이름 저장, 한글 라벨 미저장).
@@ -263,7 +263,7 @@ READY / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED
 | 주환 | `payment_cancellations.status` = `REQUESTED / DONE / REJECTED` (V8) |
 | 정후 | `coupons.status` = `ACTIVE / SUSPENDED / ENDED`, `member_coupons.status` = `AVAILABLE / USED` (V15) |
 | 현규 | `comments.status` = `ACTIVE / DELETED`, `post_reports.status` = `PENDING / ACCEPTED / REJECTED` (V2), `reviews.status` = `VISIBLE / HIDDEN` (V16) |
-| 민정 | `chat_rooms.status` = `OPEN / CLOSED` (V9), `notification_deliveries.status` 4개 (V12), `NotificationType` 12개 (`docs/specs/notification.md`) |
+| 민정 | `chat_rooms.status` = `OPEN / CLOSED` (V9), `notification_deliveries.status` 4개 (V12), `NotificationType` 13개 (`docs/specs/notification.md`) |
 
 > 새 상태 컬럼을 추가할 때는 위 인벤토리에 행을 추가하고 enum + DDL을 함께 커밋한다.
 

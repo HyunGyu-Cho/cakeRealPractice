@@ -16,6 +16,7 @@ public enum NotificationType {
     ORDER_REJECTED("주문 거절"),
     CUSTOM_ORDER_QUOTE("견적 도착"),
     PAYMENT_REQUESTED("결제 요청"),
+    REVIEW_REPLY("후기 답글"),
     ADMIN_CHAT_MESSAGE("고객 문의"),
     ADMIN_ORDER_PLACED("신규 주문"),
     ADMIN_ORDER_CANCELED("주문 취소");

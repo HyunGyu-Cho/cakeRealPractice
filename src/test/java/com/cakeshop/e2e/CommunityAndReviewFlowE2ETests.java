@@ -256,6 +256,19 @@ class CommunityAndReviewFlowE2ETests {
             .andExpect(redirectedUrl("/admin/reviews"))
             .andExpect(flash().attribute("successMessage", "답글을 저장했습니다."));
 
+        // 답글 등록은 작성자에게 알림을 남긴다(V19 REVIEW_REPLY)
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM notifications WHERE receiver_id = ? AND notification_type = 'REVIEW_REPLY'",
+            Integer.class, customer.getMemberId())).isEqualTo(1);
+
+        // 답글 수정은 재발행하지 않는다 — 같은 답글로 작성자를 반복해서 깨우지 않는다
+        mockMvc.perform(post("/admin/reviews/{id}/reply", reviewId).with(user(admin)).with(csrf())
+                .param("content", "답글을 수정합니다. 감사합니다."))
+            .andExpect(redirectedUrl("/admin/reviews"));
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM notifications WHERE receiver_id = ? AND notification_type = 'REVIEW_REPLY'",
+            Integer.class, customer.getMemberId())).isEqualTo(1);
+
         mockMvc.perform(post("/admin/reviews/{id}/status", reviewId).with(user(admin)).with(csrf())
                 .param("status", "HIDDEN"))
             .andExpect(redirectedUrl("/admin/reviews"))
