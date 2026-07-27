@@ -18,6 +18,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 - 상태값(status)은 영문 enum 이름(UPPER_SNAKE)으로만 저장한다. 한글 라벨은 절대 저장하지 않고 화면에서만 매핑하며, 상태 전이 검증은 service가 소유한다.
 - 다른 도메인의 테이블을 직접 JOIN하거나 다른 도메인의 Mapper를 호출하지 않는다. 상대 도메인이 공개한 Service 인터페이스로만 연동한다.
 - DB에 이미 적용된 증분 SQL(V2 이후)은 수정하지 않고 새 V번호 파일을 추가한다. 단 `V0_ERD.sql`(전체 스펙 보관)과 `V1_first_MVC_table.sql`(1차 MVP 보관)은 보관용 정본이므로 확정 변경을 소급 반영한다 — 확정 변경 시 "증분 V파일 + V0/V1" 두 곳을 함께 고친다.
+- 증분 V파일은 자기 앞 번호까지 적용된 DB를 전제로 한다. V0 정본은 이미 모든 확정 변경을 담고 있으므로 **그 위에 증분을 재적용하지 않는다**(재적용하면 V9는 이미 있는 FK를, V14는 이미 바뀐 카테고리 코드를 다시 건드려 실패한다 — 정상이다). 새 DB는 `V0_ERD.sql` + 최신 시드로 세운다. 자세한 내용은 `docs/sql/README.md`.
 - `created_at`/`updated_at`을 자바 코드나 UPDATE 문에서 직접 세팅하지 않는다. DDL의 `DEFAULT`/`ON UPDATE CURRENT_TIMESTAMP(6)`에 위임한다.
 - `global/*`·`store`·`home` 공통 코드는 팀 합의(PR) 없이 변경하지 않는다.
 - 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). frontmatter가 `status: approved`가 아닌 도메인의 운영 코드 생성·수정은 훅이 차단한다(`home` 조합 계층 제외).
