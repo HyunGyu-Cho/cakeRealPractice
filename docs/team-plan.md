@@ -31,23 +31,23 @@
 
 ## 2. DB 공유 및 변경 방식
 
-현재 프로젝트는 Flyway 없이 `docs/sql`의 SQL을 수동 적용한다.
+현재 프로젝트는 Flyway로 스키마를 관리한다(2026-07-27 전환, 배경은 [`flyway-migration-proposal.md`](flyway-migration-proposal.md)). 전환 이전 이력은 `docs/sql/legacy`에 보관한다.
 
 | 결정할 사항 | 최종 결정 | 담당자 |
 |---|---|---|
-| 스키마 공유 방식 | ✅ Flyway 미사용 — `docs/sql` DDL 수동 적용. `docs/sql`도 repo에 포함해 코드와 함께 버전관리 | |
-| SQL 파일명과 실행 순서 규칙 | 🟡 `V0/V1…` 번호 규칙 사용(현재 `V0_ERD`·`V1_first_MVC_table`). 스키마 오너·변경 내용은 PR 설명에 명시 | |
+| 스키마 공유 방식 | ✅ Flyway — `src/main/resources/db/migration`을 앱 부팅 시 자동 적용. 코드와 함께 버전관리되며 수동 적용은 하지 않는다 | |
+| SQL 파일명과 실행 순서 규칙 | ✅ Flyway 규칙 `V<번호>__<설명>.sql`(언더바 2개). 개발용 시드는 `db/seed/R__dev_seed.sql`. 스키마 오너·변경 내용은 PR 설명에 명시 | |
 | SQL 검토자 | ⬜ | |
 | 공용 RDS 반영 담당자 | ⬜ | |
-| RDS 적용 이력 기록 위치 | ⬜ | |
-| 적용 실패 시 롤백 방법 | ⬜ | |
+| RDS 적용 이력 기록 위치 | ✅ RDS의 `flyway_schema_history` 테이블(적용 시각·체크섬·성공 여부 자동 기록) | |
+| 적용 실패 시 롤백 방법 | 🟡 Flyway Community는 자동 undo가 없다. 되돌리는 변경을 새 V파일로 추가하는 것이 기본. 파괴적 변경은 적용 전 RDS 스냅샷 | |
 | 테이블·컬럼·제약조건 네이밍 규칙 | ✅ [`conventions.md`](conventions.md) 데이터베이스 규약 준수 | |
-| 로컬 seed와 공용 seed의 구분 기준 | ✅ 기준은 "없으면 앱이 동작하지 않는가" 하나다. **필수 시드**(categories·대표 매장 1행+7요일·post_categories)는 RDS에도 적용하고, **데모 시드**(샘플 계정·커뮤니티 샘플 글·상품/주문제작/쿠폰 샘플)는 로컬 전용이다. V파일을 쪼개지 않고 절 단위로 구분해 적용한다 — 표는 [README DB 스키마 관리 > 시드 구분](../README.md#시드-구분-로컬-vs-공용-rds) | 공용 RDS는 V1 샘플 관리자 계정을 쓰지 않고 별도 계정을 만든다(해시가 저장소에 공개돼 있음) |
+| 로컬 seed와 공용 seed의 구분 기준 | ✅ 기준은 "없으면 앱이 동작하지 않는가" 하나다. **필수 시드**(categories·대표 매장 1행+7요일·post_categories)는 `db/migration`, **데모 시드**(샘플 계정·상품/주문제작 샘플)는 `db/seed`에 둔다. `db/seed`는 `local` 프로필에서만 `flyway.locations`에 들어가므로 구분이 문서가 아니라 **설정으로 강제된다** — 표는 [README DB 스키마 관리 > 시드 구분](../README.md#시드-구분-로컬-vs-공용-rds) | 공용 RDS는 샘플 관리자 계정을 쓰지 않고 별도 계정을 만든다(해시가 저장소에 공개돼 있어 `db/seed`로 내렸다) |
 
 ### 원칙
 
-- DB 구조의 정본은 `docs/sql`로 한다.
-- 공용 RDS에 적용한 SQL 파일은 수정하지 않고 새 변경 파일을 추가한다.
+- DB 구조의 정본은 `src/main/resources/db/migration`으로 한다.
+- 커밋된 마이그레이션 파일은 수정하지 않고 새 변경 파일을 추가한다(Flyway 체크섬 검증).
 - SQL은 로컬 DB에서 검증하고 PR 검토를 거친 후 RDS에 반영한다.
 - 대량 테스트 데이터는 공용 RDS에 넣지 않는다.
 

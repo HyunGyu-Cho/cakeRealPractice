@@ -67,8 +67,9 @@ if (& git -C $root ls-files -u) {
 } else { Ok "충돌 잔재 없음" }
 
 # 두 브랜치가 각각 V6을 붙이면 파일명이 달라 git은 충돌 없이 둘 다 머지한다. 번호로만 잡을 수 있다.
-$dupes = Get-ChildItem (Join-Path $root "docs/sql") -Filter "V*.sql" |
-    ForEach-Object { if ($_.Name -match '^(V\d+)_') { $Matches[1] } } |
+# Flyway도 같은 버전이 둘이면 부팅에 실패하므로, 부팅 전에 여기서 먼저 알려준다.
+$dupes = Get-ChildItem (Join-Path $root "src/main/resources/db/migration") -Filter "V*.sql" |
+    ForEach-Object { if ($_.Name -match '^(V\d+)__') { $Matches[1] } } |
     Group-Object | Where-Object { $_.Count -gt 1 }
 if ($dupes) {
     Fail "V번호 중복: $(($dupes | ForEach-Object { "$($_.Name)(x$($_.Count))" }) -join ', ')"
@@ -96,15 +97,22 @@ if (Test-Path $envFile) {
     }
 }
 
+# Flyway가 부팅 시 미적용분을 알아서 적용하므로 "적용을 잊는" 실패는 사라졌다. 그래도 이 검사를
+# 남기는 이유는, Flyway의 이력 테이블이 "적용했다"고 말하는 것과 실제 DB 구조가 그런지는 다른
+# 문제이기 때문이다(누군가 손으로 고쳤거나, 마이그레이션이 의도와 다른 것을 만들었거나).
+#
 # "이번 머지가 들여온 V파일"을 기준점으로 계산하려 하면 반드시 틀린다:
 #   - gh pr merge 는 서버에서 머지해 로컬 HEAD가 움직이지 않고(훅 시점의 HEAD는 무관한 브랜치일 수 있다)
 #   - 이 저장소는 squash·rebase 머지도 허용해 머지 커밋이 아예 없을 수 있으며
 #   - 검증 실패 후 전진 수정하면 HEAD가 머지 커밋에서 멀어진다.
 # 그래서 기준점을 쓰지 않는다. **모든 증분 V파일(V2+)의 산출물이 DB에 있는지**를 매번 확인한다.
 # 머지 전략·훅 타이밍과 무관하게 항상 옳고, 이미 적용된 것은 그냥 통과하므로 반복 실행도 안전하다.
-$newSql = @(Get-ChildItem (Join-Path $root "docs/sql") -Filter "V*.sql" |
-    Where-Object { $_.Name -match '^V([2-9]|\d{2,})_' } |    # V0/V1은 보관용 정본이라 적용 대상이 아니다
-    Sort-Object Name | ForEach-Object { "docs/sql/$($_.Name)" })
+$migrationDir = "src/main/resources/db/migration"
+$newSql = @(Get-ChildItem (Join-Path $root $migrationDir) -Filter "V*.sql" |
+    # V1은 베이스라인이라 기존 DB에서는 실행되지 않는다(baseline-on-migrate). 대조 대상이 아니다.
+    Where-Object { $_.Name -match '^V([2-9]|\d{2,})__' } |
+    Sort-Object { [int]($_.Name -replace '^V(\d+)__.*$', '$1') } |
+    ForEach-Object { "$migrationDir/$($_.Name)" })
 
 if ($newSql.Count -eq 0) {
     Ok "확인할 증분 마이그레이션 없음"

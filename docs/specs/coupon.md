@@ -51,7 +51,7 @@ approved-at: 2026-07-26
 ## 3. DB
 
 - 사용할 테이블: `coupons`(V1에 이미 생성됨), `member_coupons`(V0 ERD에 설계만 있고 미생성)
-- 스키마 변경 필요 여부: **필요** — `docs/sql/V15_coupon.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
+- 스키마 변경 필요 여부: **필요** — `docs/sql/legacy/V15_coupon.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
 
   1. `coupons`에 CHECK 추가 — `chk_coupons_status CHECK (status IN ('ACTIVE','SUSPENDED','ENDED'))`,
      `chk_coupons_discount_type CHECK (discount_type IN ('PERCENTAGE','FIXED_AMOUNT'))`.

@@ -61,13 +61,13 @@ revised-at: 2026-07-26 (전달 이력·재시도 추가, 이슈 #10)
 
 - 사용할 테이블 (V0 기준): `notifications` 단일 테이블
   - `id`, `receiver_id`(FK members), `order_id`(FK orders, NULL), `chat_message_id`(FK chat_messages, NULL — V9에서 추가), `notification_type VARCHAR(50)`, `title VARCHAR(200)`, `content TEXT`, `is_read TINYINT(1) DEFAULT 0`, `read_at DATETIME(6) NULL`, `target_url VARCHAR(500) NULL`, `created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)`
-- 스키마 변경 필요 여부: **필요** — `docs/sql/V10_notification.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
+- 스키마 변경 필요 여부: **필요** — `docs/sql/legacy/V10_notification.sql` 신규 (V0_ERD.sql·V1_first_MVC_table.sql 소급 반영)
   - `chk_notifications_type CHECK (notification_type IN (...))` — V10에서 12개 값,
-    `docs/sql/V19_notification_review_reply.sql`에서 `REVIEW_REPLY`를 더해 13개 (V0/V1 소급 반영)
+    `docs/sql/legacy/V19_notification_review_reply.sql`에서 `REVIEW_REPLY`를 더해 13개 (V0/V1 소급 반영)
   - `idx_notifications_receiver (receiver_id, id DESC)` — 목록 키셋 페이징
   - `idx_notifications_unread (receiver_id, is_read)` — 헤더 미읽음 카운트
   - 컬럼 타입 변경 없음. `created_at`은 DDL DEFAULT에 위임(자바에서 세팅 금지).
-- 전달 이력 테이블 `notification_deliveries` — `docs/sql/V12_notification_deliveries.sql` 신규 (V0_ERD.sql 소급 반영. V1에는 없던 테이블이라 V1은 수정 없음)
+- 전달 이력 테이블 `notification_deliveries` — `docs/sql/legacy/V12_notification_deliveries.sql` 신규 (V0_ERD.sql 소급 반영. V1에는 없던 테이블이라 V1은 수정 없음)
   - `id`, `notification_id`(FK notifications), `channel VARCHAR(20)`, `recipient VARCHAR(500) NULL`, `status VARCHAR(20) DEFAULT 'REQUESTED'`, `retry_count INT DEFAULT 0`, `next_retry_at DATETIME(6) NULL`, `failure_code`, `failure_reason VARCHAR(500)`, `requested_at`, `sent_at`, `template_code`/`provider_message_id`/`delivered_at`/`clicked_at`(외부 채널 확장용, WEBSOCKET 미사용), `created_at`
   - `chk_notification_deliveries_status` / `chk_notification_deliveries_channel` CHECK, `idx_notification_deliveries_retry (status, next_retry_at)` — 재시도 대상 스캔
   - `recipient`는 **NULL 허용**이다. 수신자 이메일을 업무 트랜잭션에서 조회하지 않기 위해(6장 규칙 2·3) 전송 시점에 채운다.

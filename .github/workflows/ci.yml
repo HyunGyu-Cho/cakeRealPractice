@@ -13,6 +13,8 @@ concurrency:
 
 jobs:
   build-test:
+    # ⚠️ 이 이름은 dev 브랜치 보호 규칙의 필수 체크 이름과 일치해야 한다. 바꾸면 요구되는 체크가
+    # 영영 보고되지 않아 모든 PR이 BLOCKED로 막힌다. 바꿔야 하면 브랜치 보호 설정도 함께 고친다.
     name: 빌드 · 스키마 재현 · 테스트
     runs-on: ubuntu-latest
 
@@ -45,28 +47,10 @@ jobs:
       - name: Gradle 설정 (의존성 캐시)
         uses: gradle/actions/setup-gradle@v4
 
-      - name: MariaDB 클라이언트 설치
-        run: sudo apt-get update && sudo apt-get install -y mariadb-client
-
-      # 스키마는 V0_ERD.sql 하나로 완성된다. 절대규칙에 따라 확정 변경이 V0에 소급 반영되어
-      # 있어서, V17까지의 테이블이 전부 여기에 들어 있다. 이 단계가 실패하면 V0에 반영되지
-      # 않은 변경이 들어왔다는 뜻이다.
-      #
-      # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"라서
-      # V0 위에 replay되지 않는다(V9는 이미 있는 FK를 중복 생성, V14는 이미 있는 카테고리를
-      # 중복 INSERT). 개발용 시드는 현행 스키마 기준으로 V18_dev_seed.sql에 모여 있으므로
-      # 정본 + 시드 두 파일이면 충분하다.
-      - name: 스키마·시드 적용
-        run: |
-          set -euo pipefail
-          apply() {
-            echo "--- $1"
-            # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
-            mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
-                    --default-character-set=utf8mb4 --database=cakeshop < "$1"
-          }
-          apply docs/sql/V0_ERD.sql
-          apply docs/sql/V18_dev_seed.sql
+      # 스키마·시드를 여기서 손으로 적용하지 않는다. 서비스 컨테이너의 DB는 비어 있고,
+      # 테스트가 앱 컨텍스트를 띄울 때 Flyway가 db/migration + db/seed(local 프로필)를
+      # 순서대로 적용한다. 즉 매 PR이 "빈 DB에서 전체 마이그레이션 재생 + 전체 테스트"가 되며,
+      # 마이그레이션 누락·순서 오류·재생 불가는 여기서 빨간불로 드러난다.
 
       # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
       # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.

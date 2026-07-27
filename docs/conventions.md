@@ -203,7 +203,7 @@ UNDER_REVIEW → REJECTED               (수제 반려, 최종)
 * 최종 전 모든 상태 → CANCELED         (주문 취소, 최종)
 최종 상태: PICKED_UP / CANCELED / REJECTED
 ```
-전이 규칙은 `OrderStatus.canTransitionTo()`가 소유한다. SQL의 `CHECK`는 7개 값 집합만 나열한다(`docs/sql/V3_order_status.sql`).
+전이 규칙은 `OrderStatus.canTransitionTo()`가 소유한다. SQL의 `CHECK`는 7개 값 집합만 나열한다(`docs/sql/legacy/V3_order_status.sql`).
 
 **`PaymentStatus` (토스 결제 상태, 6개 — 코드에 확정됨. 주문 enum과 절대 섞지 않는다)**
 

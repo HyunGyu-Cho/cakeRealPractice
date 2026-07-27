@@ -37,7 +37,7 @@ approved-at: 2026-07-26
 ## 3. DB
 
 - 사용할 테이블: `reviews`, `review_images`, `review_replies` — 셋 다 V0 ERD에 설계만 있고 생성된 적이 없다.
-- 스키마 변경 필요 여부: **필요** — `docs/sql/V16_review.sql` 신규 (V0_ERD.sql 소급 반영)
+- 스키마 변경 필요 여부: **필요** — `docs/sql/legacy/V16_review.sql` 신규 (V0_ERD.sql 소급 반영)
   1. 세 테이블을 실제로 만든다(V13이 `order_item_options`·`order_item_images`에 한 것과 같은 상황).
   2. **`taste_rating`·`design_rating`·`service_rating`을 NULL 허용으로 바꾼다.** 고객이 네 축을 모두 채우도록
      강제하면 작성률이 떨어진다. `overall_rating`만 `NOT NULL`이다.
@@ -97,7 +97,7 @@ approved-at: 2026-07-26
      수정 시 새 파일을 올리면 기존 이미지를 교체하고 이전 파일은 지운다.
   9. 내용은 **10자 이상**이다(목업 `minlength="10"`을 서버 검증으로 승격).
   10. **알림은 답글 최초 등록에만 발행한다**(2026-07-27 후속 사이클에서 추가. 그전까지는 발행 없음).
-      `NotificationType.REVIEW_REPLY`를 더해 13개가 됐고 CHECK는 `docs/sql/V19_notification_review_reply.sql`이
+      `NotificationType.REVIEW_REPLY`를 더해 13개가 됐고 CHECK는 `docs/sql/legacy/V19_notification_review_reply.sql`이
       맞춘다. 수신자는 후기 작성자, 링크는 `/reviews`다. 답글은 후기당 1개라 **수정 시에는 재발행하지 않는다** —
       같은 답글로 작성자를 반복해서 깨우지 않기 위해서다. 후기 작성·수정·삭제·숨김은 여전히 알림이 없다.
 

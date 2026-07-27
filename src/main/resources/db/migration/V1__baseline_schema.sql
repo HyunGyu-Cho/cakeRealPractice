@@ -1,64 +1,23 @@
--- 케이크 주문 서비스 ERD v3 수정안
+-- V1: 베이스라인 스키마 (Flyway 전환 기준점)
+--
 -- Target DBMS: MariaDB 10.5+
 --
--- ERD 이미지에는 데이터 타입과 상태(enum) 값이 표시되어 있지 않으므로
--- 컬럼명과 용도에 맞춰 타입, NULL 허용 여부, 기본값을 합리적으로 지정했다.
--- 애플리케이션의 Java enum이 확정되면 각 status 컬럼에 CHECK 제약을 추가한다.
+-- [성격]
+--   Flyway 전환 시점의 전체 스키마다. 전환 이전 이력(구 V0~V19)은 docs/sql/legacy에
+--   읽기 전용으로 보관한다. 구 V0_ERD.sql을 그대로 옮긴 것이며, 아래 두 가지만 다르다.
+--     1. 재실행 대비 DROP TABLE 블록 제거 — Flyway가 정확히 한 번만 실행하므로 불필요하고,
+--        실수로 재실행되면 전체 데이터를 날리는 위험만 남는다.
+--     2. 개발용 시드 분리 — db/seed/R__dev_seed.sql 참조.
 --
--- payments.active_paid_order_id는 결제 상태가 DONE인 동안에만 order_id를 갖는
--- 생성 열이다. UNIQUE 제약과 결합하여 주문 하나에 활성 결제가 1건만 존재하게 한다.
+-- [불변]
+--   이 파일은 한 번 커밋된 뒤 수정하지 않는다. Flyway가 체크섬을 검증하므로
+--   수정하면 이미 적용된 DB에서 부팅이 실패한다. 변경은 항상 새 V번호 파일로 추가한다.
+--
+-- [참고]
+--   payments.active_paid_order_id는 결제 상태가 DONE인 동안에만 order_id를 갖는
+--   생성 열이다. UNIQUE 제약과 결합하여 주문 하나에 활성 결제가 1건만 존재하게 한다.
 
 SET NAMES utf8mb4;
-
--- =========================================================
--- 기존 객체 제거 (재실행 대비)
--- chat_rooms <-> chat_messages 순환 FK 때문에 DROP 순서로는
--- 해결할 수 없어 FOREIGN_KEY_CHECKS를 잠시 끈다.
--- =========================================================
-
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS `post_reports`;
-DROP TABLE IF EXISTS `post_images`;
-DROP TABLE IF EXISTS `post_likes`;
-DROP TABLE IF EXISTS `comments`;
-DROP TABLE IF EXISTS `posts`;
-DROP TABLE IF EXISTS `post_categories`;
-DROP TABLE IF EXISTS `store_holiday`;
-DROP TABLE IF EXISTS `store_business_hour`;
-DROP TABLE IF EXISTS `store`;
-DROP TABLE IF EXISTS `notification_deliveries`;
-DROP TABLE IF EXISTS `notifications`;
-DROP TABLE IF EXISTS `customer_admin_notes`;
-DROP TABLE IF EXISTS `chat_message_reads`;
-DROP TABLE IF EXISTS `chat_message_attachments`;
-DROP TABLE IF EXISTS `chat_room_orders`;
-DROP TABLE IF EXISTS `chat_messages`;
-DROP TABLE IF EXISTS `chat_rooms`;
-DROP TABLE IF EXISTS `member_coupons`;
-DROP TABLE IF EXISTS `coupons`;
-DROP TABLE IF EXISTS `review_replies`;
-DROP TABLE IF EXISTS `review_images`;
-DROP TABLE IF EXISTS `reviews`;
-DROP TABLE IF EXISTS `custom_order_payment_links`;
-DROP TABLE IF EXISTS `custom_order_quotes`;
-DROP TABLE IF EXISTS `payment_cancellations`;
-DROP TABLE IF EXISTS `payments`;
-DROP TABLE IF EXISTS `order_item_images`;
-DROP TABLE IF EXISTS `order_item_options`;
-DROP TABLE IF EXISTS `order_items`;
-DROP TABLE IF EXISTS `orders`;
-DROP TABLE IF EXISTS `cart_items`;
-DROP TABLE IF EXISTS `carts`;
-DROP TABLE IF EXISTS `product_images`;
-DROP TABLE IF EXISTS `product_options`;
-DROP TABLE IF EXISTS `product_option_groups`;
-DROP TABLE IF EXISTS `products`;
-DROP TABLE IF EXISTS `categories`;
-DROP TABLE IF EXISTS `social_accounts`;
-DROP TABLE IF EXISTS `members`;
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================
 -- 회원
@@ -137,6 +96,10 @@ CREATE TABLE `products` (
     PRIMARY KEY (`id`),
     CONSTRAINT `chk_products_status`
         CHECK (`status` IN ('ACTIVE', 'INACTIVE')),
+    -- 구 V14_product_type_general.sql이 추가한 제약. 구 V0_ERD.sql에 소급 반영이 누락돼 있어
+    -- 베이스라인을 세울 때 되살렸다(정본 이중 관리를 없앤 이유 그 자체다).
+    CONSTRAINT `chk_products_type`
+        CHECK (`product_type` IN ('GENERAL', 'CUSTOM', 'SAME_DAY', 'SEASON')),
     CONSTRAINT `fk_products_category`
         FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -883,15 +846,8 @@ INSERT INTO `categories` (`code`, `name`, `sort_order`) VALUES
     ('SAME_DAY', '당일 픽업',   3),
     ('SEASON',   '시즌 상품',   4);
 
--- 공통 샘플 계정: 비밀번호는 둘 다 'Admin1234!' (BCrypt 해시 저장)
--- role 은 접두어 없는 값(USER/ADMIN)으로 저장 (MemberDetailsService 가 'ROLE_' 부착)
-INSERT INTO `members` (`email`, `password`, `nickname`, `phone`, `role`, `status`) VALUES
-    ('admin@cakeshop.local',
-    '$2a$10$wRIE78x8sm..uLtbp9LHde7l6wUWQD3NjPvThQaXvZ3PpXfW6wwX.',
-    '관리자', '010-0000-0001', 'ADMIN', 'ACTIVE'),
-    ('user@cakeshop.local',
-    '$2a$10$wRIE78x8sm..uLtbp9LHde7l6wUWQD3NjPvThQaXvZ3PpXfW6wwX.',
-    '테스트회원', '010-0000-0002', 'USER', 'ACTIVE');
+-- 공통 샘플 계정(admin@cakeshop.local 등)은 여기 없다. BCrypt 해시가 저장소에 공개돼 있어
+-- 공용 RDS에 들어가면 안 되므로 db/seed/R__dev_seed.sql로 옮겼다(local 프로필 전용).
 
 -- 대표 매장 1행 (id = 1 = StoreService.DEFAULT_STORE_ID)
 INSERT INTO `store`
