@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+# 같은 브랜치에 연속 push하면 이전 실행을 취소해 러너 시간을 아낀다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: 빌드 · 스키마 재현 · 테스트
+    runs-on: ubuntu-latest
+
+    services:
+      # 잡마다 새로 뜨고 끝나면 버려지는 일회용 DB다. 팀 공용 RDS나 각자 로컬 MariaDB를
+      # 절대 건드리지 않는다. 버려질 DB라 비밀번호가 평문이어도 무방하다.
+      # 이미지 태그는 팀 표준 설치 버전(README)에 맞춘다. RDS 엔진 버전이 다르면 여기만 바꾼다.
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: ci
+          MARIADB_DATABASE: cakeshop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Gradle 설정 (의존성 캐시)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: MariaDB 클라이언트 설치
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client
+
+      # 스키마는 V0_ERD.sql 하나로 완성된다. 절대규칙에 따라 확정 변경이 V0에 소급 반영되어
+      # 있어서, V17까지의 테이블이 전부 여기에 들어 있다. 이 단계가 실패하면 V0에 반영되지
+      # 않은 변경이 들어왔다는 뜻이다.
+      #
+      # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"라서
+      # V0 위에 replay되지 않는다(V9는 이미 있는 FK를 중복 생성, V14는 이미 있는 카테고리를
+      # 중복 INSERT). 개발용 시드는 현행 스키마 기준으로 V18_dev_seed.sql에 모여 있으므로
+      # 정본 + 시드 두 파일이면 충분하다.
+      - name: 스키마·시드 적용
+        run: |
+          set -euo pipefail
+          apply() {
+            echo "--- $1"
+            # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
+            mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
+                    --default-character-set=utf8mb4 --database=cakeshop < "$1"
+          }
+          apply docs/sql/V0_ERD.sql
+          apply docs/sql/V18_dev_seed.sql
+
+      # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
+      # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.
+      - name: gradlew 실행 권한 부여
+        run: chmod +x gradlew
+
+      - name: 빌드 · 테스트
+        run: ./gradlew build --no-daemon
+        env:
+          # 환경변수가 application.yml의 config.import(.env)보다 우선하므로,
+          # 기존 local 프로필이 그대로 위 서비스 컨테이너를 바라본다. 테스트 코드 수정 불필요.
+          SPRING_PROFILES_ACTIVE: local
+          LOCAL_DB_HOST: 127.0.0.1
+          LOCAL_DB_PORT: '3306'
+          LOCAL_DB_DATABASE: cakeshop
+          LOCAL_DB_USERNAME: root
+          LOCAL_DB_PASSWORD: ci
+          # PAYMENT_PROVIDER는 build.gradle의 test 태스크가 mock으로 고정하므로 주입하지 않는다.
+
+      - name: 테스트 리포트 업로드 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_number }}
+          path: build/reports/tests/test
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: 부트 jar 업로드 (dev·main push)
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cakeshop-jar-${{ github.run_number }}
+          # bootJar와 함께 생기는 plain jar는 실행 불가라 제외한다.
+          path: |
+            build/libs/*.jar
+            !build/libs/*-plain.jar
+          retention-days: 14

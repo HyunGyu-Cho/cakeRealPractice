@@ -266,8 +266,14 @@ class CustomOrderFlowE2ETests {
     }
 
     private Long customProductId() {
-        Long existing = jdbcTemplate.query(
-            "SELECT id FROM products WHERE product_type = 'CUSTOM' AND status = 'ACTIVE' ORDER BY id LIMIT 1",
+        // 품절은 재고의 파생값이라, 재고 0인 상품을 집으면 요청 접수가 CUSTOM_002로 막힌다.
+        // 주문 가능한 상품만 고르고, 없으면 아래에서 직접 만든다.
+        Long existing = jdbcTemplate.query("""
+            SELECT id FROM products
+             WHERE product_type = 'CUSTOM' AND status = 'ACTIVE'
+               AND (stock_quantity IS NULL OR stock_quantity > 0)
+             ORDER BY id LIMIT 1
+            """,
             rs -> rs.next() ? rs.getLong(1) : null);
         if (existing != null) {
             return existing;
@@ -275,11 +281,12 @@ class CustomOrderFlowE2ETests {
         Long categoryId = jdbcTemplate.queryForObject(
             "SELECT id FROM categories ORDER BY id LIMIT 1", Long.class);
         String name = "E2E주문제작-" + UUID.randomUUID().toString().substring(0, 8);
+        // 주문제작은 재고를 관리하지 않으므로 stock_quantity는 NULL이다(0이 아니다).
         jdbcTemplate.update("""
             INSERT INTO products
                 (category_id, name, base_price, product_type, preparation_days,
                  cancellation_limit_days, stock_quantity, status)
-            VALUES (?, ?, 60000, 'CUSTOM', 3, 3, 0, 'ACTIVE')
+            VALUES (?, ?, 60000, 'CUSTOM', 3, 3, NULL, 'ACTIVE')
             """, categoryId, name);
         return jdbcTemplate.queryForObject(
             "SELECT id FROM products WHERE name = ?", Long.class, name);
