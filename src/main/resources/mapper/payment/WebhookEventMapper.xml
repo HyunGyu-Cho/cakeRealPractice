@@ -2,4 +2,56 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cakeshop.domain.payment.mapper.WebhookEventMapper">
     <!-- 사용자 입력은 #{} 만 사용 (${} 금지) -->
+    <resultMap id="webhookEventResultMap" type="com.cakeshop.domain.payment.entity.WebhookEvent">
+        <id property="id" column="id"/>
+        <result property="eventId" column="event_id"/>
+        <result property="eventType" column="event_type"/>
+        <result property="paymentKey" column="payment_key"/>
+        <result property="tossOrderId" column="toss_order_id"/>
+        <result property="providerStatus" column="provider_status"/>
+        <result property="payload" column="payload"/>
+        <result property="processStatus" column="process_status"/>
+        <result property="failReason" column="fail_reason"/>
+        <result property="receivedAt" column="received_at"/>
+        <result property="processedAt" column="processed_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="webhookEventColumns">
+        id, event_id, event_type, payment_key, toss_order_id, provider_status, payload,
+        process_status, fail_reason, received_at, processed_at, created_at, updated_at
+    </sql>
+
+    <insert id="insertEvent" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO webhook_events
+            (event_id, event_type, payment_key, toss_order_id, provider_status, payload,
+             process_status)
+        VALUES
+            (#{eventId}, #{eventType}, #{paymentKey}, #{tossOrderId}, #{providerStatus}, #{payload},
+             #{processStatus})
+    </insert>
+
+    <select id="findByEventId" resultMap="webhookEventResultMap">
+        SELECT <include refid="webhookEventColumns"/>
+          FROM webhook_events
+         WHERE event_id = #{eventId}
+    </select>
+
+    <select id="findUnprocessed" resultMap="webhookEventResultMap">
+        SELECT <include refid="webhookEventColumns"/>
+          FROM webhook_events
+         WHERE process_status = 'RECEIVED'
+         ORDER BY id
+         LIMIT #{limit}
+    </select>
+
+    <update id="markProcessed">
+        UPDATE webhook_events
+           SET process_status = #{processStatus},
+               fail_reason = #{failReason},
+               processed_at = CURRENT_TIMESTAMP(6)
+         WHERE id = #{id}
+           AND process_status = 'RECEIVED'
+    </update>
 </mapper>

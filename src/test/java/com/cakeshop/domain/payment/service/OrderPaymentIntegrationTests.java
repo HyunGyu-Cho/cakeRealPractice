@@ -74,6 +74,9 @@ class OrderPaymentIntegrationTests {
         orderForm.setRequestMessage("테스트 요청");
         draft.updateOrderer(orderForm);
 
+        // 화면 진입에 해당하는 준비 단계. READY 결제 행이 여기서 만들어진다.
+        assertThat(paymentService.prepare(memberId, draft).amount()).isEqualTo(82_000L);
+
         Long orderId = paymentFacade.pay(memberId, draft.getCheckoutId(), draft, "CARD");
         Long duplicateOrderId =
             paymentFacade.pay(memberId, draft.getCheckoutId(), draft, "CARD");

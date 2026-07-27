@@ -18,12 +18,16 @@ approved-at: 2026-07-26
      채팅 시스템 카드가 전달된다.
   3. 관리자 → 제작 불가 시 **반려**(사유 필수) → 주문 `REJECTED`, 고객에게 `ORDER_REJECTED` 알림.
   4. 고객 → 견적 수락 → 결제 링크가 발급되고 `PAYMENT_REQUESTED` 알림과 채팅 카드가 전달된다.
-  5. 고객 → 결제 링크로 모의 결제 완료 → 주문 `UNDER_REVIEW → IN_PRODUCTION`, `ORDER_PAID` 알림.
+  5. 고객 → 결제 링크로 결제 완료 → 주문 `UNDER_REVIEW → IN_PRODUCTION`, `ORDER_PAID` 알림.
   6. 관리자 → 이후 `IN_PRODUCTION → READY_FOR_PICKUP → PICKED_UP`은 **일반 주문과 동일한**
      `FulfillmentService` 흐름을 그대로 탄다.
 
-범위 밖: 실제 토스 승인 API·웹훅(`TossPaymentClient`·`TossWebhookController`·`webhook_events`)은
-일반 결제도 아직 모의이므로 일반·수제를 함께 전환하는 후속 사이클에서 다룬다. 쿠폰 적용은 coupon 차례.
+결제 링크도 일반 결제와 **같은 준비 → 확정 2단계**를 탄다(`docs/specs/order-payment.md` 결제 흐름).
+제공자 전환(`mock`/`toss`)은 `PaymentGateway` 구현 교체로 끝나며, 링크 결제의 중복 방지 3중 설계
+(6장 규칙 5)는 그대로 유지된다 — `payments.idempotency_key`에는 계속 토큰이 들어간다.
+
+알려진 부채: `CustomOrderPaymentService`가 `OrderMapper`·`CustomOrderMapper`를 직접 주입해
+CLAUDE.md의 도메인 격리 규칙을 어기고 있다. 결제 전환과 분리해 별도 PR로 정리한다.
 
 ## 2. 상태값 (conventions.md 상태값 공통 규칙 준수)
 

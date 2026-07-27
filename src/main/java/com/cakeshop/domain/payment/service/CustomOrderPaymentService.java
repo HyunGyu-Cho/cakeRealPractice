@@ -1,202 +1,107 @@
 package com.cakeshop.domain.payment.service;
 
 import com.cakeshop.domain.coupon.dto.view.AvailableCouponView;
-import com.cakeshop.domain.coupon.dto.view.CouponDiscount;
-import com.cakeshop.domain.coupon.service.CouponService;
-import com.cakeshop.domain.notification.entity.NotificationType;
-import com.cakeshop.domain.notification.service.NotificationCommand;
-import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.order.dto.view.CustomOrderDetailView;
-import com.cakeshop.domain.order.entity.CustomOrderPaymentLink;
-import com.cakeshop.domain.order.entity.CustomOrderQuote;
-import com.cakeshop.domain.order.entity.Order;
-import com.cakeshop.domain.order.entity.OrderStatus;
-import com.cakeshop.domain.order.entity.PaymentLinkStatus;
-import com.cakeshop.domain.order.entity.QuoteStatus;
 import com.cakeshop.domain.order.error.CustomOrderErrorCode;
-import com.cakeshop.domain.order.mapper.CustomOrderMapper;
-import com.cakeshop.domain.order.mapper.OrderMapper;
-import com.cakeshop.domain.order.service.CustomOrderService;
-import com.cakeshop.domain.payment.entity.Payment;
+import com.cakeshop.domain.payment.dto.view.PaymentPrepareView;
 import com.cakeshop.domain.payment.entity.PaymentStatus;
 import com.cakeshop.domain.payment.error.PaymentErrorCode;
+import com.cakeshop.domain.payment.infra.PaymentApproval;
+import com.cakeshop.domain.payment.infra.PaymentGateway;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
+import com.cakeshop.domain.payment.service.CustomOrderPaymentProcessor.ReadyPayment;
 import com.cakeshop.global.error.BusinessException;
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 주문제작 결제 링크 결제. 일반 결제와 같은 모의 결제이며 {@code payments} 행도 동일하게 만든다.
+ * 주문제작 결제 링크 결제의 경계. 일반 결제와 같은 준비 → 승인 → 확정 2단계를 탄다.
  *
- * <p>중복 결제를 3중으로 막는다.
- * <ol>
- *   <li>{@code uk_custom_order_payment_links_quote} — 견적당 링크 1건</li>
- *   <li>링크 행 {@code FOR UPDATE} 잠금 후 {@code ISSUED} 재확인</li>
- *   <li>{@code payments.idempotency_key}에 토큰을 넣어 UNIQUE 충돌 시 기존 주문 반환</li>
- * </ol>
- * 주문제작 상품은 {@code stock_quantity}가 NULL(재고 미관리)이라 재고 차감이 없다.
+ * <p>외부 승인·보상 취소 호출은 전부 여기서, DB 트랜잭션 밖에서 한다
+ * (스펙 docs/specs/order-payment.md 결제 흐름).
  */
 @Service
 public class CustomOrderPaymentService {
+    private static final Logger log = LoggerFactory.getLogger(CustomOrderPaymentService.class);
 
-    private static final Set<String> METHODS = Set.of("CARD", "KAKAO", "NAVER", "TOSS", "BANK");
-
-    private final OrderMapper orderMapper;
-    private final CustomOrderMapper customOrderMapper;
-    private final CustomOrderService customOrderService;
+    private final CustomOrderPaymentProcessor processor;
     private final PaymentMapper paymentMapper;
-    private final NotificationService notificationService;
-    private final CouponService couponService;
-    private final Clock clock;
+    private final PaymentGateway gateway;
 
-    @Autowired
-    public CustomOrderPaymentService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
-                                     CustomOrderService customOrderService, PaymentMapper paymentMapper,
-                                     NotificationService notificationService,
-                                     CouponService couponService) {
-        this(orderMapper, customOrderMapper, customOrderService, paymentMapper,
-            notificationService, couponService, Clock.systemDefaultZone());
-    }
-
-    public CustomOrderPaymentService(OrderMapper orderMapper, CustomOrderMapper customOrderMapper,
-                                     CustomOrderService customOrderService, PaymentMapper paymentMapper,
-                                     NotificationService notificationService,
-                                     CouponService couponService, Clock clock) {
-        this.orderMapper = orderMapper;
-        this.customOrderMapper = customOrderMapper;
-        this.customOrderService = customOrderService;
+    public CustomOrderPaymentService(CustomOrderPaymentProcessor processor,
+                                     PaymentMapper paymentMapper, PaymentGateway gateway) {
+        this.processor = processor;
         this.paymentMapper = paymentMapper;
-        this.notificationService = notificationService;
-        this.couponService = couponService;
-        this.clock = clock;
+        this.gateway = gateway;
     }
 
-    /**
-     * 결제 화면의 쿠폰 선택지. 원가는 견적 금액({@code links.amount})이다 —
-     * 요청서 단계에는 확정 금액이 없어 쿠폰을 붙이지 않는다(스펙 6장 규칙 11).
-     */
-    @Transactional(readOnly = true)
     public List<AvailableCouponView> getApplicableCoupons(String token, Long memberId) {
-        CustomOrderPaymentLink link = customOrderMapper.findLinkByToken(token)
-            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
-        Order order = requireOwnedOrder(link, memberId);
-        requirePayable(link, order);
-        return couponService.getApplicableCoupons(memberId, link.getAmount());
+        return processor.getApplicableCoupons(token, memberId);
     }
 
-    /**
-     * 결제 화면 진입. 토큰만으로 통과시키지 않고 <b>로그인 회원이 주문 소유자인지 반드시 확인한다.</b>
-     */
-    @Transactional(readOnly = true)
     public CustomOrderDetailView getPayableRequest(String token, Long memberId) {
-        CustomOrderPaymentLink link = customOrderMapper.findLinkByToken(token)
-            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
-        Order order = requireOwnedOrder(link, memberId);
-        requirePayable(link, order);
-        return customOrderService.getMyRequest(memberId, order.getId());
+        return processor.getPayableRequest(token, memberId);
     }
 
-    /**
-     * 결제 완료 트랜잭션 — 링크 {@code USED}, 견적 금액 확정, 주문 {@code UNDER_REVIEW → IN_PRODUCTION},
-     * 결제 {@code DONE}을 한 트랜잭션으로 처리한다.
-     */
-    @Transactional
-    public Long pay(String token, Long memberId, String requestedMethod, Long memberCouponId) {
-        String method = normalizeMethod(requestedMethod);
-        CustomOrderPaymentLink link = customOrderMapper.findLinkByTokenForUpdate(token)
-            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
-        Order order = requireOwnedOrder(link, memberId);
-        requirePayable(link, order);
+    /** 결제 화면이 결제를 시작하는 데 필요한 값. 금액은 서버가 쿠폰까지 반영해 고정한다. */
+    public PaymentPrepareView prepare(String token, Long memberId, Long memberCouponId) {
+        ReadyPayment ready = processor.prepare(token, memberId, memberCouponId);
+        return new PaymentPrepareView(gateway.provider(), gateway.clientKey(),
+            ready.tossOrderId(), ready.amount(), "주문제작 " + ready.orderNumber());
+    }
 
-        LocalDateTime now = LocalDateTime.now(clock);
-        if (customOrderMapper.updateLinkStatus(link.getId(), PaymentLinkStatus.ISSUED.name(),
-            PaymentLinkStatus.USED.name(), now) != 1) {
-            throw new BusinessException(CustomOrderErrorCode.LINK_NOT_PAYABLE);
+    /** 모의 결제 경로 — 결제창이 없어 폼 제출이 곧 승인 요청이다. */
+    public Long pay(String token, Long memberId, String method, Long memberCouponId) {
+        ReadyPayment ready = processor.prepare(token, memberId, memberCouponId);
+        return approveAndConfirm(token, memberId, method, memberCouponId, ready, null);
+    }
+
+    /** 실결제 콜백 경로 — 콜백이 돌려준 주문번호·금액을 저장된 값과 대조한 뒤 승인한다. */
+    public Long confirm(String token, Long memberId, String paymentKey, String tossOrderId,
+                        long amount, String method, Long memberCouponId) {
+        ReadyPayment ready = paymentMapper.findByIdempotencyKey(token)
+            .filter(payment -> PaymentStatus.READY.name().equals(payment.getStatus()))
+            .map(payment -> new ReadyPayment(payment.getId(), payment.getTossOrderId(),
+                payment.getAmount(), payment.getTossOrderId()))
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.ALREADY_PAID));
+
+        if (!ready.tossOrderId().equals(tossOrderId) || ready.amount() != amount) {
+            throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
         }
+        return approveAndConfirm(token, memberId, method, memberCouponId, ready, paymentKey);
+    }
 
-        // 쿠폰 사용도 이 트랜잭션에서 확정한다. 실패하면 링크·주문 상태까지 함께 롤백된다.
-        CouponDiscount discount =
-            couponService.use(memberId, memberCouponId, order.getId(), link.getAmount());
-        customOrderMapper.updateAmounts(order.getId(), link.getAmount(),
-            discount.discountAmount(), discount.finalAmount());
-        if (orderMapper.updateStatus(order.getId(), OrderStatus.UNDER_REVIEW.name(),
-            OrderStatus.IN_PRODUCTION.name()) != 1) {
-            throw new BusinessException(CustomOrderErrorCode.NOT_UNDER_REVIEW);
-        }
+    /** 결제창 실패·이탈. 준비된 결제만 마감하고 링크는 살려 둔다. */
+    public void markFailed(String token, String code, String message) {
+        processor.markFailed(token, code, message);
+    }
 
-        Payment payment = new Payment();
-        payment.setOrderId(order.getId());
-        payment.setTossOrderId(order.getOrderNumber());
-        payment.setPaymentKey("MOCK-" + UUID.randomUUID());
-        // 토큰을 멱등 키로 써서 같은 링크의 중복 결제가 DB에서 걸리게 한다.
-        payment.setIdempotencyKey(token);
-        payment.setMethod(method);
-        payment.setAmount(discount.finalAmount());
-        payment.setStatus(PaymentStatus.DONE.name());
-        payment.setProviderStatus("MOCK_DONE");
-        payment.setApprovedAt(now);
+    private Long approveAndConfirm(String token, Long memberId, String method, Long memberCouponId,
+                                   ReadyPayment ready, String paymentKey) {
+        PaymentApproval approval =
+            gateway.approve(paymentKey, ready.tossOrderId(), ready.amount(), token);
         try {
-            if (paymentMapper.insertPayment(payment) != 1) {
-                throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
-            }
-        } catch (DuplicateKeyException exception) {
-            // 같은 토큰으로 이미 결제됐다. 롤백하고 기존 결제의 주문을 알린다.
-            throw new BusinessException(CustomOrderErrorCode.ALREADY_PAID);
-        }
-
-        notifyPaid(order);
-        return order.getId();
-    }
-
-    private void notifyPaid(Order order) {
-        notificationService.notify(NotificationCommand.forOrder(
-            order.getMemberId(), NotificationType.ORDER_PAID, order.getId(),
-            NotificationType.ORDER_PAID.label(),
-            "주문제작 " + order.getOrderNumber() + " 결제가 완료되어 제작을 시작합니다."));
-        notificationService.notifyAdmins(NotificationCommand.toAdmins(
-            NotificationType.ADMIN_ORDER_PLACED,
-            NotificationType.ADMIN_ORDER_PLACED.label(),
-            "주문제작 " + order.getOrderNumber() + " 결제가 완료되었습니다.",
-            "/admin/custom-orders/" + order.getId(), order.getId(), null));
-    }
-
-    private Order requireOwnedOrder(CustomOrderPaymentLink link, Long memberId) {
-        CustomOrderQuote quote = customOrderMapper.findQuoteById(link.getQuoteId())
-            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.QUOTE_NOT_FOUND));
-        return orderMapper.findByIdAndMemberId(quote.getOrderId(), memberId)
-            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.REQUEST_NOT_FOUND));
-    }
-
-    private void requirePayable(CustomOrderPaymentLink link, Order order) {
-        if (OrderStatus.IN_PRODUCTION.name().equals(order.getStatus())) {
-            throw new BusinessException(CustomOrderErrorCode.ALREADY_PAID);
-        }
-        if (!OrderStatus.UNDER_REVIEW.name().equals(order.getStatus())) {
-            throw new BusinessException(CustomOrderErrorCode.NOT_UNDER_REVIEW);
-        }
-        if (!PaymentLinkStatus.ISSUED.name().equals(link.getStatus())) {
-            throw new BusinessException(PaymentLinkStatus.USED.name().equals(link.getStatus())
-                ? CustomOrderErrorCode.ALREADY_PAID
-                : CustomOrderErrorCode.LINK_NOT_PAYABLE);
-        }
-        if (LocalDateTime.now(clock).isAfter(link.getExpiresAt())) {
-            throw new BusinessException(CustomOrderErrorCode.LINK_EXPIRED);
+            return processor.confirm(token, memberId, method, memberCouponId, ready, approval);
+        } catch (RuntimeException e) {
+            compensate(token, ready, approval, e);
+            throw e instanceof BusinessException business ? business
+                : new BusinessException(PaymentErrorCode.CONFIRM_FAILED, e);
         }
     }
 
-    private String normalizeMethod(String method) {
-        String normalized = method == null ? "" : method.trim().toUpperCase(Locale.ROOT);
-        if (!METHODS.contains(normalized)) {
-            throw new BusinessException(PaymentErrorCode.INVALID_METHOD);
+    /** 승인은 됐는데 확정이 실패했다. 돈이 남지 않도록 즉시 되돌린다. */
+    private void compensate(String token, ReadyPayment ready, PaymentApproval approval,
+                            RuntimeException cause) {
+        try {
+            gateway.cancel(approval.paymentKey(), "주문제작 결제 확정 실패", "ABORT-" + token);
+            paymentMapper.abortPayment(ready.paymentId(), PaymentStatus.ABORTED.name(),
+                approval.providerStatus(), PaymentErrorCode.CONFIRM_FAILED.code(),
+                cause.getMessage());
+        } catch (RuntimeException cancelFailure) {
+            log.error("주문제작 결제 보상 취소 실패 — 수동 확인 필요. paymentKey={}, token={}",
+                approval.paymentKey(), token, cancelFailure);
         }
-        return normalized;
     }
 }

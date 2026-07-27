@@ -356,7 +356,8 @@ CREATE TABLE `custom_order_payment_links` (
 
 CREATE TABLE `payments` (
     `id`                   BIGINT NOT NULL AUTO_INCREMENT,
-    `order_id`             BIGINT NOT NULL,
+    -- NULL 허용(V17): 결제 시작 시점에 READY 행을 먼저 만들고 승인 성공 후 주문을 생성한다.
+    `order_id`             BIGINT NULL,
     `toss_order_id`        VARCHAR(100) NOT NULL,
     `payment_key`          VARCHAR(200) NULL,
     `idempotency_key`      VARCHAR(100) NOT NULL,
@@ -413,6 +414,31 @@ CREATE TABLE `payment_cancellations` (
     INDEX `idx_payment_cancellations_payment_created` (`payment_id`, `created_at`),
     CONSTRAINT `fk_payment_cancellations_payment`
         FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 토스 웹훅 수신함(V17). event_id UNIQUE로 재전송을 DB가 막고,
+-- 수신은 저장만 하고 즉시 200을 돌려준 뒤 반영 여부를 process_status로 추적한다.
+CREATE TABLE `webhook_events` (
+    `id`              BIGINT NOT NULL AUTO_INCREMENT,
+    `event_id`        VARCHAR(100) NOT NULL,
+    `event_type`      VARCHAR(50) NULL,
+    `payment_key`     VARCHAR(200) NULL,
+    `toss_order_id`   VARCHAR(100) NULL,
+    `provider_status` VARCHAR(50) NULL,
+    `payload`         TEXT NULL,
+    `process_status`  VARCHAR(20) NOT NULL DEFAULT 'RECEIVED',
+    `fail_reason`     VARCHAR(500) NULL,
+    `received_at`     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `processed_at`    DATETIME(6) NULL,
+    `created_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `updated_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+                                      ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_webhook_events_event_id` UNIQUE (`event_id`),
+    CONSTRAINT `chk_webhook_events_process_status`
+        CHECK (`process_status` IN ('RECEIVED', 'PROCESSED', 'SKIPPED', 'FAILED')),
+    INDEX `idx_webhook_events_payment_key` (`payment_key`),
+    INDEX `idx_webhook_events_process` (`process_status`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================

@@ -39,21 +39,38 @@
       </div>
     </section>
 
-    <form th:action="@{|/orders/custom/pay/${token}|}" method="post" th:object="${paymentForm}">
-      <section class="section">
-        <h2 class="section-title">쿠폰</h2>
-        <!-- 표시된 할인액은 서버가 견적 금액으로 계산한 값이며, 결제 트랜잭션에서 다시 계산한다. -->
+    <!-- 쿠폰 선택은 결제 폼과 분리한다. 결제창을 열기 전에 서버가 금액을 확정해야 하므로
+         선택이 바뀌면 화면을 다시 그려 준비 금액을 다시 잡는다. -->
+    <section class="section">
+      <h2 class="section-title">쿠폰</h2>
+      <form th:action="@{|/orders/custom/pay/${token}|}" method="get">
         <div class="panel choice-list">
           <label class="choice">
-            <input type="radio" th:field="*{memberCouponId}" value=""> 쿠폰 사용 안 함</label>
+            <input type="radio" name="memberCouponId" value=""
+                   th:checked="${paymentForm.memberCouponId == null}"> 쿠폰 사용 안 함</label>
           <label class="choice" th:each="coupon : ${coupons}">
-            <input type="radio" th:field="*{memberCouponId}" th:value="${coupon.memberCouponId}">
+            <input type="radio" name="memberCouponId" th:value="${coupon.memberCouponId}"
+                   th:checked="${paymentForm.memberCouponId == coupon.memberCouponId}">
             <span th:text="${coupon.couponName}">쿠폰명</span>
             (<span th:text="|-${#numbers.formatInteger(coupon.discountAmount, 0, 'COMMA')}원|">할인</span>)
           </label>
         </div>
         <p class="note" th:if="${#lists.isEmpty(coupons)}">사용할 수 있는 쿠폰이 없습니다.</p>
-      </section>
+        <button class="btn section" type="submit"
+                th:unless="${#lists.isEmpty(coupons)}">쿠폰 적용</button>
+      </form>
+    </section>
+
+    <form th:action="@{|/orders/custom/pay/${token}|}" method="post" th:object="${paymentForm}"
+          id="payment-form"
+          th:attr="data-provider=${prepare.provider},
+                   data-client-key=${prepare.clientKey},
+                   data-order-id=${prepare.tossOrderId},
+                   data-amount=${prepare.amount},
+                   data-order-name=${prepare.orderName},
+                   data-success-url=@{|/orders/custom/pay/${token}/success|},
+                   data-fail-url=@{|/orders/custom/pay/${token}/fail|}">
+      <input type="hidden" th:field="*{memberCouponId}">
 
       <section class="section">
         <h2 class="section-title">결제 수단</h2>
@@ -64,16 +81,22 @@
           <label class="choice"><input type="radio" th:field="*{method}" value="TOSS"> 토스페이</label>
           <label class="choice"><input type="radio" th:field="*{method}" value="BANK"> 무통장 입금</label>
         </div>
-        <p class="note">현재는 모의 결제입니다. 실제 결제는 이뤄지지 않습니다.</p>
+        <p class="note" th:unless="${prepare.requiresPaymentWindow()}">
+          현재는 모의 결제입니다. 실제 결제는 이뤄지지 않습니다.</p>
       </section>
 
       <div class="cluster">
-        <button class="btn btn--primary" type="submit"
-                data-confirm="결제를 진행하시겠습니까?">결제하기</button>
+        <button class="btn btn--primary" type="submit">
+          <span th:text="${#numbers.formatInteger(prepare.amount, 0, 'COMMA')}">0</span>원 결제하기</button>
         <a class="btn" th:href="@{|/orders/custom/${request.orderId}|}">요청으로 돌아가기</a>
       </div>
     </form>
   </main>
   <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+  <!-- 결제창 방식일 때만 제공자 SDK를 불러온다. 모의 결제 경로는 외부 스크립트가 없다. -->
+  <th:block th:if="${prepare.requiresPaymentWindow()}">
+    <script src="https://js.tosspayments.com/v2/standard"></script>
+    <script th:src="@{/js/payment-toss.js}"></script>
+  </th:block>
 </body>
 </html>

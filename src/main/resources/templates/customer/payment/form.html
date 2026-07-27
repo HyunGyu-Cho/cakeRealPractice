@@ -1,14 +1,22 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <th:block th:replace="~{fragments/common/head :: head('모의 결제')}"></th:block>
+  <th:block th:replace="~{fragments/common/head :: head('결제')}"></th:block>
 </head>
 <body>
 <header th:replace="~{fragments/common/header :: header}"></header>
 <main class="page-container page-container--narrow">
   <div th:replace="~{fragments/common/alert :: alert}"></div>
-  <h1>모의 결제</h1>
-  <form method="post" th:if="${checkout != null}" th:action="@{/orders/payment}" th:object="${paymentForm}">
+  <h1>결제</h1>
+  <!-- 결제창 방식에서는 이 폼을 제출하지 않고 JS가 가로채 제공자 결제창을 연다.
+       금액·주문번호는 서버가 정한 값이며 화면은 그대로 넘기기만 한다. -->
+  <form method="post" th:if="${checkout != null and prepare != null}" th:action="@{/orders/payment}"
+        th:object="${paymentForm}" id="payment-form"
+        th:attr="data-provider=${prepare.provider},
+                 data-client-key=${prepare.clientKey},
+                 data-order-id=${prepare.tossOrderId},
+                 data-amount=${prepare.amount},
+                 data-order-name=${prepare.orderName}">
     <input type="hidden" name="checkoutId" th:value="${checkout.checkoutId}">
     <section class="panel section"><h2 class="section-title">주문 요약</h2>
       <p th:each="item : ${checkout.items}">
@@ -67,9 +75,17 @@
     </form>
   </section>
   <div class="panel" th:unless="${checkout != null}">
-    <p>주문서 작성을 마치면 이 화면에서 모의 결제를 진행할 수 있습니다.</p>
+    <p>주문서 작성을 마치면 이 화면에서 결제를 진행할 수 있습니다.</p>
+  </div>
+  <div class="panel" th:if="${checkout != null and prepare == null}">
+    <p>이 주문서로는 결제를 다시 시작할 수 없습니다. 장바구니에서 다시 진행해 주세요.</p>
   </div>
 </main>
 <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
+<!-- 결제창 방식일 때만 제공자 SDK를 불러온다. 모의 결제 경로는 외부 스크립트가 없다. -->
+<th:block th:if="${prepare != null and prepare.requiresPaymentWindow()}">
+  <script src="https://js.tosspayments.com/v2/standard"></script>
+  <script th:src="@{/js/payment-toss.js}"></script>
+</th:block>
 </body>
 </html>

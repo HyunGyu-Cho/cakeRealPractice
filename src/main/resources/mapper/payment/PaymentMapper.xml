@@ -73,10 +73,73 @@
          FOR UPDATE
     </select>
 
+    <select id="findByTossOrderId" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE toss_order_id = #{tossOrderId}
+    </select>
+
+    <select id="findByTossOrderIdForUpdate" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE toss_order_id = #{tossOrderId}
+         FOR UPDATE
+    </select>
+
+    <update id="updateReadyAmount">
+        UPDATE payments
+           SET amount = #{amount}
+         WHERE id = #{paymentId}
+           AND status = 'READY'
+    </update>
+
+    <!-- READY → DONE 확정. 조건의 status='READY'가 동시 요청 중 하나만 통과시킨다. -->
+    <update id="confirmPayment">
+        UPDATE payments
+           SET order_id = #{orderId},
+               payment_key = #{paymentKey},
+               method = #{method},
+               amount = #{amount},
+               status = 'DONE',
+               provider_status = #{providerStatus},
+               approved_at = #{approvedAt}
+         WHERE id = #{id}
+           AND status = 'READY'
+    </update>
+
+    <update id="abortPayment">
+        UPDATE payments
+           SET status = #{status},
+               provider_status = #{providerStatus},
+               failure_code = #{failureCode},
+               failure_message = #{failureMessage}
+         WHERE id = #{paymentId}
+           AND status = 'READY'
+    </update>
+
+    <update id="syncStatus">
+        UPDATE payments
+           SET status = #{status},
+               provider_status = #{providerStatus},
+               canceled_at = CASE WHEN #{status} IN ('CANCELED', 'PARTIAL_CANCELED')
+                                  THEN CURRENT_TIMESTAMP(6) ELSE canceled_at END
+         WHERE id = #{paymentId}
+           AND status = #{currentStatus}
+    </update>
+
+    <select id="findStaleReady" resultMap="paymentResultMap">
+        SELECT <include refid="paymentColumns"/>
+          FROM payments
+         WHERE status = 'READY'
+           AND requested_at &lt; #{threshold}
+         ORDER BY id
+         LIMIT #{limit}
+    </select>
+
     <update id="cancelPayment">
         UPDATE payments
            SET status = 'CANCELED',
-               provider_status = 'MOCK_CANCELED',
+               provider_status = #{providerStatus},
                canceled_at = CURRENT_TIMESTAMP(6)
          WHERE id = #{paymentId}
            AND status = #{currentStatus}

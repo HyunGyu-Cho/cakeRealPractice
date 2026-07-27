@@ -1,135 +1,44 @@
 package com.cakeshop.domain.payment.service;
 
-import com.cakeshop.domain.coupon.service.CouponService;
-import com.cakeshop.domain.order.entity.Order;
-import com.cakeshop.domain.order.entity.OrderItem;
-import com.cakeshop.domain.order.entity.OrderStatus;
-import com.cakeshop.domain.order.error.OrderErrorCode;
-import com.cakeshop.domain.order.service.OrderService;
-import com.cakeshop.domain.payment.entity.Payment;
-import com.cakeshop.domain.payment.entity.PaymentCancellation;
-import com.cakeshop.domain.payment.entity.PaymentCancellationStatus;
-import com.cakeshop.domain.payment.entity.PaymentStatus;
-import com.cakeshop.domain.payment.error.PaymentErrorCode;
-import com.cakeshop.domain.payment.mapper.PaymentMapper;
-import com.cakeshop.domain.notification.entity.NotificationType;
-import com.cakeshop.domain.notification.service.NotificationCommand;
-import com.cakeshop.domain.notification.service.NotificationService;
-import com.cakeshop.domain.product.service.ProductService;
-import com.cakeshop.global.error.BusinessException;
-import java.time.Clock;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cakeshop.domain.payment.infra.PaymentCancel;
+import com.cakeshop.domain.payment.infra.PaymentGateway;
+import com.cakeshop.domain.payment.service.RefundProcessor.CancelTarget;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 취소·환불의 경계. 승인과 같은 이유로 외부 취소 호출은 DB 트랜잭션 밖에서 한다.
+ *
+ * <p>순서는 검증 → 외부 취소 → 확정이다. 외부 취소가 실패하면 우리 DB는 아무것도 바꾸지 않으므로
+ * 재고가 돌아왔는데 환불은 안 된 상태가 생기지 않는다.
+ */
 @Service
 public class RefundService {
-    private final OrderService orderService;
-    private final PaymentMapper paymentMapper;
-    private final ProductService productService;
-    private final NotificationService notificationService;
-    private final CouponService couponService;
-    private final Clock clock;
+    private final RefundProcessor processor;
+    private final PaymentGateway gateway;
 
-    @Autowired
-    public RefundService(OrderService orderService, PaymentMapper paymentMapper,
-                         ProductService productService, NotificationService notificationService,
-                         CouponService couponService) {
-        this(orderService, paymentMapper, productService, notificationService, couponService,
-            Clock.systemDefaultZone());
+    public RefundService(RefundProcessor processor, PaymentGateway gateway) {
+        this.processor = processor;
+        this.gateway = gateway;
     }
 
-    public RefundService(OrderService orderService, PaymentMapper paymentMapper,
-                         ProductService productService, NotificationService notificationService,
-                         CouponService couponService, Clock clock) {
-        this.orderService = orderService;
-        this.paymentMapper = paymentMapper;
-        this.productService = productService;
-        this.notificationService = notificationService;
-        this.couponService = couponService;
-        this.clock = clock;
-    }
-
-    @Transactional
     public void cancelByCustomer(Long memberId, Long orderId, String reason) {
         cancel(memberId, orderId, reason, false);
     }
 
-    @Transactional
     public void cancelByAdmin(Long orderId, String reason) {
         cancel(null, orderId, reason, true);
     }
 
     private void cancel(Long memberId, Long orderId, String reason, boolean admin) {
-        Order order = orderService.lockOrder(orderId);
-        if (!admin && !order.getMemberId().equals(memberId)) {
-            throw new BusinessException(OrderErrorCode.NOT_FOUND);
-        }
-        if (OrderStatus.CANCELED.name().equals(order.getStatus())) {
+        Optional<CancelTarget> target = processor.validate(memberId, orderId, admin);
+        if (target.isEmpty()) {
+            // 이미 취소된 주문이다. 외부 취소도 부르지 않는다.
             return;
         }
-
-        OrderStatus status = OrderStatus.valueOf(order.getStatus());
-        if (status != OrderStatus.PAID && status != OrderStatus.READY_FOR_PICKUP) {
-            throw new BusinessException(OrderErrorCode.CANCELLATION_NOT_ALLOWED);
-        }
-
-        List<OrderItem> items = orderService.getOrderItems(orderId);
-        if (!admin) {
-            int limitDays = items.stream()
-                .map(OrderItem::getCancellationLimitDays)
-                .filter(value -> value != null)
-                .mapToInt(Integer::intValue).max().orElse(0);
-            LocalDateTime deadline = order.getPickupAt().minusDays(limitDays);
-            if (!LocalDateTime.now(clock).isBefore(deadline)) {
-                throw new BusinessException(OrderErrorCode.CANCELLATION_DEADLINE_PASSED);
-            }
-        }
-
-        Payment payment = paymentMapper.findByOrderIdForUpdate(orderId)
-            .orElseThrow(() -> new BusinessException(PaymentErrorCode.NOT_FOUND));
-        if (!PaymentStatus.DONE.name().equals(payment.getStatus())) {
-            throw new BusinessException(OrderErrorCode.CANCELLATION_NOT_ALLOWED);
-        }
-
-        items.forEach(item -> productService.restoreStock(item.getProductId(), item.getQuantity()));
-        if (paymentMapper.cancelPayment(payment.getId(), PaymentStatus.DONE.name()) != 1) {
-            throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
-        }
-
-        LocalDateTime now = LocalDateTime.now(clock);
-        PaymentCancellation cancellation = new PaymentCancellation();
-        cancellation.setPaymentId(payment.getId());
-        cancellation.setIdempotencyKey("CANCEL-ORDER-" + orderId);
-        cancellation.setCancelAmount(payment.getAmount());
-        cancellation.setCancelReason(reason.trim());
-        cancellation.setStatus(PaymentCancellationStatus.DONE.name());
-        cancellation.setTransactionKey("MOCK-CANCEL-" + UUID.randomUUID());
-        cancellation.setCanceledAt(now);
-        if (paymentMapper.insertCancellation(cancellation) != 1) {
-            throw new BusinessException(PaymentErrorCode.PAYMENT_FAILED);
-        }
-        // 쓴 쿠폰이 있으면 같은 트랜잭션에서 되돌린다. 기간이 남아 있으면 다시 쓸 수 있다.
-        couponService.restoreByOrderId(orderId);
-        orderService.markCanceled(order, reason.trim(), admin ? "ADMIN" : "MEMBER:" + memberId);
-        notifyCanceled(order, admin);
-    }
-
-    /** 취소·환불 완료를 고객에게 알리고, 고객이 직접 취소한 경우 관리자에게도 알린다. */
-    private void notifyCanceled(Order order, boolean admin) {
-        notificationService.notify(NotificationCommand.forOrder(
-            order.getMemberId(), NotificationType.ORDER_CANCELED, order.getId(),
-            NotificationType.ORDER_CANCELED.label(),
-            "주문 " + order.getOrderNumber() + " 취소 및 환불이 처리되었습니다."));
-        if (!admin) {
-            notificationService.notifyAdmins(NotificationCommand.toAdmins(
-                NotificationType.ADMIN_ORDER_CANCELED,
-                NotificationType.ADMIN_ORDER_CANCELED.label(),
-                "고객이 주문 " + order.getOrderNumber() + "을 취소했습니다.",
-                "/admin/orders/" + order.getId(), order.getId(), null));
-        }
+        // 같은 결정적 키를 제공자에게도 넘겨 이중 취소를 양쪽에서 막는다.
+        PaymentCancel canceled = gateway.cancel(target.get().paymentKey(), reason.trim(),
+            RefundProcessor.cancelIdempotencyKey(orderId));
+        processor.confirm(memberId, orderId, reason, admin, canceled);
     }
 }

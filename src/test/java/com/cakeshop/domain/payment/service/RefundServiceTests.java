@@ -15,6 +15,7 @@ import com.cakeshop.domain.order.error.OrderErrorCode;
 import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.domain.payment.entity.Payment;
 import com.cakeshop.domain.payment.entity.PaymentCancellation;
+import com.cakeshop.domain.payment.infra.MockPaymentGateway;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
 import com.cakeshop.domain.notification.entity.NotificationType;
 import com.cakeshop.domain.notification.service.NotificationCommand;
@@ -49,8 +50,11 @@ class RefundServiceTests {
 
     @BeforeEach
     void setUp() {
-        refundService = new RefundService(orderService, paymentMapper, productService,
+        // 실제 트랜잭션 절반(RefundProcessor)과 모의 게이트웨이를 그대로 조합한다 —
+        // 검증 → 외부 취소 → 확정 순서까지 함께 확인하기 위해서다.
+        RefundProcessor processor = new RefundProcessor(orderService, paymentMapper, productService,
             notificationService, couponService, CLOCK);
+        refundService = new RefundService(processor, new MockPaymentGateway(CLOCK));
     }
 
     @Test
@@ -60,7 +64,7 @@ class RefundServiceTests {
         when(orderService.lockOrder(9L)).thenReturn(order);
         when(orderService.getOrderItems(9L)).thenReturn(List.of(item));
         when(paymentMapper.findByOrderIdForUpdate(9L)).thenReturn(Optional.of(payment()));
-        when(paymentMapper.cancelPayment(20L, "DONE")).thenReturn(1);
+        when(paymentMapper.cancelPayment(20L, "DONE", "MOCK_CANCELED")).thenReturn(1);
         when(paymentMapper.insertCancellation(any(PaymentCancellation.class))).thenReturn(1);
 
         refundService.cancelByCustomer(1L, 9L, "일정 변경");
@@ -91,7 +95,7 @@ class RefundServiceTests {
         when(orderService.lockOrder(9L)).thenReturn(order);
         when(orderService.getOrderItems(9L)).thenReturn(List.of(item(7L, 2, 3)));
         when(paymentMapper.findByOrderIdForUpdate(9L)).thenReturn(Optional.of(payment()));
-        when(paymentMapper.cancelPayment(20L, "DONE")).thenReturn(1);
+        when(paymentMapper.cancelPayment(20L, "DONE", "MOCK_CANCELED")).thenReturn(1);
         when(paymentMapper.insertCancellation(any(PaymentCancellation.class))).thenReturn(1);
 
         refundService.cancelByAdmin(9L, "재료 소진");

@@ -310,13 +310,15 @@
 
     -- =========================================================
     -- 결제 (주환)
-    -- 1차에는 Mock 결과 저장. active_paid_order_id 는 status=DONE 일 때만 order_id 를
+    -- active_paid_order_id 는 status=DONE 일 때만 order_id 를
     -- 갖는 생성 열이며, UNIQUE 와 결합해 주문당 활성 결제 1건을 보장한다.
+    -- order_id 가 NULL 허용인 이유(V17): 결제 시작 시점에 READY 행을 먼저 만들고
+    -- 승인 성공 후에야 주문을 생성한다.
     -- =========================================================
 
     CREATE TABLE `payments` (
         `id`                   BIGINT NOT NULL AUTO_INCREMENT,
-        `order_id`             BIGINT NOT NULL,
+        `order_id`             BIGINT NULL,
         `toss_order_id`        VARCHAR(100) NOT NULL,
         `payment_key`          VARCHAR(200) NULL,
         `idempotency_key`      VARCHAR(100) NOT NULL,

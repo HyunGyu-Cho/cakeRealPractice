@@ -13,7 +13,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cakeshop.domain.order.dto.session.CheckoutDraft;
 import com.cakeshop.domain.order.dto.view.CheckoutView;
 import com.cakeshop.domain.order.service.OrderService;
+import com.cakeshop.domain.payment.dto.view.PaymentPrepareView;
 import com.cakeshop.domain.payment.service.PaymentFacade;
+import com.cakeshop.domain.payment.service.PaymentService;
 import com.cakeshop.global.security.MemberDetails;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +33,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 @ExtendWith(MockitoExtension.class)
 class PaymentControllerTests {
     @Mock PaymentFacade paymentFacade;
+    @Mock PaymentService paymentService;
     @Mock OrderService orderService;
     private MockMvc mockMvc;
     private UsernamePasswordAuthenticationToken authentication;
@@ -40,7 +43,7 @@ class PaymentControllerTests {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(
-            new PaymentController(paymentFacade, orderService)).build();
+            new PaymentController(paymentFacade, paymentService, orderService)).build();
         MemberDetails member = new MemberDetails(
             1L, "user@test.local", "password",
             List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -52,6 +55,8 @@ class PaymentControllerTests {
             draft.getCheckoutId(), List.of(), 82_000L, 2, draft.getPickupAt());
         org.mockito.Mockito.lenient()
             .when(orderService.getCheckoutView(1L, draft)).thenReturn(checkout);
+        org.mockito.Mockito.lenient().when(paymentService.prepare(1L, draft))
+            .thenReturn(new PaymentPrepareView("mock", null, "ORD-20260725-ABC", 82_000L, "케이크"));
     }
 
     @Test
@@ -62,9 +67,50 @@ class PaymentControllerTests {
             .andExpect(status().isOk())
             .andExpect(view().name("customer/payment/form"))
             .andExpect(model().attribute("checkout", checkout))
-            .andExpect(model().attributeExists("paymentForm"));
+            .andExpect(model().attributeExists("paymentForm"))
+            .andExpect(model().attributeExists("prepare"));
 
-        verify(orderService).validateReadyForPayment(1L, draft);
+        // 화면 진입이 곧 결제 준비다 — READY 결제 행이 이 시점에 만들어진다.
+        verify(paymentService).prepare(1L, draft);
+    }
+
+    @Test
+    void successCallbackConfirmsWithProviderValuesAndClearsDraft() throws Exception {
+        MockHttpSession session = session();
+        when(paymentFacade.confirm(1L, draft, "PK-1", "ORD-20260725-ABC", 82_000L, "CARD"))
+            .thenReturn(99L);
+
+        mockMvc.perform(get("/orders/payment/success")
+                .principal(authentication).session(session)
+                .param("paymentKey", "PK-1")
+                .param("orderId", "ORD-20260725-ABC")
+                .param("amount", "82000")
+                .param("method", "CARD"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/orders/complete?orderId=99"));
+
+        org.assertj.core.api.Assertions.assertThat(
+            session.getAttribute(CheckoutDraft.SESSION_ATTRIBUTE)).isNull();
+    }
+
+    /** 결제창 이탈. 준비된 결제만 마감하고 초안은 남겨 바로 다시 시도할 수 있게 한다. */
+    @Test
+    void failCallbackMarksPaymentFailedAndKeepsDraft() throws Exception {
+        MockHttpSession session = session();
+
+        mockMvc.perform(get("/orders/payment/fail")
+                .principal(authentication).session(session)
+                .param("code", "PAY_PROCESS_CANCELED")
+                .param("message", "사용자가 결제를 취소했습니다.")
+                .param("orderId", "ORD-20260725-ABC"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer/payment/form"))
+            .andExpect(model().attribute("errorMessage", "사용자가 결제를 취소했습니다."));
+
+        verify(paymentFacade).markFailed(
+            "ORD-20260725-ABC", "PAY_PROCESS_CANCELED", "사용자가 결제를 취소했습니다.");
+        org.assertj.core.api.Assertions.assertThat(
+            session.getAttribute(CheckoutDraft.SESSION_ATTRIBUTE)).isNotNull();
     }
 
     @Test
