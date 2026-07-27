@@ -13,6 +13,24 @@
       <h1 class="admin-page-title" th:text="${request.orderNumber}">요청 번호</h1>
 
       <section class="section">
+        <h2 class="section-title">요청 회원</h2>
+        <div class="panel">
+          <div class="data-row">
+            <span class="data-row__label">닉네임</span>
+            <span th:text="${member.memberNickname}">회원</span>
+          </div>
+          <div class="data-row">
+            <span class="data-row__label">이메일</span>
+            <span th:text="${member.memberEmail} ?: '-'">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-row__label">연락처</span>
+            <span th:text="${member.memberPhone} ?: '-'">-</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">요청 내용</h2>
         <div class="panel">
           <div class="data-row">

@@ -2,6 +2,7 @@ package com.cakeshop.domain.order.controller;
 
 import com.cakeshop.domain.order.dto.form.QuoteForm;
 import com.cakeshop.domain.order.dto.form.RejectForm;
+import com.cakeshop.domain.order.dto.view.CustomOrderAdminDetailView;
 import com.cakeshop.domain.order.service.CustomOrderAdminService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.error.BusinessException;
@@ -88,7 +89,10 @@ public class CustomOrderAdminController {
     }
 
     private void addDetailModel(Long orderId, Model model) {
-        model.addAttribute("request", customOrderAdminService.getRequestDetail(orderId));
+        CustomOrderAdminDetailView detail = customOrderAdminService.getRequestDetail(orderId);
+        // 요청 내용은 기존 속성명 request 그대로 두고, 회원 정보만 member로 덧붙인다.
+        model.addAttribute("request", detail.request());
+        model.addAttribute("member", detail);
         if (!model.containsAttribute("quoteForm")) {
             model.addAttribute("quoteForm", new QuoteForm());
         }
