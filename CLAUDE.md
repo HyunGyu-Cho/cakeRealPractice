@@ -109,7 +109,7 @@ com.cakeshop
 
 ### 현재 구현 상태
 
-개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계) — 다음 작업은 여기서 고른다. store·community·member·product·cart·일반 order/모의 payment·주문제작·chat·notification·coupon·review는 실제 구현(각 스펙은 `docs/specs/`)이며, statistics만 아직 목업이다. 단 member는 **고객 측만 실구현**이고 관리자 회원 관리(`MemberAdminController`·`MemberAdminService`)는 아직 목업이다. `home`은 store·product의 공개 View를 조합하는 실구현 계층이다. 화면별 현황 표는 README 참조. 목업 스모크 테스트(`AdminPageControllerTests` 등)는 실구현으로 전환된 도메인을 제외하고, 실구현 도메인은 전용 테스트(`StoreAdminControllerTests` 패턴)를 둔다.
+개발 순서 정본은 루트의 `TodoList.md`(의존 관계 기준 5단계 + 후속) — 다음 작업은 여기서 고른다. **13개 도메인이 모두 실구현이며 목업 화면은 남아 있지 않다**(각 스펙은 `docs/specs/`). 조합 계층이 둘인데, `home`은 store·product의 공개 View를, `statistics`는 각 도메인의 집계 View를 조합한다 — 둘 다 자기 테이블도 Mapper도 없다. 결제는 토스 실결제까지 붙어 있고 제공자는 `cakeshop.payment.provider`로 고른다(`mock` 기본 / `toss`). 화면별 현황 표는 README 참조. 화면 렌더링 스모크는 도메인별 전용 테스트(`StoreAdminControllerTests`·`*ScreenRenderingTests` 패턴)로 둔다.
 
 ## 5. 코딩 컨벤션
 
