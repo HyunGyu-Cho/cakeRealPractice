@@ -97,6 +97,9 @@ payment 도메인은 `orders`·`custom_order_*` 테이블을 직접 보지 않�
   - `void acceptQuote(Long memberId, Long orderId)` — 견적 수락 + 결제 링크 발급
   - `void cancelRequest(Long memberId, Long orderId)` — 수락 전 고객 취소
   - `CustomOrderAdminService`: `quote(...)`, `reject(...)`, `getRequestPage(...)`, `getRequestDetail(...)`
+    - `getRequestDetail`은 고객용 `CustomOrderDetailView`를 그대로 담고 요청 회원 정보를 덧붙인
+      **`CustomOrderAdminDetailView`**를 반환한다. 고객 화면에 연락처가 실리지 않도록 고객용 뷰는
+      확장하지 않는다.
   - `CustomOrderPaymentService`: `resolveLink(String token)`, `pay(String token, Long memberId)`
   - **payment 도메인 전용 계약** — 결제가 주문 테이블을 직접 보지 않게 하는 창구다.
     반환 타입 `CustomOrderPayableView(orderId, orderNumber, memberId, amount)`.
@@ -114,6 +117,8 @@ payment 도메인은 `orders`·`custom_order_*` 테이블을 직접 보지 않�
   - `NotificationService.notify(...)` / `notifyAdmins(...)` — 알림 발행
   - `ChatService.postSystemCard(...)` — **신규 공개 계약**(chat 도메인에 추가). 견적·결제 링크 카드 발행
   - `PaymentService` — 모의 결제 저장. 일반 결제와 같은 `payments` 행을 만든다
+  - `MemberService.getNicknameMap(...)` / `getProfileMap(...)` — 관리자 목록·상세의 요청 회원 표시.
+    **`members` 테이블 JOIN 금지**이며 이 두 계약으로만 읽는다
 - 호출 방향은 단방향이다. product·store·chat·notification은 주문제작을 역참조하지 않는다.
 - `orders`·`order_items`는 order 도메인 자신의 테이블이므로 `OrderMapper` 계열을 직접 쓴다(도메인 내부).
 
@@ -128,6 +133,11 @@ payment 도메인은 `orders`·`custom_order_*` 테이블을 직접 보지 않�
   - 관리자 `GET /admin/custom-orders`, `GET /admin/custom-orders/{orderId}`,
     `POST /admin/custom-orders/{orderId}/quote`, `POST /admin/custom-orders/{orderId}/reject`
     → 목업이 없어 신규 작성. `admin/order/*` 기존 화면과 `StoreAdminController` 패턴을 따른다
+    - **관리자 목록·상세는 요청 회원을 표시한다.** 목록은 "회원" 칸에 닉네임, 상세는 "요청 회원" 패널에
+      닉네임·이메일·연락처를 낸다. 요청 번호만으로는 누구의 요청인지 알 수 없어 견적 발송·픽업 안내 때
+      목록으로 되돌아가 대조해야 했기 때문이다.
+    - 회원 행이 없으면(탈퇴·삭제) 빈칸 대신 **`"탈퇴 회원"`**으로 표시한다(`OrderAdminService`와 동일).
+      연락처가 없으면 `-`로 낸다.
 - 목업 JS가 시연하는 임시 동작 중 규칙으로 확정할 것:
   - `data-option-price` 기반 클라이언트 금액 계산은 **표시 전용**이다. 서버가 `product_options.additional_price`로
     다시 계산하며 클라이언트 값은 신뢰하지 않는다.
