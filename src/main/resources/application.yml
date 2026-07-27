@@ -18,10 +18,12 @@ spring:
     enabled: true
     # 운영에도 필요한 스키마·코드값만 여기 둔다. 개발용 더미 시드는 local 프로필이 db/seed를 더한다.
     locations: classpath:db/migration
-    # 전환 이전부터 쓰던 DB(각자 로컬 + 공용 RDS)는 이미 스키마가 있어 "빈 스키마가 아니다"로 부팅이
-    # 막힌다. V1(베이스라인)이 적용된 것으로 표시하고 V2부터 이어가게 한다.
-    # 전원이 한 번씩 부팅해 baseline 기록을 남긴 뒤에는 false로 되돌린다(빈 DB 오인 baseline 방지).
-    baseline-on-migrate: true
+    # Flyway 전환 때 기존 DB를 흡수하려고 잠시 켰다가, 흡수가 끝나 다시 껐다.
+    # 켜 두면 "스키마는 있는데 이력이 없는 DB"를 묻지도 않고 '베이스라인까지 적용됨'으로 표시해 버린다.
+    # 그건 전환 시점에만 옳은 가정이고, 지금은 오히려 위험하다 — 마이그레이션을 건너뛴 DB가
+    # 정상인 척 조용히 굴러간다. 꺼 두면 그런 DB에서는 부팅이 막혀 사람이 알아차린다.
+    # 빈 DB는 이 설정과 무관하게 처음부터 전부 적용되므로 새 DB 세팅에는 영향이 없다.
+    baseline-on-migrate: false
     baseline-version: 1
     # 이미 적용된 마이그레이션 파일을 고치면 체크섬 불일치로 부팅을 막는다. 도입 목적 그 자체다.
     validate-on-migrate: true
