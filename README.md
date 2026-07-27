@@ -12,7 +12,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 `dev`·`main`으로 향하는 PR과 push마다 GitHub Actions가 다음을 검증한다(`.github/workflows/ci.yml`).
 
-1. **스키마 재현성** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`을 적용해 스키마를 세우고, V0에 없는 개발용 시드만 해당 증분 파일(`V2`, `V11`)에서 가져온다. 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
+1. **스키마 재현성** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`과 개발용 시드 `docs/sql/V18_dev_seed.sql`을 적용한다. 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
 2. **빌드·전체 테스트** — 위에서 만든 DB를 대상으로 `./gradlew build`를 실행한다.
 3. **부트 jar 보관** — `dev`·`main` push일 때 실행 가능한 jar를 Actions 아티팩트로 남긴다.
 
@@ -25,7 +25,7 @@ CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이�
 1. 각 PC에 MariaDB 11.4를 설치하고 실행한다.
 2. `cakeshop` 데이터베이스와 접속 계정을 생성한다.
 3. `.env_sample`을 `.env`로 복사하고 `LOCAL_DB_*` 값을 자신의 MariaDB에 맞춘다.
-4. `docs/sql` 디렉터리의 DDL을 로컬 DB에 순서대로 적용한다.
+4. `docs/sql/V0_ERD.sql`(전체 스펙 정본)과 `docs/sql/V18_dev_seed.sql`(개발용 시드)을 순서대로 적용한다. 이미 예전 V파일로 세팅해둔 DB라면 아직 적용하지 않은 증분 V파일만 번호 순으로 적용한 뒤 `V18`을 얹는다.
 
 ## 실행 프로필 선택
 

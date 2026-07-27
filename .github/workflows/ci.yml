@@ -54,12 +54,8 @@ jobs:
       #
       # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"라서
       # V0 위에 replay되지 않는다(V9는 이미 있는 FK를 중복 생성, V14는 이미 있는 카테고리를
-      # 중복 INSERT). 다만 개발용 시드 데이터가 V0가 아니라 증분에 들어 있어, E2E가 필요로 하는
-      # 시드 파일만 골라 적용한다.
-      #   - V2:  post_categories 등 커뮤니티 시드 (CommunityAndReviewFlowE2ETests)
-      #   - V11: 상품·옵션 시드 (CustomOrderFlowE2ETests)
-      # 새 시드가 추가되면 여기에 함께 넣어야 한다. V0 정본과 증분 체인의 관계를 정리하는 것은
-      # docs/sql 쪽 별도 과제다.
+      # 중복 INSERT). 개발용 시드는 현행 스키마 기준으로 V18_dev_seed.sql에 모여 있으므로
+      # 정본 + 시드 두 파일이면 충분하다.
       - name: 스키마·시드 적용
         run: |
           set -euo pipefail
@@ -70,8 +66,7 @@ jobs:
                     --default-character-set=utf8mb4 --database=cakeshop < "$1"
           }
           apply docs/sql/V0_ERD.sql
-          apply docs/sql/V2_community_status_and_seed.sql
-          apply docs/sql/V11_product_seed.sql
+          apply docs/sql/V18_dev_seed.sql
 
       # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
       # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.
