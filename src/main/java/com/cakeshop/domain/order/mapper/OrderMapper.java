@@ -35,6 +35,12 @@ public interface OrderMapper {
 
     List<OrderItem> findItemsByOrderIds(@Param("orderIds") Collection<Long> orderIds);
 
+    List<Order> findOngoingByMemberId(@Param("memberId") Long memberId,
+                                      @Param("limit") int limit);
+
+    List<Order> findRecentCompletedByMemberId(@Param("memberId") Long memberId,
+                                              @Param("limit") int limit);
+
     long countOrders(@Param("cond") OrderSearchForm cond,
                      @Param("memberIds") Collection<Long> memberIds,
                      @Param("memberFilter") boolean memberFilter);
