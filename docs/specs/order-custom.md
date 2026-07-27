@@ -26,8 +26,8 @@ approved-at: 2026-07-26
 제공자 전환(`mock`/`toss`)은 `PaymentGateway` 구현 교체로 끝나며, 링크 결제의 중복 방지 3중 설계
 (6장 규칙 5)는 그대로 유지된다 — `payments.idempotency_key`에는 계속 토큰이 들어간다.
 
-알려진 부채: `CustomOrderPaymentService`가 `OrderMapper`·`CustomOrderMapper`를 직접 주입해
-CLAUDE.md의 도메인 격리 규칙을 어기고 있다. 결제 전환과 분리해 별도 PR로 정리한다.
+주문제작 결제의 주문 쪽 읽기·쓰기는 전부 `CustomOrderService`의 payment 전용 계약(4장)을 통한다.
+payment 도메인은 `orders`·`custom_order_*` 테이블을 직접 보지 않는다.
 
 ## 2. 상태값 (conventions.md 상태값 공통 규칙 준수)
 
@@ -98,6 +98,14 @@ CLAUDE.md의 도메인 격리 규칙을 어기고 있다. 결제 전환과 분�
   - `void cancelRequest(Long memberId, Long orderId)` — 수락 전 고객 취소
   - `CustomOrderAdminService`: `quote(...)`, `reject(...)`, `getRequestPage(...)`, `getRequestDetail(...)`
   - `CustomOrderPaymentService`: `resolveLink(String token)`, `pay(String token, Long memberId)`
+  - **payment 도메인 전용 계약** — 결제가 주문 테이블을 직접 보지 않게 하는 창구다.
+    반환 타입 `CustomOrderPayableView(orderId, orderNumber, memberId, amount)`.
+    - `CustomOrderPayableView getPayableLink(String token, Long memberId)` — 소유자·주문 상태·링크
+      상태·만료를 검증하고 결제에 필요한 값만 돌려준다(읽기 전용)
+    - `CustomOrderPayableView beginLinkPayment(String token, Long memberId)` — 링크 행을 `FOR UPDATE`로
+      잠그고 재검증한 뒤 `ISSUED → USED`. 호출측 트랜잭션에 참여한다
+    - `void completeLinkPayment(Long orderId, long totalAmount, long discountAmount, long finalAmount)`
+      — 확정 금액 반영 + `UNDER_REVIEW → IN_PRODUCTION`. 승인 금액이 정해진 뒤 호출한다
 - 내가 사용할 다른 도메인의 공개 Service 메서드 (Mapper 직접 호출 금지):
   - `ProductService.getSalesInfo(productId)` — 기존 계약. 상품명·기본가·유형·준비일·취소기한 확인
   - `ProductService.getOptionGroups(productId)` — **신규 공개 계약**(product 도메인에 추가).
