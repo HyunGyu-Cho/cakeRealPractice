@@ -21,11 +21,30 @@ src/main/resources/db/migration/V<다음번호>__<설명>.sql   ← 언더바 2�
 
 | 위치 | 내용 | 적용 대상 |
 |---|---|---|
-| `src/main/resources/db/migration/V1__baseline_schema.sql` | Flyway 전환 시점의 전체 스키마 + 필수 시드(카테고리·샘플 계정·매장) | 모든 환경 |
+| `src/main/resources/db/migration/V1__baseline_schema.sql` | Flyway 전환 시점의 전체 스키마 + 필수 시드(카테고리·매장). 샘플 계정은 여기 없다 — `db/seed` 참조 | 모든 환경 |
 | `src/main/resources/db/migration/V2__post_categories_seed.sql` | 게시판 카테고리 코드값 | 모든 환경 |
 | `src/main/resources/db/migration/V3__…` | 앞으로의 모든 변경 | 모든 환경 |
 | `src/main/resources/db/seed/R__dev_seed.sql` | 개발용 샘플 상품 | **`local` 프로필만** |
 | `docs/sql/legacy/` | 전환 이전 V0~V19 | ❌ 보관용 |
+
+## "스키마는 있는데 이력이 없다"로 부팅이 막힐 때
+
+Flyway 전환(2026-07-27) 이전부터 쓰던 DB이거나, 손으로 세운 DB다. Flyway 입장에서는
+**마이그레이션을 하나도 적용하지 않았는데 테이블이 이미 있는 DB**라 무엇을 적용해야 할지 알 수 없다.
+
+전환 기간에는 `baseline-on-migrate: true`로 이런 DB를 자동 흡수했지만, 흡수가 끝나 다시 껐다.
+켜 둔 채로 두면 **마이그레이션을 건너뛴 DB가 정상인 척 굴러가기** 때문이다. 꺼 두면 부팅이 막혀
+사람이 알아차린다.
+
+해당하는 DB가 있으면 한 번만 켜서 흡수한다.
+
+```powershell
+.\gradlew.bat bootRun --args="--spring.profiles.active=local --spring.flyway.baseline-on-migrate=true"
+```
+
+베이스라인(V1)까지 적용된 것으로 기록되고 그 이후 마이그레이션만 적용된다. 한 번 흡수되면
+다음부터는 그냥 실행하면 된다. **스키마가 실제로 베이스라인과 같을 때만 옳은 조치**이므로,
+확신이 없으면 빈 DB를 새로 만드는 편이 낫다.
 
 ## `legacy/`는 왜 남겨 뒀나
 

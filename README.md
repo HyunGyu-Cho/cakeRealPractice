@@ -27,7 +27,13 @@ CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이�
 3. `.env_sample`을 `.env`로 복사하고 `LOCAL_DB_*` 값을 자신의 MariaDB에 맞춘다.
 4. **SQL은 손으로 적용하지 않는다.** 빈 데이터베이스 상태로 `bootRun` 하면 Flyway가 스키마와 시드를 자동 구성한다.
 
-   이미 예전 V파일로 세팅해둔 DB도 그대로 쓰면 된다. 첫 실행에서 Flyway가 `flyway_schema_history` 테이블을 만들고 "베이스라인(V1)까지 적용됨"으로 기록한 뒤 그 이후 것만 적용한다. 자세한 규칙은 [`docs/sql/README.md`](docs/sql/README.md).
+   Flyway 전환(2026-07-27) 이전부터 쓰던 DB가 아직 남아 있다면 첫 실행이 "스키마는 있는데 이력이 없다"며 막힌다. 흡수용 설정(`baseline-on-migrate`)은 전환이 끝나 다시 꺼 뒀기 때문이다. 그때는 아래처럼 한 번만 켜서 흡수한 뒤, 이후로는 그냥 실행하면 된다.
+
+   ```powershell
+   .\gradlew.bat bootRun --args="--spring.profiles.active=local --spring.flyway.baseline-on-migrate=true"
+   ```
+
+   자세한 규칙은 [`docs/sql/README.md`](docs/sql/README.md).
 
 ## 실행 프로필 선택
 
@@ -95,7 +101,7 @@ Flyway로 관리한다. 앱이 부팅할 때 미적용 마이그레이션을 순
 
 | 위치 | 내용 | 적용 대상 |
 |---|---|---|
-| `src/main/resources/db/migration/V1__baseline_schema.sql` | 전환 시점의 전체 스키마(35개 테이블) + 필수 시드(카테고리, 공통 샘플 계정 `admin@cakeshop.local`·`user@cakeshop.local`, 대표 매장 1행 + 7개 요일 영업시간) | 모든 환경 |
+| `src/main/resources/db/migration/V1__baseline_schema.sql` | 전환 시점의 전체 스키마 + 필수 시드(카테고리 4종, 대표 매장 1행 + 7개 요일 영업시간) | 모든 환경 |
 | `src/main/resources/db/migration/V2__…` 이후 | 이후의 모든 스키마 변경 | 모든 환경 |
 | `src/main/resources/db/seed/R__dev_seed.sql` | 개발용 샘플 상품 | **`local` 전용** |
 | `docs/sql/legacy/` | 전환 이전 V0~V19 이력 | ❌ 보관용 |
