@@ -270,12 +270,19 @@
   - ⚠️ **남은 것**: 웹훅 실전송은 미검증이다. 토스가 우리 쪽으로 요청을 보내는 방향이라 localhost에 도달하지
     못한다. 터널(ngrok) 또는 배포 서버에 엔드포인트를 등록해 별도로 수행한다. 운영 기본값은 `mock`이다.
 
-- [ ] **후기 답글 알림** — 관리자가 후기에 답글을 달면 작성자에게 알림
+- [x] **후기 답글 알림** — 관리자가 후기에 답글을 달면 작성자에게 알림 (**V19**, 스키마는 CHECK 값만 변경)
   - review 스펙(`docs/specs/review.md`)에서 "알림은 범위 밖"으로 명시하고 미뤄 둔 항목이다.
-    답글 기능 자체는 이미 구현돼 있고 알림 발행만 없다.
-  - `NotificationType`을 12개에서 늘려야 한다 — enum ↔ DDL CHECK 동기화 테스트가 있으므로 **V파일과 함께** 고친다.
-  - 발행 지점은 관리자 답글 저장 트랜잭션이고, 전달은 기존 경로(커밋 후 `NotificationPusher` →
-    `/user/queue/notifications` 개인 큐 + `notification_deliveries` 재시도)를 그대로 탄다.
+    답글 기능 자체는 이미 구현돼 있고 알림 발행만 없었다.
+  - `NotificationType` 12개 → 13개(`REVIEW_REPLY`). `V19_notification_review_reply.sql`로 CHECK를 다시 걸고
+    V0/V1에 소급 반영했다. 발행 지점은 `ReviewAdminService.saveReply`의 업무 트랜잭션이고 전달은 기존
+    경로(커밋 후 `NotificationPusher` → `/user/queue/notifications` + `notification_deliveries` 재시도)를 그대로 탄다.
+  - 확정: **최초 등록에만 발행하고 답글 수정은 재발행하지 않는다.** 답글은 후기당 1개라 수정마다 보내면
+    같은 답글로 작성자를 반복해서 깨우게 된다. 수신자는 후기 작성자, 링크는 `/reviews`,
+    본문은 답글 앞 40자까지만 싣는다.
+  - ⚠️ `NotificationSqlSyncTests`가 **V10을 파일명으로 박아** 검증하고 있어서, V19에서 값을 늘려도
+    옛 파일만 보고 통과할 뻔했다(실제로 처음엔 V10 기준으로 실패했다). 증분 V파일을 번호 순으로 훑어
+    **마지막 정의**를 쓰도록 바꿔 다음에 값이 늘어도 따라가게 했다.
+  - E2E(`CommunityAndReviewFlowE2ETests`)에 알림 1건 생성과 수정 시 재발행 없음을 DB로 단정해 뒀다.
 
 ---
 

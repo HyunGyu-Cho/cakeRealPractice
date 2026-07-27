@@ -9,10 +9,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,16 +24,15 @@ import org.junit.jupiter.api.Test;
  */
 class NotificationSqlSyncTests {
 
-    private static final Path V0_ERD = Path.of("docs/sql/V0_ERD.sql");
-    private static final Path V10_NOTIFICATION = Path.of("docs/sql/V10_notification.sql");
-    private static final Path V12_DELIVERIES = Path.of("docs/sql/V12_notification_deliveries.sql");
+    private static final Path SQL_DIR = Path.of("docs/sql");
+    private static final Path V0_ERD = SQL_DIR.resolve("V0_ERD.sql");
 
     @Test
     void notificationTypeMatchesCheckConstraint() {
         Set<String> enumNames = names(NotificationType.values());
 
-        assertThat(checkValues(V10_NOTIFICATION, "chk_notifications_type"))
-            .as("V10 의 chk_notifications_type")
+        assertThat(latestIncrementalValues("chk_notifications_type"))
+            .as("증분 V파일의 마지막 chk_notifications_type 정의")
             .containsExactlyInAnyOrderElementsOf(enumNames);
         assertThat(checkValues(V0_ERD, "chk_notifications_type"))
             .as("V0_ERD 소급 반영")
@@ -42,8 +43,8 @@ class NotificationSqlSyncTests {
     void deliveryStatusMatchesCheckConstraint() {
         Set<String> enumNames = names(DeliveryStatus.values());
 
-        assertThat(checkValues(V12_DELIVERIES, "chk_notification_deliveries_status"))
-            .as("V12 의 chk_notification_deliveries_status")
+        assertThat(latestIncrementalValues("chk_notification_deliveries_status"))
+            .as("증분 V파일의 마지막 chk_notification_deliveries_status 정의")
             .containsExactlyInAnyOrderElementsOf(enumNames);
         assertThat(checkValues(V0_ERD, "chk_notification_deliveries_status"))
             .as("V0_ERD 소급 반영")
@@ -54,8 +55,8 @@ class NotificationSqlSyncTests {
     void deliveryChannelMatchesCheckConstraint() {
         Set<String> enumNames = names(DeliveryChannel.values());
 
-        assertThat(checkValues(V12_DELIVERIES, "chk_notification_deliveries_channel"))
-            .as("V12 의 chk_notification_deliveries_channel")
+        assertThat(latestIncrementalValues("chk_notification_deliveries_channel"))
+            .as("증분 V파일의 마지막 chk_notification_deliveries_channel 정의")
             .containsExactlyInAnyOrderElementsOf(enumNames);
         assertThat(checkValues(V0_ERD, "chk_notification_deliveries_channel"))
             .as("V0_ERD 소급 반영")
@@ -64,6 +65,46 @@ class NotificationSqlSyncTests {
 
     private Set<String> names(Enum<?>[] values) {
         return Arrays.stream(values).map(Enum::name).collect(Collectors.toSet());
+    }
+
+    /**
+     * 증분 V파일(V2+)을 번호 순으로 훑어 제약을 마지막으로 정의한 파일의 값을 돌려준다.
+     * 파일 번호를 테스트에 박아 두면 나중에 값을 늘리는 V파일이 생겨도 옛 파일만 보게 된다
+     * (실제로 V19에서 그랬다) — 증분의 마지막 정의가 곧 DB의 현재 상태다.
+     */
+    private List<String> latestIncrementalValues(String constraintName) {
+        List<Path> files = incrementalFilesInOrder();
+        Path latest = null;
+        for (Path file : files) {
+            if (read(file).contains(constraintName)) {
+                latest = file;
+            }
+        }
+        assertThat(latest)
+            .as("증분 V파일 어디에도 %s 제약이 없습니다.", constraintName)
+            .isNotNull();
+        return checkValues(latest, constraintName);
+    }
+
+    private List<Path> incrementalFilesInOrder() {
+        try (Stream<Path> paths = Files.list(SQL_DIR)) {
+            Pattern numbered = Pattern.compile("^V(\\d+)_.*\\.sql$");
+            return paths
+                .filter(path -> numbered.matcher(path.getFileName().toString()).matches())
+                .map(path -> Map.entry(versionOf(path, numbered), path))
+                .filter(entry -> entry.getKey() >= 2)   // V0·V1은 보관용 정본이라 증분이 아니다
+                .sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue)
+                .toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private int versionOf(Path path, Pattern numbered) {
+        Matcher matcher = numbered.matcher(path.getFileName().toString());
+        matcher.matches();
+        return Integer.parseInt(matcher.group(1));
     }
 
     /** 지정한 제약의 마지막 정의에서 {@code IN (...)} 안의 값을 뽑는다(재정의된 경우 최신 것). */

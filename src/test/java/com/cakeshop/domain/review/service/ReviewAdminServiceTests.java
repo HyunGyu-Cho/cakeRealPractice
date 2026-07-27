@@ -6,10 +6,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cakeshop.domain.member.service.MemberService;
+import com.cakeshop.domain.notification.entity.NotificationType;
+import com.cakeshop.domain.notification.service.NotificationCommand;
+import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.review.dto.form.AdminReviewSearchForm;
 import com.cakeshop.domain.review.dto.form.ReviewReplyForm;
 import com.cakeshop.domain.review.dto.view.AdminReviewListView;
@@ -29,6 +33,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,12 +47,14 @@ class ReviewAdminServiceTests {
     @Mock private ReviewMapper reviewMapper;
     @Mock private ReviewService reviewService;
     @Mock private MemberService memberService;
+    @Mock private NotificationService notificationService;
 
     private ReviewAdminService reviewAdminService;
 
     @BeforeEach
     void setUp() {
-        reviewAdminService = new ReviewAdminService(reviewMapper, reviewService, memberService);
+        reviewAdminService = new ReviewAdminService(
+            reviewMapper, reviewService, memberService, notificationService);
     }
 
     @Test
@@ -95,6 +102,54 @@ class ReviewAdminServiceTests {
         when(reviewMapper.findReplyByReviewId(REVIEW_ID)).thenReturn(Optional.of(new ReviewReply()));
         reviewAdminService.saveReply(REVIEW_ID, ADMIN_ID, replyForm("다시 감사합니다!"));
         verify(reviewMapper).updateReply(REVIEW_ID, ADMIN_ID, "다시 감사합니다!");
+    }
+
+    @Test
+    void firstReplyNotifiesTheAuthorAndEditsDoNot() {
+        when(reviewMapper.findById(REVIEW_ID)).thenReturn(Optional.of(review("VISIBLE")));
+        when(reviewMapper.findReplyByReviewId(REVIEW_ID)).thenReturn(Optional.empty());
+
+        reviewAdminService.saveReply(REVIEW_ID, ADMIN_ID, replyForm("감사합니다!"));
+
+        ArgumentCaptor<NotificationCommand> captor =
+            ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService).notify(captor.capture());
+        NotificationCommand command = captor.getValue();
+        assertThat(command.receiverId()).isEqualTo(7L);          // 관리자가 아니라 후기 작성자
+        assertThat(command.type()).isEqualTo(NotificationType.REVIEW_REPLY);
+        assertThat(command.targetUrl()).isEqualTo("/reviews");
+        assertThat(command.content()).contains("감사합니다!");
+
+        // 답글은 후기당 1개라 수정마다 발행하면 같은 답글로 작성자를 반복해서 깨운다
+        when(reviewMapper.findReplyByReviewId(REVIEW_ID)).thenReturn(Optional.of(new ReviewReply()));
+        reviewAdminService.saveReply(REVIEW_ID, ADMIN_ID, replyForm("수정한 답글입니다."));
+
+        verify(notificationService, times(1)).notify(any());
+    }
+
+    @Test
+    void notificationBodyTruncatesLongReplies() {
+        when(reviewMapper.findById(REVIEW_ID)).thenReturn(Optional.of(review("VISIBLE")));
+        when(reviewMapper.findReplyByReviewId(REVIEW_ID)).thenReturn(Optional.empty());
+        String longReply = "가".repeat(60);
+
+        reviewAdminService.saveReply(REVIEW_ID, ADMIN_ID, replyForm(longReply));
+
+        ArgumentCaptor<NotificationCommand> captor =
+            ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService).notify(captor.capture());
+        assertThat(captor.getValue().content())
+            .endsWith("가".repeat(40) + "...")
+            .doesNotContain("가".repeat(41));
+    }
+
+    @Test
+    void replyToMissingReviewNotifiesNobody() {
+        when(reviewMapper.findById(REVIEW_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reviewAdminService.saveReply(REVIEW_ID, ADMIN_ID, replyForm("답글")))
+            .isInstanceOf(BusinessException.class);
+        verify(notificationService, never()).notify(any());
     }
 
     @Test
