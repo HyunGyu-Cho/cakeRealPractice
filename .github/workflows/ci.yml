@@ -48,30 +48,30 @@ jobs:
       - name: MariaDB 클라이언트 설치
         run: sudo apt-get update && sudo apt-get install -y mariadb-client
 
-      # 기준은 V0_ERD.sql(전체 스펙 정본) + V2 이후 증분이다.
-      #  - V0는 절대규칙에 따라 확정 변경이 소급 반영되어 V17까지의 테이블을 모두 담고 있다.
-      #    그래서 스키마 자체는 V0 한 파일로 완성된다.
-      #  - 그런데 시드 데이터는 V0가 아니라 증분에 들어 있다(V2 커뮤니티 시드, V11 상품 시드).
-      #    E2E는 post_categories·상품 시드를 전제하므로 증분까지 얹어야 통과한다.
-      #  - V1_first_MVC_table.sql은 1차 MVP용 최소 정본으로 V0의 부분집합이라 적용하지 않는다.
+      # 스키마는 V0_ERD.sql 하나로 완성된다. 절대규칙에 따라 확정 변경이 V0에 소급 반영되어
+      # 있어서, V17까지의 테이블이 전부 여기에 들어 있다. 이 단계가 실패하면 V0에 반영되지
+      # 않은 변경이 들어왔다는 뜻이다.
       #
-      # V9만 제외하는 이유: V9는 notifications에 fk_notifications_chat_message를 추가하는데
-      # V0가 이 FK를 이미 갖고 있어 중복 생성으로 깨진다(errno 121). V0 기준에서 V9는
-      # 더 얹을 것이 없는 파일이므로 건너뛴다. 근본 정리는 docs/sql 쪽 별도 과제다.
-      - name: 스키마·시드 적용 (V0 정본 + 증분)
+      # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"라서
+      # V0 위에 replay되지 않는다(V9는 이미 있는 FK를 중복 생성, V14는 이미 있는 카테고리를
+      # 중복 INSERT). 다만 개발용 시드 데이터가 V0가 아니라 증분에 들어 있어, E2E가 필요로 하는
+      # 시드 파일만 골라 적용한다.
+      #   - V2:  post_categories 등 커뮤니티 시드 (CommunityAndReviewFlowE2ETests)
+      #   - V11: 상품·옵션 시드 (CustomOrderFlowE2ETests)
+      # 새 시드가 추가되면 여기에 함께 넣어야 한다. V0 정본과 증분 체인의 관계를 정리하는 것은
+      # docs/sql 쪽 별도 과제다.
+      - name: 스키마·시드 적용
         run: |
           set -euo pipefail
-          # sort -V(버전 정렬)를 쓰지 않으면 사전순이라 V10이 V2보다 먼저 와서 깨진다.
-          increments=$(ls docs/sql/V*.sql | grep -vE '/V(0|1|9)_' | sort -V)
-          files="docs/sql/V0_ERD.sql $increments"
-          echo "적용 순서:"
-          for f in $files; do echo "  $f"; done
-          for f in $files; do
-            echo "--- $f"
+          apply() {
+            echo "--- $1"
             # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
             mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
-                    --default-character-set=utf8mb4 --database=cakeshop < "$f"
-          done
+                    --default-character-set=utf8mb4 --database=cakeshop < "$1"
+          }
+          apply docs/sql/V0_ERD.sql
+          apply docs/sql/V2_community_status_and_seed.sql
+          apply docs/sql/V11_product_seed.sql
 
       # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
       # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.

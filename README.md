@@ -12,7 +12,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 `dev`·`main`으로 향하는 PR과 push마다 GitHub Actions가 다음을 검증한다(`.github/workflows/ci.yml`).
 
-1. **스키마·시드 재현성** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`을 적용하고, 그 위에 V2 이후 증분을 번호 순으로 얹는다(시드 데이터가 증분에 들어 있다). 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
+1. **스키마 재현성** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`을 적용해 스키마를 세우고, V0에 없는 개발용 시드만 해당 증분 파일(`V2`, `V11`)에서 가져온다. 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
 2. **빌드·전체 테스트** — 위에서 만든 DB를 대상으로 `./gradlew build`를 실행한다.
 3. **부트 jar 보관** — `dev`·`main` push일 때 실행 가능한 jar를 Actions 아티팩트로 남긴다.
 
