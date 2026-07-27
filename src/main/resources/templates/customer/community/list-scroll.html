@@ -28,7 +28,8 @@
     <div class="stack" id="post-list"
          th:attr="data-category=${currentCategory != null ? currentCategory : ''}"></div>
     <p class="text-muted section" id="scroll-status" style="text-align:center"></p>
-    <div id="scroll-sentinel" aria-hidden="true"></div>
+    <!-- 높이 0이면 교차 판정이 불안정해 1px을 준다. -->
+    <div id="scroll-sentinel" aria-hidden="true" style="height:1px"></div>
   </main>
   <footer th:replace="~{fragments/common/footer :: footer(${store})}"></footer>
 </body>
