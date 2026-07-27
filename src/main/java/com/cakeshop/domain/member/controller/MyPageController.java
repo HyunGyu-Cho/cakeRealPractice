@@ -5,6 +5,7 @@ import com.cakeshop.domain.member.dto.form.ProfileUpdateForm;
 import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.error.MemberErrorCode;
 import com.cakeshop.domain.member.service.MemberService;
+import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.security.MemberDetails;
 import jakarta.servlet.ServletException;
@@ -23,14 +24,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class MyPageController {
 
     private final MemberService memberService;
+    private final OrderService orderService;
 
-    public MyPageController(MemberService memberService) {
+    public MyPageController(MemberService memberService, OrderService orderService) {
         this.memberService = memberService;
+        this.orderService = orderService;
     }
 
     @GetMapping("/mypage")
     public String myPage(@AuthenticationPrincipal MemberDetails member, Model model) {
         model.addAttribute("profile", memberService.getProfile(member.getMemberId()));
+        model.addAttribute("orders", orderService.getMyOrderOverview(member.getMemberId()));
         return "customer/member/mypage";
     }
 

@@ -19,6 +19,8 @@ import com.cakeshop.domain.member.dto.form.ProfileUpdateForm;
 import com.cakeshop.domain.member.dto.view.MemberProfileView;
 import com.cakeshop.domain.member.error.MemberErrorCode;
 import com.cakeshop.domain.member.service.MemberService;
+import com.cakeshop.domain.order.dto.view.MyOrderOverviewView;
+import com.cakeshop.domain.order.service.OrderService;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.security.MemberDetails;
 import java.time.LocalDateTime;
@@ -45,6 +47,8 @@ class MyPageControllerTests {
 
     @Mock
     private MemberService memberService;
+    @Mock
+    private OrderService orderService;
 
     private MockMvc mockMvc;
 
@@ -63,7 +67,7 @@ class MyPageControllerTests {
                 return LOGIN_MEMBER;
             }
         };
-        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new MyPageController(memberService, orderService))
             .setCustomArgumentResolvers(principalResolver)
             .build();
     }
@@ -71,11 +75,13 @@ class MyPageControllerTests {
     @Test
     void myPageLoadsProfile() throws Exception {
         when(memberService.getProfile(1L)).thenReturn(profile());
+        when(orderService.getMyOrderOverview(1L))
+            .thenReturn(new MyOrderOverviewView(List.of(), List.of()));
 
         mockMvc.perform(get("/mypage"))
             .andExpect(status().isOk())
             .andExpect(view().name("customer/member/mypage"))
-            .andExpect(model().attributeExists("profile"));
+            .andExpect(model().attributeExists("profile", "orders"));
     }
 
     @Test

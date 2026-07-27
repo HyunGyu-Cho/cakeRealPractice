@@ -7,6 +7,8 @@ import com.cakeshop.domain.coupon.service.CouponService;
 import com.cakeshop.domain.order.dto.session.CheckoutDraft;
 import com.cakeshop.domain.order.dto.view.CheckoutItemView;
 import com.cakeshop.domain.order.dto.view.CheckoutView;
+import com.cakeshop.domain.order.dto.view.MyOrderOverviewView;
+import com.cakeshop.domain.order.dto.view.MyOrderSummaryView;
 import com.cakeshop.domain.order.dto.view.OrderDetailView;
 import com.cakeshop.domain.order.dto.view.OrderItemView;
 import com.cakeshop.domain.order.dto.view.OrderReferenceView;
@@ -20,6 +22,7 @@ import com.cakeshop.domain.notification.entity.NotificationType;
 import com.cakeshop.domain.notification.service.NotificationCommand;
 import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.product.dto.view.ProductDetailView;
+import com.cakeshop.domain.product.entity.ProductType;
 import com.cakeshop.domain.product.service.ProductService;
 import com.cakeshop.domain.store.service.StoreService;
 import com.cakeshop.global.common.stats.MemberCountRow;
@@ -29,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -188,6 +192,23 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public MyOrderOverviewView getMyOrderOverview(Long memberId) {
+        List<Order> ongoing = orderMapper.findOngoingByMemberId(memberId, 5);
+        List<Order> recent = orderMapper.findRecentCompletedByMemberId(memberId, 5);
+        LinkedHashSet<Long> orderIds = new LinkedHashSet<>();
+        ongoing.forEach(order -> orderIds.add(order.getId()));
+        recent.forEach(order -> orderIds.add(order.getId()));
+
+        Map<Long, List<OrderItem>> itemsByOrder = orderIds.isEmpty()
+            ? Map.of()
+            : orderMapper.findItemsByOrderIds(orderIds).stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+        return new MyOrderOverviewView(
+            toMyOrderSummaries(ongoing, itemsByOrder),
+            toMyOrderSummaries(recent, itemsByOrder));
+    }
+
+    @Transactional(readOnly = true)
     public OrderDetailView getOrder(Long orderId) {
         return toDetail(findOrder(orderId));
     }
@@ -315,6 +336,23 @@ public class OrderService {
             order.getStatus(), order.getPickupAt(), order.getRequestMessage(),
             order.getCancelReason(), order.getCanceledBy(), deadline, cancellable,
             order.getCreatedAt(), items.stream().map(this::toItemView).toList());
+    }
+
+    private List<MyOrderSummaryView> toMyOrderSummaries(
+        List<Order> orders, Map<Long, List<OrderItem>> itemsByOrder) {
+        return orders.stream().map(order -> {
+            List<OrderItem> items = itemsByOrder.getOrDefault(order.getId(), List.of());
+            String productSummary = items.isEmpty()
+                ? "-"
+                : items.getFirst().getProductName()
+                    + (items.size() == 1 ? "" : " 외 " + (items.size() - 1) + "건");
+            // 주문제작 여부는 이미 읽어 둔 품목의 product_type으로 판별한다(추가 조회 없음).
+            boolean custom = items.stream()
+                .anyMatch(item -> ProductType.CUSTOM.name().equals(item.getProductType()));
+            return new MyOrderSummaryView(
+                order.getId(), order.getOrderNumber(), productSummary, order.getFinalAmount(),
+                order.getStatus(), custom, order.getPickupAt(), order.getCreatedAt());
+        }).toList();
     }
 
     private OrderItemView toItemView(OrderItem item) {

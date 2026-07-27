@@ -109,6 +109,24 @@
          ORDER BY order_id, id
     </select>
 
+    <select id="findOngoingByMemberId" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE member_id = #{memberId}
+           AND status IN ('UNDER_REVIEW', 'IN_PRODUCTION', 'PAID', 'READY_FOR_PICKUP')
+         ORDER BY created_at DESC, id DESC
+         LIMIT #{limit}
+    </select>
+
+    <select id="findRecentCompletedByMemberId" resultMap="orderResultMap">
+        SELECT <include refid="orderColumns"/>
+          FROM orders
+         WHERE member_id = #{memberId}
+           AND status IN ('PICKED_UP', 'CANCELED', 'REJECTED')
+         ORDER BY created_at DESC, id DESC
+         LIMIT #{limit}
+    </select>
+
     <sql id="searchWhere">
         <where>
             <if test="cond.normalizedOrderNumber() != null">
