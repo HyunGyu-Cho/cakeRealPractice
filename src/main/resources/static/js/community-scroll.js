@@ -6,10 +6,16 @@
   const sentinel = document.getElementById('scroll-sentinel');
   if (!list || !status || !sentinel) return;
 
+  // 옵저버 rootMargin과 "sentinel이 아직 화면 안인가" 판정에 같은 값을 쓴다.
+  const ROOT_MARGIN_PX = 200;
+  // 뷰포트를 채우려고 연속 로드하는 최대 배치 수(무한 루프 방지).
+  const MAX_AUTO_FILL = 20;
+
   const category = list.dataset.category;
   let cursor = null;
   let hasNext = true;
   let loading = false;
+  let failed = false;
 
   function badgeClass(code) {
     if (code === 'REVIEW') return 'badge badge--info';
@@ -50,29 +56,61 @@
     return article;
   }
 
+  // sentinel이 아직 화면(+rootMargin) 안에 있으면 더 채워야 한다.
+  // IntersectionObserver는 "교차 상태가 바뀔 때"만 발화하므로, 한 배치를 붙여도 여전히
+  // 교차 상태면 콜백이 다시 오지 않는다. 그래서 여기서 직접 판정해 이어서 로드한다.
+  function needsMore() {
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    return sentinel.getBoundingClientRect().top <= viewportHeight + ROOT_MARGIN_PX;
+  }
+
+  function showRetry() {
+    status.textContent = '목록을 불러오지 못했습니다. ';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'btn';
+    retry.textContent = '다시 시도';
+    retry.addEventListener('click', function () {
+      failed = false;
+      loadNext();
+    });
+    status.appendChild(retry);
+  }
+
+  // 한 배치를 조회해 붙인다. 성공하면 true.
+  async function fetchBatch() {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (cursor !== null) params.set('cursor', cursor);
+    const response = await fetch('/community/api/posts?' + params.toString());
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const slice = await response.json();
+
+    slice.posts.forEach(function (post) {
+      list.appendChild(renderPost(post));
+    });
+    hasNext = slice.hasNext;
+    cursor = slice.nextCursor;
+    return slice.posts.length;
+  }
+
   async function loadNext() {
-    if (loading || !hasNext) return;
+    if (loading || failed || !hasNext) return;
     loading = true;
     status.textContent = '불러오는 중...';
     try {
-      const params = new URLSearchParams();
-      if (category) params.set('category', category);
-      if (cursor !== null) params.set('cursor', cursor);
-      const response = await fetch('/community/api/posts?' + params.toString());
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const slice = await response.json();
-
-      slice.posts.forEach(function (post) {
-        list.appendChild(renderPost(post));
-      });
-      hasNext = slice.hasNext;
-      cursor = slice.nextCursor;
+      // 뷰포트가 찰 때까지(= sentinel이 화면 밖으로 밀려날 때까지) 이어서 로드한다.
+      for (let i = 0; i < MAX_AUTO_FILL; i++) {
+        const loaded = await fetchBatch();
+        if (!hasNext || loaded === 0 || !needsMore()) break;
+      }
       status.textContent = hasNext
         ? ''
         : (list.children.length ? '마지막 글입니다.' : '등록된 게시글이 없습니다.');
     } catch (error) {
-      hasNext = false;
-      status.textContent = '목록을 불러오지 못했습니다. 새로고침 해주세요.';
+      // hasNext는 유지한다 — 다시 시도 버튼으로 이어서 받을 수 있게.
+      failed = true;
+      showRetry();
     } finally {
       loading = false;
     }
@@ -82,7 +120,7 @@
     if (entries.some(function (entry) { return entry.isIntersecting; })) {
       loadNext();
     }
-  }, { rootMargin: '200px' });
+  }, { rootMargin: ROOT_MARGIN_PX + 'px' });
 
   observer.observe(sentinel);
   loadNext();
