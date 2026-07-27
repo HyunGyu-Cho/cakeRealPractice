@@ -12,13 +12,13 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 `dev`·`main`으로 향하는 PR과 push마다 GitHub Actions가 다음을 검증한다(`.github/workflows/ci.yml`).
 
-1. **스키마 재현성** — 빈 MariaDB 컨테이너에 `docs/sql`의 V파일을 `V1`부터 번호 순으로 적용한다. 로컬에서 손으로 고친 스키마에 의존하는 변경은 여기서 걸린다.
+1. **스키마 정본 검증** — 빈 MariaDB 컨테이너에 전체 스펙 정본인 `docs/sql/V0_ERD.sql`을 적용한다. 증분 V파일은 이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로이므로 정본 위에 다시 얹지 않는다. 확정 변경을 `V0_ERD.sql`에 소급 반영하지 않으면 여기서 걸린다.
 2. **빌드·전체 테스트** — 위에서 만든 DB를 대상으로 `./gradlew build`를 실행한다.
 3. **부트 jar 보관** — `dev`·`main` push일 때 실행 가능한 jar를 Actions 아티팩트로 남긴다.
 
 CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이너다. 공용 RDS나 각자의 로컬 MariaDB는 건드리지 않는다.
 
-**로컬은 통과하는데 CI만 실패한다면** 자기 로컬 DB가 V파일과 어긋났을 가능성이 높다. `scripts/verify-sql-sequence.ps1`로 V파일만으로 스키마가 재현되는지 확인한다.
+**로컬은 통과하는데 CI만 실패한다면** 자기 로컬 DB가 정본과 어긋났을 가능성이 높다. 새 스키마로 테스트할 DB를 하나 만들어 `V0_ERD.sql`만 적용해보면 구분된다.
 
 ## 로컬 DB 준비
 

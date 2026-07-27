@@ -48,26 +48,19 @@ jobs:
       - name: MariaDB 클라이언트 설치
         run: sudo apt-get update && sudo apt-get install -y mariadb-client
 
-      # 이 단계가 곧 "V파일만으로 빈 DB에서 스키마가 재현되는가" 검증이다.
-      # 여기서 실패하면 docs/sql의 V파일 시퀀스가 깨졌다는 뜻이다(로컬에서 손으로 고친
-      # 스키마에 의존하는 변경이 들어왔을 때 잡힌다).
+      # V0_ERD.sql은 전체 스펙 보관 정본이고, 절대규칙에 따라 확정 변경이 소급 반영된다.
+      # 실제로 V17까지의 테이블을 모두 담고 있어 빈 DB에는 이 한 파일이면 충분하다.
+      # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"이므로
+      # 정본 위에 다시 얹지 않는다(얹으면 V9가 V0에 이미 있는 FK를 중복 생성해 깨진다).
       #
-      # 기준은 V0_ERD.sql(전체 스펙 정본) + V2 이후 증분이다. V1_first_MVC_table.sql은
-      # 1차 MVP용 최소 정본이라 comments 등을 의도적으로 빼고 있어, V2를 그 위에 얹으면
-      # 없는 테이블을 건드려 깨진다. V1 기준 체인은 별도 job(schema-verify-v1)에서 본다.
-      - name: 스키마 적용 (V0 정본 + 증분)
+      # 이 단계는 "정본만으로 빈 DB에서 스키마가 서고 테스트가 통과하는가"를 검증한다.
+      # 여기서 실패하면 V0에 소급 반영되지 않은 변경이 들어왔다는 뜻이다.
+      - name: 스키마 적용 (V0 전체 스펙 정본)
         run: |
           set -euo pipefail
-          # sort -V(버전 정렬)를 쓰지 않으면 사전순이라 V10이 V2보다 먼저 와서 깨진다.
-          files="docs/sql/V0_ERD.sql $(ls docs/sql/V*.sql | grep -vE '/V[01]_' | sort -V)"
-          echo "적용 순서:"
-          for f in $files; do echo "  $f"; done
-          for f in $files; do
-            echo "--- $f"
-            # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
-            mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
-                    --default-character-set=utf8mb4 --database=cakeshop < "$f"
-          done
+          # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
+                  --default-character-set=utf8mb4 --database=cakeshop < docs/sql/V0_ERD.sql
 
       # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
       # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.
@@ -106,41 +99,3 @@ jobs:
             build/libs/*.jar
             !build/libs/*-plain.jar
           retention-days: 14
-
-  # V1_first_MVC_table.sql은 1차 MVP 보관용 정본으로 계속 유효해야 한다.
-  # 이 정본 기준으로도 증분이 적용되는지 확인한다(테스트는 돌리지 않고 스키마만 본다).
-  # comments 등 V1이 의도적으로 제외한 테이블을 건드리는 V2는 이 체인에서 뺀다.
-  # 로컬의 scripts/verify-sql-sequence.ps1과 같은 검증을 자동화한 것이다.
-  schema-verify-v1:
-    name: V1 정본 기준 스키마 검증
-    runs-on: ubuntu-latest
-
-    services:
-      mariadb:
-        image: mariadb:11.4
-        env:
-          MARIADB_ROOT_PASSWORD: ci
-          MARIADB_DATABASE: cakeshop_v1
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: MariaDB 클라이언트 설치
-        run: sudo apt-get update && sudo apt-get install -y mariadb-client
-
-      - name: 스키마 적용 (V1 정본 + 증분, V2 제외)
-        run: |
-          set -euo pipefail
-          files="docs/sql/V1_first_MVC_table.sql $(ls docs/sql/V*.sql | grep -vE '/V[012]_' | sort -V)"
-          for f in $files; do
-            echo "--- $f"
-            mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
-                    --default-character-set=utf8mb4 --database=cakeshop_v1 < "$f"
-          done
