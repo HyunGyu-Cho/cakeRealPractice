@@ -4,6 +4,18 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 [![CI](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml)
 
+케이크 가게의 온라인 주문 서비스다. 고객은 케이크를 골라 주문하고 매장에서 픽업하며,
+관리자는 상품·주문·매장 정보를 관리한다. 수제 케이크는 상담과 견적을 거쳐 주문한다.
+
+## 처음 오셨다면
+
+이 순서로 보면 막히지 않는다.
+
+1. **일단 돌려본다** → [로컬 DB 준비](#로컬-db-준비) → [실행](#실행-프로필-선택). DB 세팅이 막히면 [`docs/database.md`](docs/database.md) 1부가 처음부터 설명한다.
+2. **용어가 낯설면** → [`docs/conventions.md` 0부](docs/conventions.md#0부-처음-보는-사람을-위해)에 계층 구조 그림과 용어 사전이 있다.
+3. **코드가 어떻게 생겼는지 보려면** → [`docs/store-usecase-flow.md`](docs/store-usecase-flow.md). 완성된 기능 하나를 본보기로 따라간다.
+4. **직접 만들려면** → [`docs/claude-code-automation.md` 0장](docs/claude-code-automation.md)이 작업 순서를 안내한다.
+
 ## 문서 지도
 
 주제마다 문서 하나다. 찾는 내용이 어디 있는지부터 본다.
