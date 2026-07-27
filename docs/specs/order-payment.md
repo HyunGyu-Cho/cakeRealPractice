@@ -5,13 +5,17 @@ status: approved
 approved-at: 2026-07-25
 ---
 
-# 일반 주문·모의 결제 명세
+# 일반 주문·결제 명세
 
 ## 범위
 
-장바구니에서 선택한 일반 상품을 픽업 설정 → 주문서 → 모의 결제로 처리한다. 결제 성공 전에는
+장바구니에서 선택한 일반 상품을 픽업 설정 → 주문서 → 결제로 처리한다. 결제 성공 전에는
 `orders`를 생성하지 않으며, 로그인 세션의 UUID 체크아웃 초안을 `payments.idempotency_key`로 사용한다.
-실제 토스 승인 API, 웹훅 보상, 쿠폰, 부분 취소, 주문제작 상품은 후속 범위다.
+부분 취소는 후속 범위다.
+
+결제 제공자는 설정(`cakeshop.payment.provider`)으로 고른다. `mock`(기본)은 외부 호출 없이 즉시 승인하고,
+`toss`는 토스페이먼츠 결제창 + 승인 API를 쓴다. **두 경로의 도메인 로직은 같고** 차이는
+`PaymentGateway` 구현 하나뿐이다. 테스트·CI·스모크는 `mock`으로 돈다.
 
 ## 픽업 규칙
 
@@ -25,17 +29,65 @@ approved-at: 2026-07-25
 - 종료 시각은 포함하지 않는다. 당일 슬롯은 현재 시각보다 뒤인 것만 허용한다.
 - 화면 진입, 단계 이동, 결제 트랜잭션 직전에 서버가 같은 규칙을 다시 검증한다.
 
-## 결제 트랜잭션
+## 결제 흐름 (준비 → 확정 2단계)
 
-1. 체크아웃 UUID와 회원 소유권을 확인한다.
-2. `CartService.getCheckoutItems()`로 선택 항목, 판매 상태, 최신 가격과 재고를 다시 조회한다.
-3. 상품별 조건부 UPDATE로 재고를 차감한다.
-4. `PAID` 주문과 상품명·유형·가격·준비일·취소 기한 스냅샷을 저장한다.
-5. `DONE` 모의 결제를 저장한다. 결제 키는 `MOCK-UUID`, 주문번호는 `ORD-yyyyMMdd-랜덤값`이다.
-6. 선택 장바구니 항목을 삭제한다.
+외부 승인은 리다이렉트로 돌아오므로 결제가 두 요청으로 나뉜다.
 
-어느 단계든 실패하면 전부 롤백한다. 결제 UUID UNIQUE 충돌은 롤백 후 기존 결제의 주문을 반환한다.
-클라이언트가 보낸 금액은 계산이나 저장에 사용하지 않는다.
+**1단계 — 준비** (`GET /orders/payment`)
+
+1. 체크아웃 UUID와 회원 소유권을 확인하고 픽업·재고·판매상태를 다시 검증한다.
+2. 서버가 금액을 재계산한다. 클라이언트가 보낸 금액은 계산이나 저장에 사용하지 않는다.
+3. `payments`에 `status=READY` 행을 선삽입한다 — `toss_order_id = ORD-yyyyMMdd-랜덤값`,
+   `idempotency_key = 체크아웃 UUID`, `amount = 재계산한 최종 금액`, `order_id = NULL`, `payment_key = NULL`.
+   같은 체크아웃으로 다시 들어오면 기존 READY 행을 재사용한다(금액이 바뀌었으면 갱신).
+4. 화면은 이 `toss_order_id`·금액·클라이언트 키로 결제창을 연다.
+
+주문을 아직 만들지 않으므로 **`payments.order_id`는 NULL을 허용**한다(V17).
+
+**2단계 — 확정** (`GET /orders/payment/success?paymentKey&orderId&amount`)
+
+1. `toss_order_id`로 READY 결제를 찾고 소유자를 확인한다.
+2. **콜백 금액과 저장된 금액을 대조**한다. 다르면 승인하지 않고 `PAYMENT_001`로 중단한다.
+3. 이미 `DONE`이면 승인하지 않고 기존 주문을 반환한다(새로고침·뒤로가기 멱등).
+4. 트랜잭션 **밖에서** 승인 API를 호출한다. 외부 I/O를 DB 트랜잭션에 넣지 않는다.
+5. 한 트랜잭션으로 확정한다 — 재고 차감 → `PAID` 주문과 스냅샷 저장 → 쿠폰 사용 →
+   결제 행 갱신(`order_id`, `payment_key`, 결제수단, `status=DONE`, `provider_status`, `approved_at`) →
+   선택 장바구니 항목 삭제 → 알림.
+6. `/orders/complete?orderId=`로 리다이렉트한다(PRG).
+
+**보상** — 5가 실패하면 승인은 이미 성사됐으므로 자동으로 취소 API를 호출하고 결제를 `ABORTED` +
+`failure_code/message`로 마감한 뒤, 고객에게 "결제가 자동 취소됐다"고 안내한다. 돈이 남는 상태를 만들지 않는다.
+
+**실패 콜백** (`GET /orders/payment/fail?code&message&orderId`) — READY 행을 `ABORTED`로 마감하고
+결제 화면을 오류 메시지와 함께 다시 렌더한다.
+
+결제 UUID UNIQUE 충돌은 롤백 후 기존 결제의 주문을 반환한다.
+
+## 외부 상태 매핑
+
+`PaymentStatus` 6개는 늘리지 않고 제공자 상태를 매핑한다. 원본 문자열은 `provider_status`에 그대로 남긴다.
+
+| 제공자 상태 | `PaymentStatus` |
+|---|---|
+| `READY`, `IN_PROGRESS`, `WAITING_FOR_DEPOSIT` | `READY` |
+| `DONE` | `DONE` |
+| `CANCELED` | `CANCELED` |
+| `PARTIAL_CANCELED` | `PARTIAL_CANCELED` |
+| `ABORTED` | `ABORTED` |
+| `EXPIRED` | `EXPIRED` |
+
+## 웹훅
+
+`POST /webhooks/toss`는 인증·CSRF 예외 경로다. 전송 ID를 `webhook_events.event_id` UNIQUE로 잡아
+같은 이벤트가 여러 번 와도 1건만 저장하고, **저장 즉시 200**을 돌려준다(10초 제한). 반영은 저장과 분리한다.
+
+승인 결과는 확정 단계가 이미 반영하므로 웹훅의 역할은 **밀린 상태 따라잡기**(가상계좌 입금, 외부 취소 등)다.
+우리 상태가 이미 최신이면 `SKIPPED`로 남긴다.
+
+## 상태 대조 배치
+
+`READY`로 일정 시간 이상 방치된 결제를 조회 API로 대조해 실제 상태에 맞춘다. 결제 키 없이 만료된
+준비 행은 `EXPIRED`로 마감한다. 고객이 결제창을 닫아버린 경우가 주 대상이다.
 
 ## 취소·환불
 
@@ -43,19 +95,22 @@ approved-at: 2026-07-25
 - 취소 기한은 상품별 `pickup_at - cancellation_limit_days` 중 가장 이른 시각이며 경계부터 불가하다.
 - 관리자는 같은 두 상태를 기한과 무관하게 취소할 수 있다. `PICKED_UP` 이후에는 불가하다.
 - 부분 취소는 지원하지 않는다.
+- 검증 → 외부 취소 호출 → 확정 순서로 처리한다. 승인과 같은 이유로 외부 호출은 트랜잭션 밖이다.
 - 주문 `CANCELED`, 결제 `CANCELED`, 환불 `DONE`, 정확한 재고 복구를 한 트랜잭션으로 처리한다.
-- 주문 행 잠금과 결정적 취소 멱등 키로 반복 요청의 재고 이중 복구를 막는다. 장바구니는 복원하지 않는다.
+- 주문 행 잠금과 결정적 취소 멱등 키(`CANCEL-ORDER-{orderId}`)로 반복 요청의 재고 이중 복구를 막는다.
+  같은 키를 외부 취소 요청의 멱등 키로도 넘겨 제공자 쪽 이중 취소도 막는다. 장바구니는 복원하지 않는다.
 
 ## 상태
 
 - 일반 주문: `PAID → READY_FOR_PICKUP → PICKED_UP`
 - 예외: `PAID|READY_FOR_PICKUP → CANCELED`
-- 결제: `DONE → CANCELED`
-- 환불: `REQUESTED / DONE / REJECTED` 중 모의 결제는 즉시 `DONE`
+- 결제: `READY → DONE → CANCELED`, 실패·이탈은 `READY → ABORTED|EXPIRED`
+- 환불: `REQUESTED / DONE / REJECTED` 중 승인 응답을 받은 취소는 즉시 `DONE`
 
 ## 화면
 
 - 고객: `/orders/pickup`, `/orders/checkout`, `/orders/payment`,
+  `/orders/payment/success`, `/orders/payment/fail`,
   `/orders/complete?orderId=...`, `/orders/{orderId}`
 - 관리자: `/admin/orders`, `/admin/orders/{orderId}`, `/admin/fulfillment`, `/admin/payments`
 

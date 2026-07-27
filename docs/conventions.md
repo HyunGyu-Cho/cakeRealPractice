@@ -41,6 +41,7 @@ MyBatis XML은 `resources/mapper/<도메인>/XxxMapper.xml`에 둔다.
 | 롤백 시 파일 정리 | `global/infra/StoredFileCleanup` — 파일 시스템은 트랜잭션에 참여하지 않는다. `@Transactional` 안에서 파일을 쓰면 반드시 등록한다. |
 | 페이지 링크 쿼리 | `global/common/paging/PageQuery` — `fragments/common/pagination.html`의 `extraQuery` 입력을 만든다(인코딩 포함). |
 | 페이지 요청·응답 | `global/common/paging/PageRequest`·`PageResult` |
+| 결제 승인·취소·조회 | `domain/payment/infra/PaymentGateway` — 구현(`mock`/`toss`)은 설정으로 갈린다. **외부 호출은 DB 트랜잭션 밖**에서 하고, 승인 후 확정이 실패하면 호출측이 보상 취소를 책임진다. |
 
 ## 데이터베이스 규약
 

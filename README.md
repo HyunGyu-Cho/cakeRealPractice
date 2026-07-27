@@ -161,7 +161,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 상품 | `/admin/products`, `/admin/products/new`, `/admin/products/{id}/edit` | 실제 CRUD·검색·페이징·대표 이미지·판매 중지/재개 |
 | 주문 | `/admin/orders`, `/admin/orders/{id}` | 실제 조회·검색·상태/주문일/픽업일 필터·페이징 |
 | 제작·픽업 | `/admin/fulfillment` | 실제 픽업일 조회·`PAID → READY_FOR_PICKUP → PICKED_UP` 처리 |
-| 결제·환불 | `/admin/payments` | 실제 모의 결제·전액 취소/환불 내역 조회 및 관리자 취소 |
+| 결제·환불 | `/admin/payments` | 실제 결제·전액 취소/환불 내역 조회 및 관리자 취소(제공자 취소 API 연동) |
 | 쿠폰 | `/admin/coupons`, `/admin/coupons/new`, `/admin/coupons/{id}/edit`, `/admin/coupons/{id}/issue` | 실제 CRUD·페이징·발급 중지/재개/종료·회원 지정 발급 |
 | 회원 | `/admin/members`, `/admin/members/{id}` | 실제 목록·검색(이름·이메일·상태)·페이징·상세(활동 요약)·이용 제한/해제 |
 | 후기 | `/admin/reviews` | 실제 목록·검색(상품명·노출·평점)·숨김/복구·답글 등록/수정 |
@@ -184,9 +184,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 | 상품 목록·상세 | `/products`, `/products/{id}` | 실제 구현 (필터·정렬·검색·페이징, 일반 상품 DB 장바구니 담기) |
 | 장바구니 | `/cart` | 실제 DB 구현 (조회·합산·수량 변경·단건/선택/전체 삭제·선택 주문 인계·최신 판매 정보 검증) |
 | 픽업 설정 | `/orders/pickup` | 실제 준비일·영업일·휴무일·운영시간 기반 슬롯 선택 |
-| 주문 제작 | `/orders/custom/options`, `/orders/custom/{id}`, `/orders/custom/pay/{token}` | 실제 구현 (요청서 제출·견적 확인·수락·일회성 링크 모의 결제) |
+| 주문 제작 | `/orders/custom/options`, `/orders/custom/{id}`, `/orders/custom/pay/{token}` | 실제 구현 (요청서 제출·견적 확인·수락·일회성 링크 결제 — 일반 결제와 같은 2단계) |
 | 주문서·완료·상세 | `/orders/checkout`, `/orders/complete`, `/orders/{id}` | 실제 세션 초안·소유권 검증·전액 취소 |
-| 결제 | `/orders/payment` | 실제 UUID 멱등 모의 결제 (`DONE`, 결제 성공 시 `PAID` 주문 생성) |
+| 결제 | `/orders/payment`, `/orders/payment/success`, `/orders/payment/fail` | 실제 2단계 결제 (`READY` 선삽입 → 승인 → `DONE`, 승인 성공 시 `PAID` 주문 생성). 제공자는 `cakeshop.payment.provider`로 고른다 — `mock`(기본, 외부 호출 없음) / `toss`(결제창 + 실승인) |
 | 마이페이지·프로필 | `/mypage`, `/mypage/profile` | 실제 조회·수정·비밀번호 변경·탈퇴 (주문 블록은 예시 데이터) |
 | 1:1 채팅 | `/chat` | 실제 텍스트·이미지·읽음·상담 자동 재개·`/주문제작` 카드·STOMP 실시간 이벤트 |
 | 쿠폰함·쿠폰 받기 | `/mypage/coupons`, `/coupons` | 실제 구현 (사용 가능/사용 완료/기간 만료 분류, 정원·1인 1장 다운로드, 결제 적용·취소 복구) |

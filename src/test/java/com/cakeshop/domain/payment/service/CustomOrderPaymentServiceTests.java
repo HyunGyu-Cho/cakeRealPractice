@@ -26,6 +26,7 @@ import com.cakeshop.domain.order.service.CustomOrderService;
 import com.cakeshop.domain.payment.entity.Payment;
 import com.cakeshop.domain.payment.entity.PaymentStatus;
 import com.cakeshop.domain.payment.error.PaymentErrorCode;
+import com.cakeshop.domain.payment.infra.MockPaymentGateway;
 import com.cakeshop.domain.payment.mapper.PaymentMapper;
 import com.cakeshop.global.error.BusinessException;
 import java.time.Clock;
@@ -62,8 +63,12 @@ class CustomOrderPaymentServiceTests {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
-        paymentService = new CustomOrderPaymentService(orderMapper, customOrderMapper,
-            customOrderService, paymentMapper, notificationService, couponService, clock);
+        // 실제 트랜잭션 절반과 모의 게이트웨이를 조합해 준비 → 승인 → 확정 순서까지 확인한다.
+        CustomOrderPaymentProcessor processor = new CustomOrderPaymentProcessor(orderMapper,
+            customOrderMapper, customOrderService, paymentMapper, notificationService,
+            couponService, clock);
+        paymentService = new CustomOrderPaymentService(processor, paymentMapper,
+            new MockPaymentGateway(clock));
         // 쿠폰 미선택이 기본 경로다 — 할인 없이 견적 금액 그대로 결제한다.
         when(couponService.use(eq(MEMBER_ID), isNull(), anyLong(), anyLong()))
             .thenAnswer(invocation -> CouponDiscount.none(invocation.getArgument(3)));
@@ -73,6 +78,7 @@ class CustomOrderPaymentServiceTests {
         quote.setOrderId(100L);
         when(customOrderMapper.findQuoteById(5L)).thenReturn(Optional.of(quote));
         when(paymentMapper.insertPayment(any())).thenReturn(1);
+        when(paymentMapper.confirmPayment(any())).thenReturn(1);
         when(customOrderMapper.updateLinkStatus(anyLong(), eq("ISSUED"), eq("USED"), any()))
             .thenReturn(1);
         when(orderMapper.updateStatus(100L, "UNDER_REVIEW", "IN_PRODUCTION")).thenReturn(1);
@@ -90,13 +96,16 @@ class CustomOrderPaymentServiceTests {
         verify(customOrderMapper).updateAmounts(100L, 180_000L, 0L, 180_000L);
         verify(orderMapper).updateStatus(100L, "UNDER_REVIEW", "IN_PRODUCTION");
 
-        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
-        verify(paymentMapper).insertPayment(captor.capture());
-        Payment payment = captor.getValue();
+        ArgumentCaptor<Payment> ready = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentMapper).insertPayment(ready.capture());
         // 토큰을 멱등 키로 써서 같은 링크의 중복 결제가 DB UNIQUE에서 걸린다
-        assertThat(payment.getIdempotencyKey()).isEqualTo(TOKEN);
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.DONE.name());
-        assertThat(payment.getAmount()).isEqualTo(180_000L);
+        assertThat(ready.getValue().getIdempotencyKey()).isEqualTo(TOKEN);
+        assertThat(ready.getValue().getStatus()).isEqualTo(PaymentStatus.READY.name());
+
+        ArgumentCaptor<Payment> confirmed = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentMapper).confirmPayment(confirmed.capture());
+        assertThat(confirmed.getValue().getAmount()).isEqualTo(180_000L);
+        assertThat(confirmed.getValue().getPaymentKey()).startsWith("MOCK-");
     }
 
     @Test
@@ -109,7 +118,7 @@ class CustomOrderPaymentServiceTests {
 
         // 결제 금액의 정본은 발급 시점 견적 스냅샷(링크 금액)이지 주문의 예상 금액이 아니다
         ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
-        verify(paymentMapper).insertPayment(captor.capture());
+        verify(paymentMapper).confirmPayment(captor.capture());
         assertThat(captor.getValue().getAmount()).isEqualTo(180_000L);
         verify(customOrderMapper).updateAmounts(100L, 180_000L, 0L, 180_000L);
     }
@@ -177,7 +186,9 @@ class CustomOrderPaymentServiceTests {
         assertThatThrownBy(() -> paymentService.pay(TOKEN, MEMBER_ID, "CARD", null))
             .isInstanceOf(BusinessException.class)
             .hasFieldOrPropertyWithValue("errorCode", CustomOrderErrorCode.LINK_NOT_PAYABLE);
-        verify(paymentMapper, never()).insertPayment(any());
+        // 준비는 끝났지만 확정은 하지 않는다. 승인된 결제는 보상 취소 후 ABORTED로 마감된다.
+        verify(paymentMapper, never()).confirmPayment(any());
+        verify(paymentMapper).abortPayment(any(), eq("ABORTED"), any(), any(), any());
     }
 
     @Test

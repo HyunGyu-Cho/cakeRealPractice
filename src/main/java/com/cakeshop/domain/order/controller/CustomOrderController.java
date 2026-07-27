@@ -118,8 +118,13 @@ public class CustomOrderController {
 
     // ---- 결제 링크 ----
 
+    /**
+     * 쿠폰 선택은 결제 폼과 분리해 GET으로 다시 그린다. 결제창을 열기 전에 서버가 금액을
+     * 확정해 둬야 하므로, 선택이 바뀌면 준비 금액도 함께 다시 잡혀야 하기 때문이다.
+     */
     @GetMapping("/pay/{token}")
     public String payment(@PathVariable String token,
+                          @RequestParam(required = false) Long memberCouponId,
                           @AuthenticationPrincipal MemberDetails member,
                           Model model) {
         model.addAttribute("request",
@@ -127,10 +132,15 @@ public class CustomOrderController {
         model.addAttribute("token", token);
         model.addAttribute("coupons",
             customOrderPaymentService.getApplicableCoupons(token, member.getMemberId()));
-        model.addAttribute("paymentForm", new PaymentForm());
+        model.addAttribute("prepare",
+            customOrderPaymentService.prepare(token, member.getMemberId(), memberCouponId));
+        PaymentForm paymentForm = new PaymentForm();
+        paymentForm.setMemberCouponId(memberCouponId);
+        model.addAttribute("paymentForm", paymentForm);
         return "customer/order/custom-payment";
     }
 
+    /** 모의 결제 경로. 결제창이 없어 폼 제출이 곧 승인 요청이다. */
     @PostMapping("/pay/{token}")
     public String pay(@PathVariable String token,
                       @ModelAttribute PaymentForm paymentForm,
@@ -141,6 +151,35 @@ public class CustomOrderController {
         redirectAttributes.addFlashAttribute("successMessage",
             "결제가 완료되었습니다. 제작을 시작합니다.");
         return "redirect:/orders/" + orderId;
+    }
+
+    /** 실결제 성공 콜백. 쿠폰 선택은 successUrl에 실어 보낸 값을 그대로 받는다. */
+    @GetMapping("/pay/{token}/success")
+    public String confirm(@PathVariable String token,
+                          @RequestParam String paymentKey,
+                          @RequestParam("orderId") String tossOrderId,
+                          @RequestParam long amount,
+                          @RequestParam(defaultValue = "CARD") String method,
+                          @RequestParam(required = false) Long memberCouponId,
+                          @AuthenticationPrincipal MemberDetails member,
+                          RedirectAttributes redirectAttributes) {
+        Long orderId = customOrderPaymentService.confirm(token, member.getMemberId(), paymentKey,
+            tossOrderId, amount, method, memberCouponId);
+        redirectAttributes.addFlashAttribute("successMessage",
+            "결제가 완료되었습니다. 제작을 시작합니다.");
+        return "redirect:/orders/" + orderId;
+    }
+
+    /** 실결제 실패·이탈 콜백. 링크는 살아 있으므로 결제 화면으로 되돌린다. */
+    @GetMapping("/pay/{token}/fail")
+    public String fail(@PathVariable String token,
+                       @RequestParam(required = false) String code,
+                       @RequestParam(required = false) String message,
+                       RedirectAttributes redirectAttributes) {
+        customOrderPaymentService.markFailed(token, code, message);
+        redirectAttributes.addFlashAttribute("errorMessage",
+            message == null ? "결제가 완료되지 않았습니다." : message);
+        return "redirect:/orders/custom/pay/" + token;
     }
 
     private ProductDetailView resolveProduct(Long productId) {

@@ -134,8 +134,17 @@ public class OrderService {
 
     @Transactional
     public Order createPaidOrder(CheckoutDraft draft, CheckoutView checkout) {
+        return createPaidOrder(draft, checkout, generateOrderNumber());
+    }
+
+    /**
+     * 주문번호를 결제 쪽이 정해 넘기는 경로. 실결제는 승인 전에 주문번호를 제공자에게 등록해야 해서
+     * 번호가 주문 생성보다 먼저 필요하다(스펙 order-payment.md 결제 흐름 1단계).
+     */
+    @Transactional
+    public Order createPaidOrder(CheckoutDraft draft, CheckoutView checkout, String orderNumber) {
         Order order = new Order();
-        order.setOrderNumber(generateOrderNumber());
+        order.setOrderNumber(orderNumber);
         order.setMemberId(draft.getMemberId());
         order.setOrdererName(draft.getOrdererName());
         order.setOrdererPhone(draft.getOrdererPhone());
@@ -317,6 +326,11 @@ public class OrderService {
 
     private int valueOrZero(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    /** [공개 계약] 결제 준비 단계가 미리 잡아 두는 주문번호. 형식 정의는 order가 소유한다. */
+    public String newOrderNumber() {
+        return generateOrderNumber();
     }
 
     private String generateOrderNumber() {

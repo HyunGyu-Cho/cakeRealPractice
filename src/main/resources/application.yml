@@ -42,6 +42,19 @@ app:
     # 채팅 이미지는 /uploads/** 공개 리소스와 분리하며, 소유권 검사 API로만 읽는다.
     private-image-dir: ${CHAT_IMAGE_DIR:${user.home}/cakeshop-chat-images}
 
+cakeshop:
+  payment:
+    # mock: 외부 호출 없이 즉시 승인(테스트·CI·스모크 기본). toss: 결제창 + 실승인.
+    # 키 없이 toss로 켜면 승인 단계에서 실패하므로 기본값은 mock으로 둔다.
+    provider: ${PAYMENT_PROVIDER:mock}
+    toss:
+      client-key: ${TOSS_CLIENT_KEY:}
+      secret-key: ${TOSS_SECRET_KEY:}
+    reconcile:
+      # 결제창을 닫아버려 READY로 남은 결제를 대조하는 주기와, 대조 대상이 되는 방치 시간.
+      interval: 300000
+      stale-minutes: 30
+
 ---
 # 기본 개발 환경: 각 PC에 직접 설치한 MariaDB
 spring:
