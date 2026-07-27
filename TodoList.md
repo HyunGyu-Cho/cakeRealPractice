@@ -177,14 +177,57 @@
   - 확정: 리다이렉트·flash·model에서 멈추지 않고 **DB 최종 상태까지 단정한다** — 주문 `PAID`/`CANCELED`,
     결제 금액, 재고 차감·복구, 장바구니 비움, 게시글 `BLOCKED`/`DELETED`, 후기 `HIDDEN`. 픽스처는 타 도메인
     Mapper 대신 `JdbcTemplate`으로 시드한다(`OrderPaymentIntegrationTests` 패턴).
-  - `local` 프로필은 `app.mockup.public-preview=true`라서 `GET /orders/**`가 비로그인에 열려 있다. 그 상태만
-    보면 rds의 실제 접근 통제를 알 수 없으므로 `CustomerAuthGateE2ETests`만 플래그를 false로 덮어쓴
-    별도 컨텍스트로 돌린다(`CartSecurityTests`와 같은 방식).
+  - 당시 `local` 프로필은 `app.mockup.public-preview=true`라서 `GET /orders/**`가 비로그인에 열려 있었고,
+    `CustomerAuthGateE2ETests`만 플래그를 false로 덮어쓴 별도 컨텍스트로 돌렸다.
+    **아래 "global 공통 기반 정비"에서 이 플래그를 제거**했으므로 지금은 그 우회가 필요하지 않다.
   - **기능 결함은 나오지 않았다.** 작성 중 3번 실패한 것은 전부 테스트 쪽 가정 오류였다. 기록해 둘 실제 동작:
     주문제작 `orders.final_amount`는 견적 **발송**이 아니라 고객 **수락** 시점에 견적 금액으로 덮어쓰고,
     주문제작 픽업 일시는 임의 시각이 아닌 영업시간 슬롯이어야 하며 필수 옵션 그룹은 반드시 선택해야 접수된다.
   - 범위 밖: JS 동작 자체(무한스크롤 DOM 렌더, 채팅 WebSocket UI, 알림 폴링). 좋아요·목록 JSON API는
     서버 엔드포인트를 직접 호출해 검증했다. 브라우저 E2E는 프론트 상호작용이 늘거나 실결제를 붙일 때 재검토한다.
+
+- [x] **global 공통 기반 정비** — 토스 실결제 착수 전 선행 (⚠️ `global/*` 변경 — PR 합의 필요)
+  - 토스 작업에 들어가기 전 `global` 19개 파일을 검토해 나온 것을 정리했다. 토스는 외부 HTTP 연동 + 새 배치 +
+    웹훅을 한꺼번에 들여오므로, 먼저 기반을 맞춰 스펙이 "이미 있는 것을 쓰는" 형태가 되게 했다.
+  - **`@Scheduled` 풀 크기를 4로 지정**했다(`spring.task.scheduling.pool.size`). 기본값이 1이라 배치가
+    둘이 되면 직렬화된다 — 토스의 "결제 상태 대조 배치"가 알림 재시도에 밀리는 것을 막는다.
+  - **`app.mockup.public-preview` 플래그를 제거**했다. 화면이 전부 실구현으로 전환되며 "예외의 예외"만
+    나열하는 형태로 사문화됐고, 남은 개방은 `GET /orders/**`와 `/community/new`뿐이었다. 토스를 붙이면
+    그 개방이 결제 화면까지 비로그인에 여는 셈이라 먼저 걷어냈다. 이 플래그를 켜서 검증하던 테스트 4개는
+    실제로는 preview와 무관했으므로(모두 "켜져 있어도 잠겨 있다"를 증명) 지정만 지웠다.
+  - **`BusinessException(ErrorCode, Throwable)` 생성자 추가.** 외부 연동 실패를 감쌀 때 원인 스택이
+    끊기던 것을 해결한다. 토스 클라이언트가 첫 사용처다.
+  - 확정: **JSON 오류 응답은 `global/error/ApiExceptionHandler` 한 곳이 담당한다.** chat·notification에
+    거의 같은 핸들러가 복사돼 있었고 `CommunityApiController`는 아예 없어 fetch 호출자에게 HTML 오류
+    페이지가 나갔다. `@RestControllerAdvice(annotations = RestController.class)`로 JSON만 잡고 SSR은
+    기존 `GlobalExceptionHandler`가 계속 렌더한다 — content negotiation 코드를 쓰지 않는다.
+    도메인 고유 문구가 필요하면 `assignableTypes` advice를 두면 이긴다(chat의 업로드 상한만 남겼다).
+  - ⚠️ **`@ControllerAdvice(annotations = Controller.class)`로는 `@RestController`를 걸러낼 수 없다** —
+    `@RestController`가 `@Controller`를 메타 애노테이션으로 갖기 때문이다(추측하지 않고 테스트로 확인했다).
+    그래서 헤더용 `@ModelAttribute`(장바구니 수량·미읽음 알림 수)는 selector 대신 요청 시점에
+    `global/common/web/RequestKind`로 판정한다. 이전에는 JSON 요청마다 쓰이지 않는 COUNT 쿼리 2개가 돌았다.
+  - **업로드 확장자를 파일명이 아니라 content type에서 역산**한다(`LocalFileStorageClient`). `/uploads/**`는
+    공개 서빙이고 리소스 핸들러가 확장자로 Content-Type을 정하므로, 파일명을 믿으면 `image/png`로 선언한 채
+    이름만 `.html`로 보내 같은 오리진에서 HTML을 실행시킬 수 있었다. 매핑에 없는 형식은 저장 계층이 거부하므로
+    `image/svg+xml`도 여기서 막힌다.
+  - 확정: **이미지 판정은 `global/infra/ImageValidator` 한 곳.** 매직바이트 검사가 chat에만 있었고
+    product·store는 `startsWith("image/")`만 봐서 SVG가 통과했다(관리자 전용이라 도달성은 낮았다).
+    **global은 도메인 `ErrorCode`를 모르므로 예외를 던지지 않고** 위반 사유만 돌려주고, 각 도메인이 자기
+    코드로 예외를 만든다 — 도메인별 안내 문구를 유지하기 위해서다.
+  - **롤백 시 고아 파일 정리를 `global/infra/StoredFileCleanup`으로 공유**했다. chat·product·store에만 있고
+    review·주문제작에는 없어서, `@Transactional` 안에서 파일을 쓰고 롤백되면 디스크에 파일이 남았다.
+    삭제 **시점** 판단은 도메인에 남긴다(트랜잭션 밖에서는 `false`를 돌려 호출처가 `deleteNow`로 정리) —
+    공통화하면서 비트랜잭션 단위 테스트의 삭제 순서가 바뀌는 것을 피했다.
+  - **페이지 링크 쿼리 빌더를 `global/common/paging/PageQuery`로** 모았다. 뷰는 `fragments/common/pagination`
+    으로 이미 공유돼 있었는데 입력을 만드는 코드가 5개 컨트롤러에 복사돼 있었다. 프래그먼트 계약(맨 앞 `&`)을
+    지켜 **템플릿은 수정하지 않았다.**
+  - **하지 않은 것**: 무한스크롤 크기 정책 통합. `CommunityService.SLICE_DEFAULT_SIZE = 10`은
+    `CommunityController.PAGE_SIZE = 10`과 **의도적으로 맞춘 값**(두 방식 비교가 목적)이라
+    `PageRequest.DEFAULT_SIZE = 20`으로 합치면 그 정렬이 깨진다. 중복처럼 보이지만 서로 다른 정책이다.
+  - 신규 테스트 25개로 고정했다(431 → 456). `ImageValidatorTests`, `StoredFileCleanupTests`,
+    `PageQueryTests`, `JsonApiAdviceTests`(JSON은 JSON·SSR은 HTML·JSON 요청에 헤더 쿼리 없음),
+    `LocalFileStorageClientTests` 확장(확장자 역산·SVG 거부). 테스트 픽스처는 `support/TestImages`로 모았다 —
+    매직바이트 검사가 생겨 아무 바이트나 담은 `MockMultipartFile`은 더 이상 통과하지 않는다.
 
 ## 6단계 — 후속 (계획된 마일스톤을 모두 끝낸 뒤 진행)
 

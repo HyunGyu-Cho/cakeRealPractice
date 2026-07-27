@@ -15,6 +15,9 @@ import com.cakeshop.domain.store.entity.Store;
 import com.cakeshop.domain.store.entity.StoreBusinessHour;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.support.TestImages;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -48,7 +51,8 @@ class StoreServiceTests {
 
     @BeforeEach
     void setUp() {
-        storeService = new StoreService(storeMapper, fileStorageClient, pickupReservationPort);
+        storeService = new StoreService(storeMapper, fileStorageClient, pickupReservationPort,
+            new ImageValidator(), new StoredFileCleanup(fileStorageClient));
     }
 
     @AfterEach
@@ -99,8 +103,7 @@ class StoreServiceTests {
         when(storeMapper.updateStore(any(Store.class))).thenReturn(1);
         when(fileStorageClient.store(any(), org.mockito.ArgumentMatchers.eq("store")))
             .thenReturn("/uploads/store/202607/new.jpg");
-        MultipartFile image = new MockMultipartFile(
-            "image", "cake.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        MultipartFile image = TestImages.jpeg("image", "cake.jpg");
 
         storeService.updateStore(validForm(), image);
 
@@ -118,8 +121,7 @@ class StoreServiceTests {
         when(storeMapper.updateStore(any(Store.class))).thenReturn(0);
         when(fileStorageClient.store(any(), org.mockito.ArgumentMatchers.eq("store")))
             .thenReturn("/uploads/store/202607/new.jpg");
-        MultipartFile image = new MockMultipartFile(
-            "image", "cake.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        MultipartFile image = TestImages.jpeg("image", "cake.jpg");
 
         assertThatThrownBy(() -> storeService.updateStore(validForm(), image))
             .isInstanceOfSatisfying(BusinessException.class,
@@ -137,8 +139,7 @@ class StoreServiceTests {
         when(storeMapper.updateStore(any(Store.class))).thenReturn(1);
         when(fileStorageClient.store(any(), org.mockito.ArgumentMatchers.eq("store")))
             .thenReturn("/uploads/store/202607/new.jpg");
-        MultipartFile image = new MockMultipartFile(
-            "image", "cake.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        MultipartFile image = TestImages.jpeg("image", "cake.jpg");
         TransactionSynchronizationManager.initSynchronization();
 
         storeService.updateStore(validForm(), image);
@@ -158,8 +159,7 @@ class StoreServiceTests {
         when(storeMapper.updateStore(any(Store.class))).thenReturn(0);
         when(fileStorageClient.store(any(), org.mockito.ArgumentMatchers.eq("store")))
             .thenReturn("/uploads/store/202607/new.jpg");
-        MultipartFile image = new MockMultipartFile(
-            "image", "cake.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        MultipartFile image = TestImages.jpeg("image", "cake.jpg");
         TransactionSynchronizationManager.initSynchronization();
 
         assertThatThrownBy(() -> storeService.updateStore(validForm(), image))

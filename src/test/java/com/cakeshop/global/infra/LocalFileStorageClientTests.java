@@ -80,4 +80,44 @@ class LocalFileStorageClientTests {
         client.delete("/etc/passwd");
         client.delete(null);
     }
+
+    /**
+     * 저장 확장자는 클라이언트가 보낸 <b>파일명이 아니라 content type</b>에서 나온다.
+     *
+     * <p>{@code /uploads/**} 는 공개 서빙되고 Spring 리소스 핸들러는 확장자로 Content-Type 을
+     * 정한다. 파일명을 믿으면 {@code image/png} 로 선언한 채 이름만 {@code .html} 로 보내
+     * 같은 오리진에서 HTML 을 실행시킬 수 있다.
+     */
+    @Test
+    void store_확장자는_파일명이_아니라_contentType에서_나온다() {
+        MockMultipartFile disguised = new MockMultipartFile(
+                "file", "payload.html", "image/png", "<script>alert(1)</script>".getBytes());
+
+        String path = client.store(disguised, "review");
+
+        assertThat(path).endsWith(".png");
+        assertThat(path).doesNotContain(".html");
+    }
+
+    @Test
+    void store_svg처럼_실행가능한_형식은_거부한다() {
+        MockMultipartFile svg = new MockMultipartFile(
+                "file", "logo.svg", "image/svg+xml", "<svg onload=\"alert(1)\"/>".getBytes());
+
+        assertThatThrownBy(() -> client.store(svg, "store"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void store_매핑에_없는_형식은_거부한다() {
+        MockMultipartFile pdf = new MockMultipartFile(
+                "file", "spec.pdf", "application/pdf", "%PDF".getBytes());
+        MockMultipartFile noType = new MockMultipartFile(
+                "file", "cake.jpg", null, "bytes".getBytes());
+
+        assertThatThrownBy(() -> client.store(pdf, "product"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> client.store(noType, "product"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

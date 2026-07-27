@@ -21,6 +21,20 @@ public class LocalFileStorageClient implements FileStorageClient {
 
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("yyyyMM");
 
+    /**
+     * 저장 확장자는 <b>클라이언트가 보낸 파일명이 아니라 content type 에서 역산</b>한다.
+     *
+     * <p>저장 파일은 {@code /uploads/**} 로 공개 서빙되고, Spring 의 리소스 핸들러는
+     * <b>확장자로 Content-Type 을 결정</b>한다. 파일명을 믿으면 {@code image/png} 로 선언한 채
+     * 이름만 {@code x.html} 로 보내 앱과 같은 오리진에서 HTML 이 실행되게 만들 수 있다.
+     * 매핑에 없는 형식은 아래에서 거부되므로 {@code image/svg+xml} 도 여기서 막힌다.
+     */
+    private static final java.util.Map<String, String> EXTENSION_BY_CONTENT_TYPE = java.util.Map.of(
+        "image/jpeg", ".jpg",
+        "image/png", ".png",
+        "image/gif", ".gif",
+        "image/webp", ".webp");
+
     private final Path baseDir;
     private final String urlPrefix;
 
@@ -38,7 +52,7 @@ public class LocalFileStorageClient implements FileStorageClient {
             throw new IllegalArgumentException("저장할 파일이 비어 있습니다.");
         }
         String relativeDir = directory + "/" + LocalDate.now().format(MONTH);
-        String filename = UUID.randomUUID() + extension(file.getOriginalFilename());
+        String filename = UUID.randomUUID() + extension(file.getContentType());
         Path targetDir = baseDir.resolve(relativeDir).normalize();
         // directory 에 '..' 등이 섞여 baseDir 밖으로 나가는 것을 차단한다.
         if (!targetDir.startsWith(baseDir)) {
@@ -72,9 +86,18 @@ public class LocalFileStorageClient implements FileStorageClient {
         }
     }
 
-    private String extension(String originalFilename) {
-        String ext = StringUtils.getFilenameExtension(originalFilename);
-        return StringUtils.hasText(ext) ? "." + ext.toLowerCase() : "";
+    /**
+     * 도메인 검증({@code ImageValidator})을 통과했더라도 여기서 한 번 더 막는다 — 저장 계층이
+     * 스스로 안전한 확장자만 쓰게 만들어, 새 호출처가 검증을 빠뜨려도 실행 가능한 파일이 생기지 않게 한다.
+     */
+    private String extension(String contentType) {
+        String normalized = contentType == null ? null
+            : contentType.toLowerCase(java.util.Locale.ROOT).trim();
+        String extension = normalized == null ? null : EXTENSION_BY_CONTENT_TYPE.get(normalized);
+        if (extension == null) {
+            throw new IllegalArgumentException("허용되지 않은 파일 형식입니다: " + contentType);
+        }
+        return extension;
     }
 
     private String stripTrailingSlash(String value) {

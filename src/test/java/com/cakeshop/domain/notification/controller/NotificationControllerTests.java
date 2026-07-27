@@ -13,6 +13,7 @@ import com.cakeshop.domain.notification.dto.view.NotificationSliceView;
 import com.cakeshop.domain.notification.dto.view.NotificationView;
 import com.cakeshop.domain.notification.error.NotificationErrorCode;
 import com.cakeshop.domain.notification.service.NotificationService;
+import com.cakeshop.global.error.ApiExceptionHandler;
 import com.cakeshop.global.error.BusinessException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,7 +47,8 @@ class NotificationControllerTests {
         mockMvc = MockMvcBuilders.standaloneSetup(
                 new NotificationController(notificationService),
                 new NotificationApiController(notificationService))
-            .setControllerAdvice(new NotificationApiExceptionHandler())
+            // JSON 오류 응답은 도메인 전용 advice가 아니라 공통 핸들러가 담당한다.
+            .setControllerAdvice(new ApiExceptionHandler())
             .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
             .build();
     }

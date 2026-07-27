@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cakeshop.global.infra.ImageValidator;
 import com.cakeshop.domain.chat.dto.form.ChatMessageForm;
 import com.cakeshop.domain.chat.dto.view.ChatMessageView;
 import com.cakeshop.domain.chat.entity.ChatMessage;
@@ -53,7 +54,7 @@ class ChatServiceTests {
     @BeforeEach
     void setUp() {
         chatService = new ChatService(chatMapper, memberService, imageStorage, eventPublisher,
-            notificationService);
+            notificationService, new ImageValidator());
         inserted = new AtomicReference<>();
         org.mockito.Mockito.lenient().when(memberService.getProfile(1L)).thenReturn(
             new MemberProfileView(1L, "고객", "customer@example.com", null, LocalDateTime.now()));

@@ -11,6 +11,8 @@ import com.cakeshop.domain.store.error.StoreErrorCode;
 import com.cakeshop.domain.store.mapper.StoreMapper;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.infra.FileStorageClient;
+import com.cakeshop.global.infra.ImageValidator;
+import com.cakeshop.global.infra.StoredFileCleanup;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -40,7 +42,8 @@ class StorePickupPolicyTests {
 
     @BeforeEach
     void setUp() {
-        service = new StoreService(storeMapper, fileStorageClient, pickupReservationPort, CLOCK);
+        service = new StoreService(storeMapper, fileStorageClient, pickupReservationPort,
+            new ImageValidator(), new StoredFileCleanup(fileStorageClient), CLOCK);
         when(storeMapper.findStoreById(1L)).thenReturn(Optional.of(store()));
         when(storeMapper.findBusinessHours(1L)).thenReturn(List.of(hour(
             DayOfWeek.SATURDAY, LocalTime.of(11, 0), LocalTime.of(17, 0), false)));

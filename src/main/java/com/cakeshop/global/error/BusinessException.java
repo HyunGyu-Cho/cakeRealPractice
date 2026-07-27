@@ -21,4 +21,14 @@ public class BusinessException extends RuntimeException {
         super(message);
         this.errorCode = errorCode;
     }
+
+    /**
+     * 외부 연동 실패처럼 원인 예외가 있는 경우에 쓴다. 화면에는 {@code errorCode.message()}가 나가고
+     * 원인 스택은 로그({@code GlobalExceptionHandler})에만 남는다 — 외부 오류 문구를 사용자에게
+     * 그대로 노출하지 않는다.
+     */
+    public BusinessException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode.message(), cause);
+        this.errorCode = errorCode;
+    }
 }

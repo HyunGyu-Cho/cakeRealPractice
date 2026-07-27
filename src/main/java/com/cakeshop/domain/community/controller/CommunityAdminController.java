@@ -3,11 +3,10 @@ package com.cakeshop.domain.community.controller;
 import com.cakeshop.domain.community.dto.form.PostBlockForm;
 import com.cakeshop.domain.community.service.CommunityAdminService;
 import com.cakeshop.domain.community.service.CommunityService;
+import com.cakeshop.global.common.paging.PageQuery;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.security.MemberDetails;
 import jakarta.validation.Valid;
-import java.nio.charset.StandardCharsets;
-import org.springframework.web.util.UriUtils;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -51,21 +50,13 @@ public class CommunityAdminController {
         model.addAttribute("pageResult",
             communityAdminService.getPostPage(currentStatus, currentCategory, title, writer,
                 new PageRequest(page, PAGE_SIZE)));
-        // 페이지 링크에 검색 조건을 유지한다. 한글 검색어는 미리 인코딩한다.
-        StringBuilder extraQuery = new StringBuilder();
-        if (currentStatus != null) {
-            extraQuery.append("&status=").append(currentStatus);
-        }
-        if (currentCategory != null) {
-            extraQuery.append("&category=").append(currentCategory);
-        }
-        if (title != null && !title.isBlank()) {
-            extraQuery.append("&title=").append(UriUtils.encodeQueryParam(title, StandardCharsets.UTF_8));
-        }
-        if (writer != null && !writer.isBlank()) {
-            extraQuery.append("&writer=").append(UriUtils.encodeQueryParam(writer, StandardCharsets.UTF_8));
-        }
-        model.addAttribute("extraQuery", extraQuery.toString());
+        // 페이지 링크에 검색 조건을 유지한다. 인코딩은 PageQuery가 처리한다(한글 검색어).
+        model.addAttribute("extraQuery", PageQuery.of()
+            .add("status", currentStatus)
+            .add("category", currentCategory)
+            .add("title", title)
+            .add("writer", writer)
+            .toQueryString());
         return "admin/community/list";
     }
 

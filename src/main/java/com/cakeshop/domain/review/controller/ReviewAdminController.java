@@ -4,11 +4,11 @@ import com.cakeshop.domain.review.dto.form.AdminReviewSearchForm;
 import com.cakeshop.domain.review.dto.form.ReviewReplyForm;
 import com.cakeshop.domain.review.entity.ReviewStatus;
 import com.cakeshop.domain.review.service.ReviewAdminService;
+import com.cakeshop.global.common.paging.PageQuery;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.security.MemberDetails;
 import jakarta.validation.Valid;
-import java.nio.charset.StandardCharsets;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.web.util.UriUtils;
 
 /** 관리자 후기 관리 — 목록·검색, 숨김·복구, 답글. */
 @Controller
@@ -80,17 +79,10 @@ public class ReviewAdminController {
     }
 
     private String extraQuery(AdminReviewSearchForm search) {
-        StringBuilder query = new StringBuilder();
-        if (search.getNormalizedKeyword() != null) {
-            query.append("&keyword=")
-                .append(UriUtils.encodeQueryParam(search.getNormalizedKeyword(), StandardCharsets.UTF_8));
-        }
-        if (search.getNormalizedStatus() != null) {
-            query.append("&status=").append(search.getNormalizedStatus());
-        }
-        if (search.getNormalizedRating() != null) {
-            query.append("&rating=").append(search.getNormalizedRating());
-        }
-        return query.toString();
+        return PageQuery.of()
+            .add("keyword", search.getNormalizedKeyword())
+            .add("status", search.getNormalizedStatus())
+            .add("rating", search.getNormalizedRating())
+            .toQueryString();
     }
 }
