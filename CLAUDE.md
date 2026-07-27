@@ -12,6 +12,8 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 
 - 커밋 메시지는 **한글**로 작성한다.
 - `main`에 직접 push하지 않는다. 브랜치는 `main`(안정) ← `dev`(통합) ← `feature/*`(작업), 병합은 PR로만 한다.
+- **예외 — 문서만 바뀌는 변경은 `dev`에 직접 커밋·push해도 된다.** 조건은 하나다: **변경 파일이 전부 `.md`** 여야 한다. `.md` 아닌 파일이 한 개라도 섞이면(코드·SQL·`application.yml`·워크플로·스크립트·`.claude/hooks`) 예외가 아니며 `feature/*` + PR로 간다. `.claude/skills/*/SKILL.md`는 `.md`지만 Claude의 동작을 바꾸므로 예외에서 제외한다. `main`은 이 예외와 무관하게 항상 PR이다.
+  - 이때 `dev` 브랜치 보호의 필수 체크를 우회하게 되므로(push 시 `Bypassed rule violations` 경고가 남는다) 사용자에게 그 사실을 보고한다. push 이벤트로 CI는 그대로 돌며, 실패하면 후속 커밋으로 고친다.
 - `.env`·비밀값·실제 개인정보를 커밋하지 않는다. repo에는 `.env_sample`만 둔다.
 - SQL 바인딩은 `#{}`만 사용한다. `${}`는 금지 (SQL 인젝션).
 - JPA를 쓰지 않는다. 엔티티는 순수 POJO이며 저장은 MyBatis mapper 호출로만 한다.
