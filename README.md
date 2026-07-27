@@ -4,6 +4,22 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
 [![CI](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml)
 
+## 문서 지도
+
+주제마다 문서 하나다. 찾는 내용이 어디 있는지부터 본다.
+
+| 알고 싶은 것 | 문서 |
+|---|---|
+| 설치·실행·화면 경로 | 이 문서 |
+| **DB** — 세팅, 마이그레이션, Flyway 설정, 에러 대처 | [`docs/database.md`](docs/database.md) |
+| **코드 규약** — 패키지 구조, 화면 템플릿 규격, 상태값 | [`docs/conventions.md`](docs/conventions.md) |
+| **업무 규칙** — 장바구니·주문·결제·쿠폰 등 확정 규칙 | [`docs/business-rules.md`](docs/business-rules.md) |
+| **표준 예시** — store 수직 슬라이스 코드 흐름 | [`docs/store-usecase-flow.md`](docs/store-usecase-flow.md) |
+| **Claude 자동화** — 훅·스킬·검증 스크립트 | [`docs/claude-code-automation.md`](docs/claude-code-automation.md) |
+| 도메인별 상세 스펙 | `docs/specs/<도메인>.md` |
+| 팀 규칙·아키텍처 요약 (항상 로드) | [`CLAUDE.md`](CLAUDE.md) |
+| 개발 순서와 진행 이력 | [`TodoList.md`](TodoList.md) |
+
 ## 개발 환경
 
 각 개발자가 PC에 MariaDB를 직접 설치하고 Spring Boot를 실행한다. 기본적으로 각자의 로컬 MariaDB를 사용하고, 필요할 때만 `rds` 프로필로 공용 AWS RDS에 접속한다. Docker는 사용하지 않는다.
@@ -33,7 +49,7 @@ CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이�
    .\gradlew.bat bootRun --args="--spring.profiles.active=local --spring.flyway.baseline-on-migrate=true"
    ```
 
-   자세한 규칙은 [`docs/sql/README.md`](docs/sql/README.md).
+   자세한 규칙은 [`docs/database.md`](docs/database.md).
 
 ## 실행 프로필 선택
 
@@ -97,59 +113,13 @@ Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
 
 ## DB 스키마 관리
 
-Flyway로 관리한다. 앱이 부팅할 때 미적용 마이그레이션을 순서대로 적용하고 `flyway_schema_history`에 기록하므로, 각자 손으로 SQL을 돌릴 일이 없다.
+Flyway가 관리한다. 앱이 부팅할 때 미적용 마이그레이션을 순서대로 적용하고 `flyway_schema_history`에 기록하므로, 각자 손으로 SQL을 돌릴 일이 없다.
 
-| 위치 | 내용 | 적용 대상 |
-|---|---|---|
-| `src/main/resources/db/migration/V1__baseline_schema.sql` | 전환 시점의 전체 스키마 + 필수 시드(카테고리 4종, 대표 매장 1행 + 7개 요일 영업시간) | 모든 환경 |
-| `src/main/resources/db/migration/V2__…` 이후 | 이후의 모든 스키마 변경 | 모든 환경 |
-| `src/main/resources/db/seed/R__dev_seed.sql` | 개발용 샘플 상품 | **`local` 전용** |
-| `docs/sql/legacy/` | 전환 이전 V0~V19 이력 | ❌ 보관용 |
+- 새 마이그레이션은 `src/main/resources/db/migration/V<다음번호>__<설명>.sql`(언더바 2개)로 추가한다. **커밋된 파일은 수정하지 않는다** — 체크섬 검증에 걸려 이미 적용한 사람의 부팅이 실패한다.
+- 개발용 샘플 데이터는 `src/main/resources/db/seed/`에 두고 `local` 프로필에서만 적용된다.
+- 공용 RDS는 자동 실행이 꺼져 있다(`rds` 프로필 `spring.flyway.enabled: false`).
 
-- **커밋된 마이그레이션 파일은 수정하지 않는다.** 변경은 새 `V<다음번호>__<설명>.sql`(언더바 2개)로 추가한다. 고치면 체크섬 검증에 걸려 이미 적용한 팀원의 부팅이 실패한다.
-- **공용 RDS는 자동 실행이 꺼져 있다**(`rds` 프로필 `spring.flyway.enabled: false`). 아무나의 `bootRun`이 공용 스키마를 바꾸지 못하게 하기 위해서다. 반영은 스키마 담당자가 의도적으로 한 번만 켜서 수행한다.
-
-  ```powershell
-  .\gradlew.bat bootRun --args="--spring.profiles.active=rds --spring.flyway.enabled=true"
-  ```
-
-### 적용 방법
-
-| 상황 | 적용 순서 |
-|---|---|
-| **신규 DB 구축**(새 팀원, RDS 재구축) | `V0_ERD.sql` 하나면 스키마가 완성된다(소급 반영되어 있음). 커뮤니티 개발용 시드가 필요하면 `V2`도 적용한다. |
-| **기존 DB 갱신** | 아직 적용하지 않은 V2 이후 파일만 번호 순서대로 적용한다. |
-
-증분 파일은 재적용해도 안전하도록 `IF EXISTS` / `IF NOT EXISTS` 가드를 둔다. V0가 소급 반영되어 있어 가드가 없으면 신규 DB에서 증분을 재적용할 때 `Duplicate column` / `Can't DROP COLUMN`으로 실패한다.
-
-> 검증됨: 개발 로컬 DB에 `V7`(장바구니)·`V8`(일반 주문/모의 결제)·`V9`(1:1 채팅)·`V10`(알림 타입 제약·인덱스)·`V11`(상품 샘플 시드)·`V12`(알림 전달 이력)까지 적용했으며 머지 후 구조 검증·전체 테스트·화면 스모크를 통과했다. 기존 DB는 `V2 → V3 → V4 → V5 → V6 → V7 → V8 → V9 → V10 → V11 → V12` 순서로 적용한다.
->
-> `V11_product_seed.sql`은 스키마가 아니라 개발용 상품 샘플이다(재실행해도 중복되지 않는다). 이 시드가 없으면 products가 비어 있어 로컬에서 장바구니 → 주문 → 결제 흐름을 확인할 수 없다.
-
-### 시드 구분 (로컬 vs 공용 RDS)
-
-시드는 두 종류뿐이고 기준은 **"없으면 앱이 동작하지 않는가"** 하나다. 이제 이 구분은 문서가 아니라
-**파일 위치로 강제된다** — `db/seed`는 `local` 프로필에서만 `flyway.locations`에 들어간다.
-
-| 구분 | 기준 | 위치 | 대상 | 공용 RDS |
-|---|---|---|---|---|
-| **필수 시드** | 없으면 화면·기능이 깨지는 마스터 데이터 | `db/migration` | `categories` 4종·대표 매장 1행 + 7개 요일 영업시간(V1), `post_categories`(V2) | **적용된다** |
-| **데모 시드** | 로컬에서 흐름을 눈으로 확인하기 위한 샘플 | `db/seed` | 샘플 계정 2개, 상품·주문제작 샘플 | **적용되지 않는다** |
-
-- 대표 매장(`id = 1`)은 `StoreService.DEFAULT_STORE_ID`가 고정 참조하고 `getStoreView`가 7개 요일 행을 필수로 요구하므로 필수 시드다. 값은 RDS에서 관리자 화면으로 실제 매장 정보로 덮어쓴다.
-- 데모 시드는 반복 실행되는 repeatable 마이그레이션(`R__`)이라 전부 멱등하게 작성한다. 존재를 확인하고 넣는 형태이므로 재실행해도 중복되지 않는다.
-- 공용 RDS의 관리자 계정은 샘플 계정(`admin@cakeshop.local / Admin1234!`)을 쓰지 않는다. **해시가 저장소에 공개돼 있어서** 이 계정을 아예 `db/seed`로 내렸다. RDS에는 별도 계정을 직접 만든다.
-- 상품·주문제작 옵션·쿠폰은 운영에서 관리자 화면으로 등록하는 데이터다. RDS가 비어 있는 것이 정상이며 시드로 채우지 않는다.
-
-`docs/sql/legacy`의 옛 파일을 예외적으로 돌려야 할 때는 다음 도우미를 쓴다(일상적인 스키마 반영에는 쓰지 않는다).
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migration.ps1 -File docs\sql\legacy\V2_community_status_and_seed.sql
-```
-
-`scripts\verify-merge.ps1`는 머지 후 `db/migration`의 V2 이후 마이그레이션 산출물이 실제 로컬 DB 구조와 일치하는지 대조한다. Flyway 이력이 "적용했다"고 말하는 것과 DB가 실제로 그런지는 다른 문제라서, 이 대조는 전환 후에도 남겨 뒀다.
-
-상태값(`status`) 컬럼은 도메인마다 흩어지지 않도록 `docs/conventions.md`의 상태값 공통 규칙(영문 enum 이름 저장·한글 라벨 미저장·전이는 service)을 따른다.
+**세팅 방법, 시드 구분, 에러 대처, 전환 배경은 [`docs/database.md`](docs/database.md)에 모여 있다.**
 
 ## 구조
 

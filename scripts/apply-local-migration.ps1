@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     ⚠️ 일상적인 스키마 반영에는 더 이상 쓰지 않는다. 마이그레이션은 Flyway가 앱 부팅 시
-    src/main/resources/db/migration에서 자동 적용한다(README, docs/sql/README.md 참조).
+    src/main/resources/db/migration에서 자동 적용한다(docs/database.md 참조).
 
     이 스크립트는 docs/sql/legacy에 보관된 전환 이전 V파일을 예외적으로 다시 돌려봐야 할 때만
     남겨둔 도구다. 새 마이그레이션을 여기로 적용하면 Flyway 이력에 기록되지 않아

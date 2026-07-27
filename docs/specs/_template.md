@@ -8,7 +8,7 @@ approved-at:
 
 > 이 파일을 `docs/specs/<도메인>.md`로 복사해 작성한다. 구현 착수 전에 내용을 확정해야 하며,
 > `status: approved`가 아닌 도메인의 운영 코드 생성·수정은 훅이 차단한다. 확정 과정에서
-> team-plan.md 8장(핵심 비즈니스 규칙)의
+> `docs/business-rules.md`(확정 업무 규칙)의
 > 관련 미결 항목이 있으면 함께 채우고, 상태값을 새로 정하면 conventions.md 인벤토리도 갱신한다.
 
 ## 1. 개요와 유스케이스
@@ -43,8 +43,8 @@ approved-at:
 
 ## 6. 비즈니스 규칙 확정
 
-- team-plan.md 8장에서 이 도메인과 관련된 항목:
-- 확정한 규칙 (확정 후 team-plan 8장 표 갱신):
+- `business-rules.md`에서 이 도메인과 관련된 규칙:
+- 확정한 규칙 (확정 후 `business-rules.md` 갱신):
 
 ## 7. 완료 기준
 

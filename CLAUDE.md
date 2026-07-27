@@ -19,7 +19,7 @@ Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf(SSR) · MyBatis · MariaDB �
 - 다른 도메인의 테이블을 직접 JOIN하거나 다른 도메인의 Mapper를 호출하지 않는다. 상대 도메인이 공개한 Service 인터페이스로만 연동한다.
 - `src/main/resources/db/migration`의 마이그레이션 파일은 **한 번 커밋되면 수정하지 않는다**. 스키마 변경은 항상 새 `V<다음번호>__<설명>.sql`(언더바 2개)을 추가한다. Flyway가 체크섬을 검증하므로 수정하면 이미 적용한 팀원의 DB에서 부팅이 실패한다. 소급 반영할 "정본"은 더 이상 없다.
 - 개발용 더미 시드는 `src/main/resources/db/seed/R__dev_seed.sql`에만 둔다(`local` 프로필 전용). 운영에도 필요한 코드값은 `db/migration`의 V파일에 넣는다 — 공용 RDS에 샘플 데이터가 들어가면 안 된다.
-- 공용 RDS는 Flyway 자동 실행이 꺼져 있다(`rds` 프로필 `spring.flyway.enabled: false`). 스키마 반영은 담당자가 의도적으로 한 번만 켜서 수행한다. 임의로 켜지 않는다. 자세한 내용은 `docs/sql/README.md`.
+- 공용 RDS는 Flyway 자동 실행이 꺼져 있다(`rds` 프로필 `spring.flyway.enabled: false`). 스키마 반영은 담당자가 의도적으로 한 번만 켜서 수행한다. 임의로 켜지 않는다. 자세한 내용은 `docs/database.md`.
 - `created_at`/`updated_at`을 자바 코드나 UPDATE 문에서 직접 세팅하지 않는다. DDL의 `DEFAULT`/`ON UPDATE CURRENT_TIMESTAMP(6)`에 위임한다.
 - `global/*`·`store`·`home` 공통 코드는 팀 합의(PR) 없이 변경하지 않는다.
 - 도메인 구현에 착수하기 전에 `docs/specs/<도메인>.md` 스펙을 먼저 작성·확정한다(`/new-domain` 절차, 템플릿 `docs/specs/_template.md`). frontmatter가 `status: approved`가 아닌 도메인의 운영 코드 생성·수정은 훅이 차단한다(`home` 조합 계층 제외).
@@ -52,7 +52,7 @@ com.cakeshop
 
 ### 화면(템플릿)
 
-규격 정본은 `docs/frontend-template-format.md`. 고객 화면은 `fragments/common/head·header·footer`, 관리자 화면은 `fragments/admin/sidebar·header` 프래그먼트를 재사용하고 화면 고유 마크업만 작성한다. 공통 스타일·스크립트는 `static/css/app.css`·`static/js/app.js`에만 둔다. `successMessage`/`errorMessage`는 `fragments/common/alert.html`이 출력한다.
+규격 정본은 `docs/conventions.md` 2부. 고객 화면은 `fragments/common/head·header·footer`, 관리자 화면은 `fragments/admin/sidebar·header` 프래그먼트를 재사용하고 화면 고유 마크업만 작성한다. 공통 스타일·스크립트는 `static/css/app.css`·`static/js/app.js`에만 둔다. `successMessage`/`errorMessage`는 `fragments/common/alert.html`이 출력한다.
 
 목업 화면에 백엔드를 붙일 때 URL과 템플릿은 유지하고 Controller의 Model 데이터와 비활성화된 버튼만 교체한다. `scripts\import-customer-mockups.ps1`은 `$screenMap`에 남아 있는 목업만 덮어쓴다. 고객 화면은 전부 실구현으로 전환돼 현재 맵은 비어 있으며(스크립트는 CSS·JS만 갱신), 새 목업을 이관할 때만 항목을 추가하고 실구현 전환 시 다시 제외한다.
 
@@ -76,7 +76,7 @@ com.cakeshop
 - DB 접속값은 프로젝트 루트 `.env`에서 읽는다(`LOCAL_DB_*`, `RDS_*`).
 - 실행 중 프로필 전환 불가 — 서버를 `Ctrl+C`로 종료 후 재실행한다(안 하면 `Port 8080 was already in use`).
 - 실행 후 `http://localhost:8080/screens`에서 전체 화면 목록 확인. 관리자 화면은 `admin@cakeshop.local / Admin1234!`(V1 시드 계정)로 로그인.
-- **DB 스키마**: Flyway가 관리한다. 빈 DB(`CREATE DATABASE cakeshop`)만 만들어 두면 `bootRun` 시 `db/migration`이 자동 적용된다(`local`은 `db/seed`의 샘플까지). 수동 적용은 하지 않는다. 변경 규칙은 절대규칙, 상세는 `docs/sql/README.md` 참조.
+- **DB 스키마**: Flyway가 관리한다. 빈 DB(`CREATE DATABASE cakeshop`)만 만들어 두면 `bootRun` 시 `db/migration`이 자동 적용된다(`local`은 `db/seed`의 샘플까지). 수동 적용은 하지 않는다. 변경 규칙은 절대규칙, 상세는 `docs/database.md` 참조.
 
 ## 4. 도메인 컨텍스트
 
@@ -113,7 +113,7 @@ com.cakeshop
 
 ## 5. 코딩 컨벤션
 
-정본은 `docs/conventions.md`. 핵심 요약:
+정본은 `docs/conventions.md`(1부 백엔드 · 2부 화면 템플릿 · 3부 상태값). 도메인을 가로지르는 업무 규칙은 `docs/business-rules.md`. 핵심 요약:
 
 - **entity**: 순수 POJO + Lombok `@Getter @Setter`. BaseEntity 상속 금지. 시간 컬럼은 각 엔티티에 직접 선언.
 - **dto/form**: 화면 입력 + Bean Validation(검증은 여기에만, 교차 검증은 `@AssertTrue`). **dto/view**: 불변 `record`, 화면 출력 전용. entity를 화면에 직접 노출하지 않는다.

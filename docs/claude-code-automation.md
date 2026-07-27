@@ -1,8 +1,92 @@
 # Cakeshop Claude Code 협업 자동화 정리
 
-> 기준일: 2026-07-26
 > 범위: `CLAUDE.md`, 프로젝트 스킬, 훅, 머지 검증 보조 스크립트
-> 용도: 팀 공유 및 Notion 문서화. 이 파일 전체를 복사해 Notion 페이지에 붙여 넣어도 된다.
+> 구성: **0장은 처음 보는 사람용 흐름**, 1장부터는 부품별 상세 명세다.
+
+---
+
+## 0. 처음이라면 — 기능 하나를 만들면 벌어지는 일
+
+### 0-1. 왜 세 층인가 — 강제력의 차이
+
+| 층 | 파일 | 언제 작동하나 | 성격 |
+|---|---|---|---|
+| **CLAUDE.md** | 프로젝트 루트 | 세션 시작 시 **항상** 컨텍스트에 주입 | 규칙 (지식) |
+| **Skill** | `.claude/skills/*/SKILL.md` | 이름이 불릴 때만 로드 | 절차서 (체크리스트) |
+| **Hook** | `.claude/hooks/*.ps1` | 특정 이벤트에 **무조건 자동 실행** | 관문 (강제) |
+
+핵심 차이는 **강제력**이다. CLAUDE.md와 Skill은 "읽고 따르는" 것이라 사람이든 Claude든
+깜빡하면 그냥 지나간다. Hook은 Claude Code 런타임이 직접 실행하므로 작업자의 의지와 무관하게 작동한다.
+
+그래서 이 저장소는 **가장 어기기 쉬운 규칙 두 가지**만 훅으로 막아 뒀다.
+
+1. 스펙 없이 코드부터 쓰기
+2. 머지하고 검증 생략하기
+
+```text
+CLAUDE.md  ──"스펙 먼저 써라"──▶  읽고 따름 (놓칠 수 있음)
+                                        │ 놓치면
+                                        ▼
+Hook       ──PreToolUse 차단──▶  파일 쓰기 자체가 거부됨 (못 지나감)
+```
+
+> 훅은 **빠른 판정만** 한다. 빌드·부팅 같은 무거운 작업은 `scripts/verify-merge.ps1`이 맡는다.
+> 훅 안에서 돌리면 느리고, 실패 원인이 사용자에게 보이지 않기 때문이다.
+
+### 0-2. 도메인 하나를 만드는 순서
+
+`notification`이 이 순서를 그대로 밟은 실물 예시다 — 스펙은 `docs/specs/notification.md`,
+코드는 `domain/notification`, 과정은 PR #9.
+
+| 단계 | 하는 일 |
+|---|---|
+| 0 | `TodoList.md`에서 다음 도메인을 고른다 |
+| 1 | 코드부터 쓰려 하면 **PreToolUse 훅이 차단**한다 (스펙이 `approved`가 아니므로) |
+| 2 | `/new-domain` → 스펙 작성 → 사용자 확정 → `status: approved` |
+| 3 | 마이그레이션 파일 추가 ([`database.md`](database.md)) |
+| 4 | entity → mapper(+XML) → service → controller 순서로 구현 |
+| 5 | 화면 연결 ([`conventions.md` 2부](conventions.md#2부-프론트엔드-템플릿-규격)) |
+| 6 | 테스트 — Service 업무 규칙 + Controller 검증/PRG |
+| 7 | PR 생성하고 **정지**. 머지는 사람 지시를 기다린다 |
+
+### 0-3. 전체 흐름 한눈에
+
+```text
+TodoList.md에서 다음 도메인 선택
+        │
+        ▼
+[훅] 코드부터 쓰려 하면 → PreToolUse 차단
+        │
+        ▼
+/new-domain → 스펙 작성 → 사용자 확정 → status: approved
+        │
+        ▼
+[훅 통과] 마이그레이션 → entity → mapper → service → controller → 화면 → 테스트
+        │
+        ▼
+PR 생성하고 정지 (머지는 사람 지시 대기)
+        │
+        ▼
+"머지해줘" → /merge-feature → 사전 점검 → gh pr merge
+        │
+        ▼
+[훅] PostToolUse가 머지 감지 → 검증 대기 상태 무장
+        │
+        ▼
+[훅] Stop이 종료 차단 → verify-merge.ps1 4단계 전부 통과해야 해제
+        │
+        ▼
+브랜치 삭제 · TodoList/README 갱신 · 사용자 보고
+```
+
+### 0-4. 한 줄 요약
+
+> **CLAUDE.md는 "무엇이 옳은가", Skill은 "어떤 순서로", Hook은 "안 지키면 못 지나간다"를 담당한다.**
+
+자동화의 목적은 규칙을 숨기고 강제하는 것이 아니라,
+**중요한 절차를 눈에 보이게 만들고 누락을 줄이는 것**이다.
+
+---
 
 ## 1. 한눈에 보기
 
@@ -84,7 +168,7 @@ Claude가 이 저장소에서 작업할 때 항상 참고하는 최상위 프로
 - Thymeleaf SSR
 - MyBatis
 - MariaDB
-- Docker와 Flyway는 사용하지 않음
+- Docker는 사용하지 않음. DB 스키마는 Flyway로 관리
 
 ### 작업 방향
 
@@ -100,8 +184,8 @@ Claude가 이 저장소에서 작업할 때 항상 참고하는 최상위 프로
 - JPA를 사용하지 않는다.
 - 상태값은 영문 `UPPER_SNAKE`로 저장하고 상태 전이 검증은 Service가 담당한다.
 - 다른 도메인의 테이블을 직접 JOIN하거나 Mapper를 직접 호출하지 않는다.
-- 이미 적용된 증분 SQL(V2 이상)은 수정하지 않고 새 V번호 파일을 추가한다.
-- 확정된 DB 변경은 `증분 V파일 + V0/V1 정본`에 함께 반영한다.
+- 커밋된 마이그레이션 파일은 수정하지 않고 새 `V<번호>__<설명>.sql`을 추가한다(Flyway 체크섬 검증).
+- 개발용 더미 시드는 `db/seed`(local 전용)에만 두고, 공용 RDS는 Flyway 자동 실행을 끈다.
 - 시간 컬럼은 Java가 직접 설정하지 않고 DB 기본값과 `ON UPDATE`에 맡긴다.
 - `global/*`, `store`, `home`은 팀 공통 영역으로 취급한다.
 - 도메인 구현 전에 `docs/specs/<도메인>.md`를 작성하고 `status: approved`로 확정한다.
@@ -151,7 +235,7 @@ Controller → Service → Mapper
 2. `feature/<도메인명>` 브랜치인지 확인한다.
 3. `docs/specs/<도메인>.md` 존재 여부와 frontmatter 상태를 확인한다.
 4. 스펙이 없으면 `docs/specs/_template.md`로 `status: draft` 문서를 만든다.
-5. 목업 화면, mockup JavaScript, `docs/team-plan.md`, 상태값 컨벤션을 대조해 스펙을 채운다.
+5. 목업 화면, mockup JavaScript, `docs/business-rules.md`, 상태값 컨벤션을 대조해 스펙을 채운다.
 6. 사용자에게 스펙을 보여주고 명시적으로 확정받는다.
 7. 확정 후 `status: approved`, `approved-at: YYYY-MM-DD`로 변경한다.
 8. DB → Entity → Mapper → ErrorCode → Service → DTO → Controller 순서로 구현한다.
@@ -169,7 +253,7 @@ Controller → Service → Mapper
 - 도메인 간 공개 Service 인터페이스
 - 대상 화면과 URL
 - 목업에서 실제 규칙으로 확정할 내용
-- `team-plan.md`의 미결 비즈니스 규칙
+- `business-rules.md`의 관련 업무 규칙
 - 완료 기준 체크리스트
 
 ### 이 스킬과 연결된 관문
@@ -375,13 +459,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-merge.ps1
 ### 2단계: 로컬 DB 마이그레이션 반영 확인
 
 - `.env`의 `LOCAL_DB_*` 설정 사용
-- 모든 증분 SQL(V2 이상)의 결과가 로컬 MariaDB에 반영됐는지 확인
+- V2 이상 마이그레이션(V1은 베이스라인이라 제외)의 결과가 로컬 MariaDB에 반영됐는지 확인
 - 테이블과 컬럼 생성·삭제
 - 상태 CHECK 제약과 허용값
 - 주요 컬럼 정의
 - STORED 생성 열 표현식
 
-특정 머지 커밋만 기준으로 삼지 않고 모든 증분 V파일의 결과를 매번 확인한다. GitHub에서 이루어진 머지, squash/rebase 머지, 검증 실패 후 추가 수정에도 일관되게 동작하기 위한 선택이다.
+특정 머지 커밋만 기준으로 삼지 않고 모든 마이그레이션의 결과를 매번 확인한다. Flyway 이력이 "적용했다"고 말하는 것과 DB 구조가 실제로 그런지는 다른 문제라서, 전환 후에도 이 대조를 남겨 뒀다. GitHub에서 이루어진 머지, squash/rebase 머지, 검증 실패 후 추가 수정에도 일관되게 동작하기 위한 선택이다.
 
 ### 3단계: 전체 테스트
 
@@ -520,7 +604,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 ### `CLAUDE.md`를 바꿀 때
 
 - 절대 규칙과 실제 코드·브랜치 정책이 일치하는지 확인한다.
-- 상세 정본인 `docs/conventions.md`, `docs/team-plan.md`와 중복·충돌하지 않는지 확인한다.
+- 상세 정본인 `docs/conventions.md`, `docs/business-rules.md`, `docs/database.md`와 중복·충돌하지 않는지 확인한다.
 - 너무 긴 세부 절차는 Skill이나 별도 문서로 분리한다.
 
 ### Skill을 추가하거나 바꿀 때
@@ -569,3 +653,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\apply-local-migratio
 - 미검증 종료는 `merge-gate-stop`이 최대 3회 막는다.
 - 예외 해제는 상태 파일 삭제가 아니라 `-Skip "사유"`를 사용한다.
 - 자동화의 목적은 팀 규칙을 강제로 숨기는 것이 아니라, 중요한 절차를 눈에 보이게 만들고 누락을 줄이는 것이다.
+
+## 18. 관련 문서
+
+| 문서 | 내용 |
+|---|---|
+| `CLAUDE.md` | 절대규칙·아키텍처·컨벤션 요약 (항상 로드되는 정본) |
+| `TodoList.md` | 개발 순서 정본 — 다음 작업은 여기서 고른다 |
+| [`conventions.md`](conventions.md) | 코드 규약, 화면 템플릿 규격, 상태값 인벤토리 |
+| [`database.md`](database.md) | DB 세팅·마이그레이션·Flyway 설정 |
+| [`business-rules.md`](business-rules.md) | 도메인을 가로지르는 확정 업무 규칙 |
+| [`store-usecase-flow.md`](store-usecase-flow.md) | 표준 수직 슬라이스(store)의 코드 흐름 |
+| `docs/specs/_template.md` | 스펙 템플릿 |

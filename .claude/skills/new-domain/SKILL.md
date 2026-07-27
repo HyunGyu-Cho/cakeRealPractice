@@ -24,15 +24,15 @@ CLAUDE.md 절대규칙과 docs/conventions.md를 전제로 한다. 표준 구현
    - `draft` 또는 status 없음: 현재 코드·목업과 대조해 보완한 뒤 아래 확정 절차를 진행한다.
 2. 파일이 없으면 `docs/specs/_template.md`를 복사해 `status: draft`로 작성한다. 이때 반드시:
    - 해당 화면의 목업 템플릿과 mockup JS(`static/js/customer-mockup.js` 등)를 읽고 임시 동작을 추출한다.
-   - `docs/team-plan.md` 8장에서 이 도메인 관련 미결 항목을 찾아 확정안을 제안한다.
+   - `docs/business-rules.md`에서 이 도메인 관련 규칙을 확인하고, 없으면 확정안을 제안한다.
    - 상태값이 필요하면 conventions.md 상태값 공통 규칙(영문 enum 이름·VARCHAR(20)·CHECK·전이는 service)대로 정의한다.
 3. **작성한 스펙을 사용자에게 보여주고 명시적 확정을 받는다.** 확정 전에는 구현 코드를 만들거나 수정하지 않는다.
 4. 확정되면 frontmatter를 `status: approved`, `approved-at: YYYY-MM-DD`로 바꾸고,
-   team-plan 8장 표·conventions.md 인벤토리 등 관련 정본 문서를 갱신한다.
+   `docs/business-rules.md`·`docs/conventions.md` 인벤토리 등 관련 정본 문서를 갱신한다.
 
 ## 2단계. DB
 
-- 스키마 변경이 필요하면 새 증분 V파일을 만들고 **V0_ERD.sql·V1_first_MVC_table.sql에도 소급 반영**한다(절대규칙).
+- 스키마 변경이 필요하면 `src/main/resources/db/migration/V<다음번호>__<설명>.sql`(언더바 2개)을 **새로** 만든다. 커밋된 마이그레이션은 수정하지 않는다(절대규칙). 앱을 재시작하면 Flyway가 적용한다 — 상세는 `docs/database.md`.
 - 상태 컬럼은 `VARCHAR(20) NOT NULL` + `chk_<table>_status CHECK` + 시작 상태 DEFAULT(시작 상태가 여럿이면 DEFAULT 생략하고 서비스가 세팅).
 
 ## 3단계. 백엔드 구현 (store 슬라이스 순서)
@@ -48,7 +48,7 @@ entity(순수 POJO+Lombok) → Mapper 인터페이스+XML(`#{}`만, 컬럼 명�
 ## 5단계. 테스트
 
 - Service 테스트(`StoreServiceTests` 패턴) + Controller 테스트(`StoreAdminControllerTests` 패턴, standaloneSetup+mock).
-- 실구현으로 전환된 화면은 목업 스모크 테스트(`AdminPageControllerTests`·`CustomerPageControllerTests`)에서 제외한다.
+- 화면 렌더링은 도메인별 `*ScreenRenderingTests` 패턴으로 둔다(목업 스모크 `AdminPageControllerTests`는 이미 삭제됐다).
 
 ## 6단계. 검증·마무리
 
@@ -61,4 +61,4 @@ entity(순수 POJO+Lombok) → Mapper 인터페이스+XML(`#{}`만, 컬럼 명�
 
 - 커밋 메시지는 한글로, 성격이 다른 변경은 커밋을 나눈다.
 - push 후 `gh pr create --base dev`로 **dev 대상** PR을 만든다(main 직접 push 금지).
-- PR 본문에 SQL 적용 순서와 검증 결과(테스트·E2E)를 적고, `global/*` 변경이 있으면 "합의 필요" 절로 명시한다.
+- PR 본문에 마이그레이션 내용과 검증 결과(테스트·E2E)를 적고, `global/*` 변경이 있으면 "합의 필요" 절로 명시한다.
