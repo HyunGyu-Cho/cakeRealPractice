@@ -2,9 +2,23 @@
 
 Spring Boot 4.0.2 · Java 21 · Gradle · Thymeleaf · MyBatis · MariaDB
 
+[![CI](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/HyunGyu-Cho/cakeRealPractice/actions/workflows/ci.yml)
+
 ## 개발 환경
 
 각 개발자가 PC에 MariaDB를 직접 설치하고 Spring Boot를 실행한다. 기본적으로 각자의 로컬 MariaDB를 사용하고, 필요할 때만 `rds` 프로필로 공용 AWS RDS에 접속한다. Docker는 사용하지 않는다.
+
+## CI (PR 자동 검증)
+
+`dev`·`main`으로 향하는 PR과 push마다 GitHub Actions가 다음을 검증한다(`.github/workflows/ci.yml`).
+
+1. **스키마 재현성** — 빈 MariaDB 컨테이너에 `docs/sql`의 V파일을 `V1`부터 번호 순으로 적용한다. 로컬에서 손으로 고친 스키마에 의존하는 변경은 여기서 걸린다.
+2. **빌드·전체 테스트** — 위에서 만든 DB를 대상으로 `./gradlew build`를 실행한다.
+3. **부트 jar 보관** — `dev`·`main` push일 때 실행 가능한 jar를 Actions 아티팩트로 남긴다.
+
+CI의 DB는 잡마다 새로 뜨고 끝나면 버려지는 일회용 컨테이너다. 공용 RDS나 각자의 로컬 MariaDB는 건드리지 않는다.
+
+**로컬은 통과하는데 CI만 실패한다면** 자기 로컬 DB가 V파일과 어긋났을 가능성이 높다. `scripts/verify-sql-sequence.ps1`로 V파일만으로 스키마가 재현되는지 확인한다.
 
 ## 로컬 DB 준비
 

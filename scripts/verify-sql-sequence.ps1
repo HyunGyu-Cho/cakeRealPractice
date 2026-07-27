@@ -63,20 +63,31 @@ function Invoke-SqlFile([string]$database, [string]$path) {
     }
 }
 
+# 증분 V파일 목록을 파일 시스템에서 직접 읽어 번호 순으로 정렬한다.
+# 범위를 하드코딩하면 V파일이 추가될 때마다 스크립트가 조용히 뒤처진다(과거 V9에서 멈춰 있었다).
+# 사전순 정렬은 V10이 V2보다 앞서므로 반드시 숫자로 정렬해야 한다.
+function Get-IncrementalSqlFiles([int]$from) {
+    Get-ChildItem $sqlRoot -Filter "V*.sql" |
+        ForEach-Object {
+            if ($_.Name -match '^V(\d+)_') {
+                [pscustomobject]@{ Number = [int]$Matches[1]; Name = $_.Name }
+            }
+        } |
+        Where-Object { $_.Number -ge $from } |
+        Sort-Object Number |
+        Select-Object -ExpandProperty Name
+}
+
 $targets = @(
     @{
         name = "cakeshop_schema_verify_v0"
-        files = @("V0_ERD.sql") + (2..9 | ForEach-Object {
-            Get-ChildItem $sqlRoot -Filter "V$($_)_*.sql" | Select-Object -ExpandProperty Name
-        })
+        files = @("V0_ERD.sql") + (Get-IncrementalSqlFiles 2)
     },
     @{
         name = "cakeshop_schema_verify_v1"
         # V1은 comments 등 커뮤니티 하위 테이블을 의도적으로 제외한 최소 정본이므로
         # 해당 테이블을 ALTER하는 V2는 V0 기준에서만 검증한다.
-        files = @("V1_first_MVC_table.sql") + (3..9 | ForEach-Object {
-            Get-ChildItem $sqlRoot -Filter "V$($_)_*.sql" | Select-Object -ExpandProperty Name
-        })
+        files = @("V1_first_MVC_table.sql") + (Get-IncrementalSqlFiles 3)
     }
 )
 
