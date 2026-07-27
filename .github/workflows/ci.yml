@@ -48,19 +48,30 @@ jobs:
       - name: MariaDB 클라이언트 설치
         run: sudo apt-get update && sudo apt-get install -y mariadb-client
 
-      # V0_ERD.sql은 전체 스펙 보관 정본이고, 절대규칙에 따라 확정 변경이 소급 반영된다.
-      # 실제로 V17까지의 테이블을 모두 담고 있어 빈 DB에는 이 한 파일이면 충분하다.
-      # V2 이후 증분은 "이미 스키마가 있는 DB를 따라잡게 하는 마이그레이션 경로"이므로
-      # 정본 위에 다시 얹지 않는다(얹으면 V9가 V0에 이미 있는 FK를 중복 생성해 깨진다).
+      # 기준은 V0_ERD.sql(전체 스펙 정본) + V2 이후 증분이다.
+      #  - V0는 절대규칙에 따라 확정 변경이 소급 반영되어 V17까지의 테이블을 모두 담고 있다.
+      #    그래서 스키마 자체는 V0 한 파일로 완성된다.
+      #  - 그런데 시드 데이터는 V0가 아니라 증분에 들어 있다(V2 커뮤니티 시드, V11 상품 시드).
+      #    E2E는 post_categories·상품 시드를 전제하므로 증분까지 얹어야 통과한다.
+      #  - V1_first_MVC_table.sql은 1차 MVP용 최소 정본으로 V0의 부분집합이라 적용하지 않는다.
       #
-      # 이 단계는 "정본만으로 빈 DB에서 스키마가 서고 테스트가 통과하는가"를 검증한다.
-      # 여기서 실패하면 V0에 소급 반영되지 않은 변경이 들어왔다는 뜻이다.
-      - name: 스키마 적용 (V0 전체 스펙 정본)
+      # V9만 제외하는 이유: V9는 notifications에 fk_notifications_chat_message를 추가하는데
+      # V0가 이 FK를 이미 갖고 있어 중복 생성으로 깨진다(errno 121). V0 기준에서 V9는
+      # 더 얹을 것이 없는 파일이므로 건너뛴다. 근본 정리는 docs/sql 쪽 별도 과제다.
+      - name: 스키마·시드 적용 (V0 정본 + 증분)
         run: |
           set -euo pipefail
-          # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
-          mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
-                  --default-character-set=utf8mb4 --database=cakeshop < docs/sql/V0_ERD.sql
+          # sort -V(버전 정렬)를 쓰지 않으면 사전순이라 V10이 V2보다 먼저 와서 깨진다.
+          increments=$(ls docs/sql/V*.sql | grep -vE '/V(0|1|9)_' | sort -V)
+          files="docs/sql/V0_ERD.sql $increments"
+          echo "적용 순서:"
+          for f in $files; do echo "  $f"; done
+          for f in $files; do
+            echo "--- $f"
+            # V파일에는 CREATE DATABASE/USE 문이 없으므로 대상 DB를 인자로 지정한다.
+            mariadb --host=127.0.0.1 --port=3306 --user=root --password=ci \
+                    --default-character-set=utf8mb4 --database=cakeshop < "$f"
+          done
 
       # gradlew가 저장소에 실행 비트 없이(100644) 커밋돼 있어 Linux 러너에서는 그냥 실행되지 않는다.
       # git 인덱스 모드를 바꾸면 Windows 팀원 쪽에 영향이 갈 수 있어 여기서만 권한을 준다.
