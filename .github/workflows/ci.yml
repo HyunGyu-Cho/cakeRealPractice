@@ -13,7 +13,9 @@ concurrency:
 
 jobs:
   build-test:
-    name: 빌드 · 마이그레이션 재생 · 테스트
+    # ⚠️ 이 이름은 dev 브랜치 보호 규칙의 필수 체크 이름과 일치해야 한다. 바꾸면 요구되는 체크가
+    # 영영 보고되지 않아 모든 PR이 BLOCKED로 막힌다. 바꿔야 하면 브랜치 보호 설정도 함께 고친다.
+    name: 빌드 · 스키마 재현 · 테스트
     runs-on: ubuntu-latest
 
     services:
