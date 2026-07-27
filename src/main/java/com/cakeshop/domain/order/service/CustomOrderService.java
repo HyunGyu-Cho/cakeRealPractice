@@ -9,6 +9,7 @@ import com.cakeshop.domain.notification.service.NotificationService;
 import com.cakeshop.domain.order.dto.form.CustomOrderForm;
 import com.cakeshop.domain.order.dto.view.CustomOrderDetailView;
 import com.cakeshop.domain.order.dto.view.CustomOrderOptionView;
+import com.cakeshop.domain.order.dto.view.CustomOrderPayableView;
 import com.cakeshop.domain.order.dto.view.CustomOrderQuoteView;
 import com.cakeshop.domain.order.entity.CustomOrderPaymentLink;
 import com.cakeshop.domain.order.entity.CustomOrderQuote;
@@ -300,6 +301,86 @@ public class CustomOrderService {
             "주문제작 결제가 준비되었습니다. 링크에서 결제를 완료해 주세요.",
             "CUSTOM_ORDER_PAYMENT", targetUrl);
         return link.getToken();
+    }
+
+    // ==================== 결제 링크 (payment 도메인 공개 API) ====================
+
+    /**
+     * 결제 링크가 지금 결제 가능한지 검증하고 결제에 필요한 값만 돌려준다.
+     *
+     * <p>토큰만으로 통과시키지 않고 <b>로그인 회원이 주문 소유자인지 반드시 확인한다.</b>
+     * payment 도메인은 이 메서드로만 주문을 읽는다 — 주문 테이블·Mapper를 직접 보지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public CustomOrderPayableView getPayableLink(String token, Long memberId) {
+        CustomOrderPaymentLink link = findLinkByToken(token);
+        return toPayableView(link, requirePayableOrder(link, memberId));
+    }
+
+    /**
+     * 결제 확정의 주문 쪽 앞 절반 — 링크 행을 잠그고 다시 검증한 뒤 {@code ISSUED → USED}로 내린다.
+     *
+     * <p>호출측(payment) 트랜잭션에 참여한다. 링크를 먼저 내려야 같은 토큰의 동시 결제가 여기서 걸린다.
+     * 쿠폰 사용과 결제 확정은 호출측이 이어서 같은 트랜잭션 안에서 처리한다.
+     */
+    @Transactional
+    public CustomOrderPayableView beginLinkPayment(String token, Long memberId) {
+        CustomOrderPaymentLink link = customOrderMapper.findLinkByTokenForUpdate(token)
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
+        Order order = requirePayableOrder(link, memberId);
+        if (customOrderMapper.updateLinkStatus(link.getId(), PaymentLinkStatus.ISSUED.name(),
+            PaymentLinkStatus.USED.name(), LocalDateTime.now(clock)) != 1) {
+            throw new BusinessException(CustomOrderErrorCode.LINK_NOT_PAYABLE);
+        }
+        return toPayableView(link, order);
+    }
+
+    /**
+     * 결제 확정의 주문 쪽 뒷 절반 — 확정 금액을 반영하고 {@code UNDER_REVIEW → IN_PRODUCTION}으로 올린다.
+     * 승인된 금액이 정해진 뒤에 호출해야 하므로 {@link #beginLinkPayment}와 나눠 둔다.
+     */
+    @Transactional
+    public void completeLinkPayment(Long orderId, long totalAmount, long discountAmount,
+                                    long finalAmount) {
+        customOrderMapper.updateAmounts(orderId, totalAmount, discountAmount, finalAmount);
+        if (orderMapper.updateStatus(orderId, OrderStatus.UNDER_REVIEW.name(),
+            OrderStatus.IN_PRODUCTION.name()) != 1) {
+            throw new BusinessException(CustomOrderErrorCode.NOT_UNDER_REVIEW);
+        }
+    }
+
+    private CustomOrderPaymentLink findLinkByToken(String token) {
+        return customOrderMapper.findLinkByToken(token)
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.LINK_NOT_FOUND));
+    }
+
+    /** 링크가 가리키는 주문을 소유자 기준으로 찾고, 지금 결제 가능한 상태인지 확인한다. */
+    private Order requirePayableOrder(CustomOrderPaymentLink link, Long memberId) {
+        CustomOrderQuote quote = customOrderMapper.findQuoteById(link.getQuoteId())
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.QUOTE_NOT_FOUND));
+        Order order = orderMapper.findByIdAndMemberId(quote.getOrderId(), memberId)
+            .orElseThrow(() -> new BusinessException(CustomOrderErrorCode.REQUEST_NOT_FOUND));
+
+        if (OrderStatus.IN_PRODUCTION.name().equals(order.getStatus())) {
+            throw new BusinessException(CustomOrderErrorCode.ALREADY_PAID);
+        }
+        if (!OrderStatus.UNDER_REVIEW.name().equals(order.getStatus())) {
+            throw new BusinessException(CustomOrderErrorCode.NOT_UNDER_REVIEW);
+        }
+        if (!PaymentLinkStatus.ISSUED.name().equals(link.getStatus())) {
+            throw new BusinessException(PaymentLinkStatus.USED.name().equals(link.getStatus())
+                ? CustomOrderErrorCode.ALREADY_PAID
+                : CustomOrderErrorCode.LINK_NOT_PAYABLE);
+        }
+        if (LocalDateTime.now(clock).isAfter(link.getExpiresAt())) {
+            throw new BusinessException(CustomOrderErrorCode.LINK_EXPIRED);
+        }
+        return order;
+    }
+
+    private CustomOrderPayableView toPayableView(CustomOrderPaymentLink link, Order order) {
+        return new CustomOrderPayableView(order.getId(), order.getOrderNumber(),
+            order.getMemberId(), link.getAmount());
     }
 
     // ==================== 고객 취소 ====================

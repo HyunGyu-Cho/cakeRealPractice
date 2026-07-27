@@ -51,9 +51,10 @@ class CustomOrderPaymentServiceTests {
     private static final Long MEMBER_ID = 7L;
     private static final String TOKEN = "tok-abc";
 
+    // 링크 검증·상태 전이는 주문 도메인(CustomOrderService)이 소유한다. 결제가 그 규칙을 실제로
+    // 통과하는지 보려면 스텁이 아니라 진짜 서비스를 목 매퍼 위에 얹어야 한다.
     @Mock private OrderMapper orderMapper;
     @Mock private CustomOrderMapper customOrderMapper;
-    @Mock private CustomOrderService customOrderService;
     @Mock private PaymentMapper paymentMapper;
     @Mock private NotificationService notificationService;
     @Mock private CouponService couponService;
@@ -64,9 +65,11 @@ class CustomOrderPaymentServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
         // 실제 트랜잭션 절반과 모의 게이트웨이를 조합해 준비 → 승인 → 확정 순서까지 확인한다.
-        CustomOrderPaymentProcessor processor = new CustomOrderPaymentProcessor(orderMapper,
-            customOrderMapper, customOrderService, paymentMapper, notificationService,
-            couponService, clock);
+        // 결제 링크 경로가 쓰는 협력자는 매퍼와 시계뿐이라 나머지는 채우지 않는다.
+        CustomOrderService customOrderService = new CustomOrderService(orderMapper,
+            customOrderMapper, null, null, null, null, null, null, null, null, clock);
+        CustomOrderPaymentProcessor processor = new CustomOrderPaymentProcessor(
+            customOrderService, paymentMapper, notificationService, couponService);
         paymentService = new CustomOrderPaymentService(processor, paymentMapper,
             new MockPaymentGateway(clock));
         // 쿠폰 미선택이 기본 경로다 — 할인 없이 견적 금액 그대로 결제한다.
