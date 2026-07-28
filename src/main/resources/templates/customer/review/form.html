@@ -84,7 +84,7 @@
         <div class="form-group">
           <label class="form-label" for="images">이미지 첨부 (선택, 최대 3장)</label>
           <div class="cluster" th:if="${currentImageUrls != null and !currentImageUrls.isEmpty()}">
-            <img class="placeholder-image placeholder-image--sm" style="object-fit:cover"
+            <img class="review-photo"
                  th:each="url : ${currentImageUrls}" th:src="${url}" alt="첨부 이미지">
           </div>
           <input class="form-control" id="images" type="file" name="images"

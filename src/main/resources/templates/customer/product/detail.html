@@ -90,7 +90,7 @@
           </div>
           <p th:text="${review.content}">후기 내용</p>
           <div class="cluster" th:if="${!#lists.isEmpty(review.imageUrls)}">
-            <img class="placeholder-image placeholder-image--sm" style="object-fit:cover"
+            <img class="review-photo"
                  th:each="url : ${review.imageUrls}" th:src="${url}" alt="후기 이미지">
           </div>
           <div class="panel panel--soft" th:if="${review.hasReply()}">
