@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<!-- saved from url=(0067)file:///C:/Users/user/Downloads/cakeshop-dev-monitoring-report.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cakeshop 완성도 평가 · 모니터링 리포트</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --surface-1:#fcfcfb; --surface-2:#f4f3f0;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#8a887f;
+  --border:#e4e2dc;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+  --accent:#2a78d6;
+  --code-bg:#f4f3ef;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --surface-1:#1a1a19; --surface-2:#232322;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8a887f;
+    --border:#3a3936;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --accent:#3987e5;
+    --code-bg:#232322;
+  }
+}
+:root[data-theme="dark"] .viz-root{
+  color-scheme:dark;
+  --surface-1:#1a1a19; --surface-2:#232322;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8a887f;
+  --border:#3a3936;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+  --accent:#3987e5;
+  --code-bg:#232322;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--surface-1)}
+.viz-root{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  background:var(--surface-1); color:var(--text-primary);
+  max-width:980px; margin:0 auto; padding:40px 24px 80px; line-height:1.65;
+}
+h1{font-size:26px;letter-spacing:-0.5px;margin-bottom:4px}
+h2{font-size:19px;margin:56px 0 6px;padding-top:20px;border-top:1px solid var(--border);letter-spacing:-0.3px}
+h3{font-size:15px;margin:28px 0 8px}
+p{font-size:14px;color:var(--text-secondary);margin-bottom:10px}
+.sub{color:var(--text-muted);font-size:13px}
+.lead{font-size:14.5px;color:var(--text-secondary)}
+strong{color:var(--text-primary)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:12px;line-height:1.55;margin:10px 0 16px}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0 16px}
+th{text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:2px solid var(--border);padding:7px 10px;white-space:nowrap}
+td{border-bottom:1px solid var(--border);padding:7px 10px;color:var(--text-secondary)}
+td b, td strong{color:var(--text-primary);font-weight:600}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:22px 0}
+.tile{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.tile .v{font-size:26px;font-weight:700;letter-spacing:-0.5px;font-variant-numeric:tabular-nums}
+.tile .l{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.tile .d{font-size:12px;color:var(--text-secondary);margin-top:6px}
+
+/* domain grid */
+.domains{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:16px 0}
+.dom{border:1px solid var(--border);border-radius:10px;padding:11px 13px;background:var(--surface-2)}
+.dom .name{font-weight:600;font-size:13.5px;display:flex;justify-content:space-between;align-items:center}
+.dom .pct{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.dom .barbg{height:6px;border-radius:3px;background:var(--border);margin:8px 0 6px;overflow:hidden}
+.dom .bar{height:100%;border-radius:3px;background:var(--accent)}
+.dom .note{font-size:11.5px;color:var(--text-muted)}
+
+/* cards */
+.card{border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin:14px 0;background:var(--surface-2)}
+.card h3{margin:0 0 6px;font-size:14.5px}
+.badge{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:2px 8px;margin-right:8px;vertical-align:1px;border:1px solid var(--border);color:var(--text-secondary)}
+.badge.p0{border-color:var(--series-2);color:var(--series-2)}
+.badge.done{border-color:var(--series-3);color:var(--series-3)}
+
+/* charts */
+.chart-box{border:1px solid var(--border);border-radius:12px;padding:16px 18px 8px;margin:16px 0;background:var(--surface-2)}
+.chart-title{font-size:14px;font-weight:600;margin-bottom:2px}
+.chart-sub{font-size:12px;color:var(--text-muted);margin-bottom:8px}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--text-secondary);margin:4px 0 6px;flex-wrap:wrap}
+.legend .key{display:inline-flex;align-items:center;gap:6px}
+.legend .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+svg text{font-family:inherit}
+.tt{position:fixed;pointer-events:none;background:var(--text-primary);color:var(--surface-1);
+    font-size:12px;padding:6px 10px;border-radius:7px;opacity:0;transition:opacity .12s;z-index:10;
+    max-width:260px;line-height:1.45}
+details{margin:6px 0 14px}
+summary{font-size:12.5px;color:var(--text-muted);cursor:pointer}
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+.flow{width:100%;margin:14px 0}
+ul.tight{margin:6px 0 12px 20px;font-size:13.5px;color:var(--text-secondary)}
+ul.tight li{margin:4px 0}
+ol.tight{margin:6px 0 12px 22px;font-size:13.5px;color:var(--text-secondary)}
+ol.tight li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="tt" id="tt"></div>
+<div class="tt" id="tt"></div>
+
+<h1>cakeshop — dev 브랜치 완성도 평가 · 모니터링 리포트</h1>
+<p class="sub">HyunGyu-Cho/cakeRealPractice · <b>dev 브랜치</b> (147커밋, 최신 5bbc0e1) · Spring Boot 4.0.2 / Java 21 / MyBatis / MariaDB · 측정일 2026-07-30</p>
+<p class="lead" style="margin-top:14px">
+dev의 Flyway 마이그레이션(V1~V3)으로 스키마를 구축하고 <strong>게시글 10만 · 댓글 30만 · 주문 10만 건</strong>을 적재한 뒤,
+dev의 실제 mapper SQL로 10가지 사용자 행동(메인·커뮤니티·마이페이지·관리자·통계)을 동시 16커넥션으로 재현했다.
+결과: <strong>메인 페이지 인기 글 조회가 p50 11.1초</strong>, 커뮤니티 목록 19초 — dev에서 orders·reviews·coupons는 인덱스 설계가 잘 되어 있는 반면
+<strong>posts·comments만 보조 인덱스가 없어</strong> 커뮤니티가 유일한 성능 공백이다. V4 인덱스 + 쿼리 리라이트로
+<strong>처리량 34배(2.8 → 96.2 ops/s)</strong>를 실측 검증했고, 팀 규칙(CLAUDE.md)에 맞춰 <code>feature/community-performance</code> 브랜치에 반영했다.
+부하 중 <strong>좋아요 토글에서 실제 데드락 1건</strong>도 검출됐다.
+</p>
+
+<div class="tiles">
+  <div class="tile"><div class="v">34×</div><div class="l">처리량 개선 (실측)</div><div class="d">2.8 → 96.2 ops/s, 동일 부하</div></div>
+  <div class="tile"><div class="v">11.1s → 2.8ms</div><div class="l">메인 인기 글 p50</div><div class="d">모든 방문자가 지나는 홈 화면 경로</div></div>
+  <div class="tile"><div class="v">13 / 13</div><div class="l">실구현 도메인</div><div class="d">main(2/13)과 147커밋 차이 — 목업 없음</div></div>
+  <div class="tile"><div class="v">데드락 1건</div><div class="l">좋아요 토글에서 검출</div><div class="d">부하 15초 × 2회 실행 모두 재현</div></div>
+</div>
+
+<h2>1. 완성도 평가 — dev 기준</h2>
+<p>main 기준 평가(2/13 도메인, 25%)와는 전혀 다른 그림이다. <strong>13개 도메인 전부 실구현</strong>이고 목업 화면이 남아 있지 않다.
+main 소스 316개 파일 / 약 16,500줄, <strong>테스트 84개 클래스</strong>(main 브랜치의 10배). Flyway 도입 완료(V1~V3 + R__dev_seed),
+GitHub Actions CI(빌드·스키마 재현·테스트, MariaDB 서비스 컨테이너), 도메인별 스펙 문서(<code>docs/specs/</code>)와
+스펙 미승인 시 코드 수정을 차단하는 훅까지 — <strong>협업 가드레일 수준은 팀 프로젝트 기준 상위 1% 수준</strong>이다.</p>
+
+<div class="domains">
+  <div class="dom"><div class="name">order <span class="pct">95%</span></div><div class="barbg"><div class="bar" style="width:95%"></div></div><div class="note">서비스 1,490줄 · 상태기계(canTransitionTo) · 통계 집계 · 인덱스 설계 O</div></div>
+  <div class="dom"><div class="name">payment <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">토스 실결제 + mock 전환 · 웹훅 · 취소/환불 · 테스트 11개</div></div>
+  <div class="dom"><div class="name">community <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">기능 완성, 단 <b>성능 인덱스 공백</b> (이번 V4로 해소)</div></div>
+  <div class="dom"><div class="name">chat <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">WebSocket(STOMP) + 보안 설정 + 테스트</div></div>
+  <div class="dom"><div class="name">review <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">사진 후기 · 답글 알림 · idx_reviews_product_status 설계 O</div></div>
+  <div class="dom"><div class="name">coupon <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">기간·상태 인덱스 포함, 테스트 6개</div></div>
+  <div class="dom"><div class="name">notification <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">keyset + (receiver_id, id DESC) 인덱스 — 모범 사례</div></div>
+  <div class="dom"><div class="name">member · cart · product <span class="pct">85%</span></div><div class="barbg"><div class="bar" style="width:85%"></div></div><div class="note">가입·프로필·장바구니·상품 CRUD 실구현</div></div>
+  <div class="dom"><div class="name">store · home <span class="pct">90%</span></div><div class="barbg"><div class="bar" style="width:90%"></div></div><div class="note">팀 표준 슬라이스 · home은 조합 계층</div></div>
+  <div class="dom"><div class="name">statistics <span class="pct">80%</span></div><div class="barbg"><div class="bar" style="width:80%"></div></div><div class="note">도메인 집계 조합 — 날짜 인덱스 없이 풀스캔 (개선점 ⑤)</div></div>
+</div>
+
+<h3>잘 되어 있는 점 (main 평가에서 상향)</h3>
+<ul class="tight">
+  <li><strong>스키마 관리 체계</strong> — Flyway V파일 불변 규칙 + CI에서 빈 DB에 스키마 재현 검증. main에서 지적했던 "수동 DDL, README 순서 오류" 문제가 구조적으로 해소됐다.</li>
+  <li><strong>도메인별 인덱스 설계</strong> — orders(member+created, status+pickup), payments, reviews, coupons, notifications 모두 조회 패턴에 맞는 복합 인덱스를 보유. 인덱스를 "아는" 팀이다.</li>
+  <li><strong>협업 규율</strong> — 브랜치 보호 + 필수 CI 체크, 스펙 승인 훅, 도메인 간 직접 JOIN 금지 규칙이 문서가 아니라 도구로 강제된다.</li>
+</ul>
+<h3>남은 공백 (이번 측정으로 확인)</h3>
+<ul class="tight">
+  <li><strong>posts·comments만 보조 인덱스가 없다</strong> — 다른 도메인과 대비되는 유일한 공백. 메인 페이지가 매 요청 posts 풀스캔(11초)을 타는 것이 최대 리스크였다.</li>
+  <li><strong>좋아요 토글 데드락</strong> — 부하에서 실제 재현(2회 실행 모두). check-then-act + 갭락 교차가 원인.</li>
+  <li>LIKE '%…%' 검색(게시글 제목·주문번호), 통계 대시보드의 날짜 컬럼 풀스캔, 조회수 핫로우는 여전히 남아 있다.</li>
+</ul>
+<p><strong>종합: dev는 기능 완성 단계(약 90%)에 들어선 코드베이스다.</strong> 이제 병목은 "기능이 없는 것"이 아니라
+"데이터가 쌓였을 때의 성능"이며, 그 1순위가 커뮤니티였다.</p>
+
+<h2>2. 모니터링 방법 — CS 지식과 함께</h2>
+<p>구성은 이전 리포트와 동일한 3계층 관측(앱: Actuator/Prometheus 관리 포트 분리 · DB: slow log/EXPLAIN/GLOBAL STATUS · 대시보드: Grafana)이다.
+dev에서는 measurement 대상을 넓혀 <strong>10가지 실제 사용자 행동</strong>을 재현했다:
+메인 인기 글(모든 방문자), 커뮤니티 목록·무한스크롤·상세·좋아요, 관리자 게시글 검색,
+마이페이지 주문 조회, 관리자 주문 목록, 주문번호 검색, 통계 대시보드.</p>
+<ul class="tight">
+  <li><strong>p50/p95로 롱테일 확인</strong> — 평균은 병목을 숨긴다. 기준 부하에서 무한스크롤 p50 7.3초 vs p95 13.9초.</li>
+  <li><strong>Handler_read_rnd_next 495만/15초</strong> — 인덱스 없이 순차 스캔한 행 수. 풀스캔의 직접 증거.</li>
+  <li><strong>데드락 검출</strong> — InnoDB는 잠금 대기 그래프에서 사이클을 찾으면 한쪽 트랜잭션을 강제 롤백한다(에러 1213). 부하 테스트가 아니면 코드 리뷰로 잡기 어려운 유형.</li>
+  <li>이 샌드박스는 Maven Central이 차단되어 앱 부팅이 불가하므로 DB 계층에서 실측했다. 앱 계층 지표는 로컬에서 <code>--spring.profiles.active=local,monitor</code> 실행 후 <code>localhost:9090/actuator/prometheus</code>로 확인.</li>
+</ul>
+
+<h2>3. 모니터링 결과 — dev 기준 vs V4+리라이트</h2>
+
+<div class="chart-box">
+  <div class="chart-title">처리량 — 동시 16커넥션이 15초 동안 완료한 작업</div>
+  <div class="chart-sub">10가지 행동 혼합. 값은 ops/s</div>
+  <div id="c-thr"><svg viewBox="0 0 894 200" width="100%" role="img" aria-label="처리량: 기준 2.8, 개선 96.2 ops/s — 34배"><line x1="46" x2="884" y1="166" y2="166" stroke="#3a3936" stroke-width="1.5"></line><text x="38" y="170" text-anchor="end" font-size="10.5" fill="#8a887f">0</text><line x1="46" x2="884" y1="115.33333333333334" y2="115.33333333333334" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="119.33333333333334" text-anchor="end" font-size="10.5" fill="#8a887f">37</text><line x1="46" x2="884" y1="64.66666666666667" y2="64.66666666666667" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="68.66666666666667" text-anchor="end" font-size="10.5" fill="#8a887f">74</text><line x1="46" x2="884" y1="14" y2="14" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="18" text-anchor="end" font-size="10.5" fill="#8a887f">111</text><rect x="240.5" y="162.15294223989875" width="30" height="3.8470577601012383" fill="#3987e5" rx="3"></rect><rect x="240.5" y="163" width="30" height="3" fill="#3987e5"></rect><text x="255.5" y="157.15294223989875" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">2.8 ops/s</text><rect x="238.5" y="14" width="34" height="152" fill="transparent"></rect><text x="255.5" y="188" text-anchor="middle" font-size="11.5" fill="#c3c2b7">① dev 기준</text><rect x="659.5" y="33.82608695652175" width="30" height="132.17391304347825" fill="#3987e5" rx="3"></rect><rect x="659.5" y="163" width="30" height="3" fill="#3987e5"></rect><text x="674.5" y="28.82608695652175" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">96.2 ops/s</text><rect x="657.5" y="14" width="34" height="152" fill="transparent"></rect><text x="674.5" y="188" text-anchor="middle" font-size="11.5" fill="#c3c2b7">② V4 인덱스 + 리라이트</text></svg></div>
+</div>
+
+<div class="chart-box">
+  <div class="chart-title">느린 작업 p50 (초)</div>
+  <div class="chart-sub">기준 단계에서 관리자 검색·통계는 15초 내 완료 0건(∅) — 개선 후 값만 존재</div>
+  <div class="legend">
+    <span class="key"><span class="sw" style="background:var(--series-1)"></span>① dev 기준</span>
+    <span class="key"><span class="sw" style="background:var(--series-2)"></span>② V4 인덱스 + 리라이트</span>
+  </div>
+  <div id="c-slow"><svg viewBox="0 0 894 260" width="100%" role="img" aria-label="느린 작업: 인기글 11.1초에서 2.8ms, 목록 19초에서 170ms로 개선"><line x1="46" x2="884" y1="226" y2="226" stroke="#3a3936" stroke-width="1.5"></line><text x="38" y="230" text-anchor="end" font-size="10.5" fill="#8a887f">0s</text><line x1="46" x2="884" y1="173" y2="173" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="177" text-anchor="end" font-size="10.5" fill="#8a887f">5s</text><line x1="46" x2="884" y1="120" y2="120" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="124" text-anchor="end" font-size="10.5" fill="#8a887f">11s</text><line x1="46" x2="884" y1="67" y2="67" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="71" text-anchor="end" font-size="10.5" fill="#8a887f">16s</text><line x1="46" x2="884" y1="14" y2="14" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="18" text-anchor="end" font-size="10.5" fill="#8a887f">22s</text><rect x="98.80000000000001" y="118.81877968578733" width="30" height="107.18122031421267" fill="#3987e5" rx="3"></rect><rect x="98.80000000000001" y="223" width="30" height="3" fill="#3987e5"></rect><text x="113.80000000000001" y="113.81877968578733" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">11.1s</text><rect x="96.80000000000001" y="14" width="34" height="212" fill="transparent"></rect><rect x="130.8" y="224" width="30" height="2" fill="#d95926" rx="3"></rect><rect x="130.8" y="224" width="30" height="2" fill="#d95926"></rect><text x="145.8" y="219" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">2.8ms</text><rect x="128.8" y="14" width="34" height="212" fill="transparent"></rect><text x="129.8" y="248" text-anchor="middle" font-size="11.5" fill="#c3c2b7">메인 인기 글</text><rect x="266.4" y="41.65217391304344" width="30" height="184.34782608695656" fill="#3987e5" rx="3"></rect><rect x="266.4" y="223" width="30" height="3" fill="#3987e5"></rect><text x="281.4" y="36.65217391304344" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">19.0s</text><rect x="264.4" y="14" width="34" height="212" fill="transparent"></rect><rect x="298.4" y="224" width="30" height="2" fill="#d95926" rx="3"></rect><rect x="298.4" y="224" width="30" height="2" fill="#d95926"></rect><text x="313.4" y="219" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">170ms</text><rect x="296.4" y="14" width="34" height="212" fill="transparent"></rect><text x="297.4" y="248" text-anchor="middle" font-size="11.5" fill="#c3c2b7">커뮤니티 목록</text><rect x="434" y="155.8045305078553" width="30" height="70.1954694921447" fill="#3987e5" rx="3"></rect><rect x="434" y="223" width="30" height="3" fill="#3987e5"></rect><text x="449" y="150.8045305078553" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">7.3s</text><rect x="432" y="14" width="34" height="212" fill="transparent"></rect><rect x="466" y="224" width="30" height="2" fill="#d95926" rx="3"></rect><rect x="466" y="224" width="30" height="2" fill="#d95926"></rect><text x="481" y="219" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">70ms</text><rect x="464" y="14" width="34" height="212" fill="transparent"></rect><text x="465" y="248" text-anchor="middle" font-size="11.5" fill="#c3c2b7">무한스크롤</text><text x="616.5999999999999" y="220" text-anchor="middle" font-size="11" fill="#8a887f">∅</text><rect x="601.5999999999999" y="14" width="30" height="212" fill="transparent"></rect><rect x="633.5999999999999" y="200.0518816222141" width="30" height="25.948118377785903" fill="#d95926" rx="3"></rect><rect x="633.5999999999999" y="223" width="30" height="3" fill="#d95926"></rect><text x="648.5999999999999" y="195.0518816222141" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">2.7s</text><rect x="631.5999999999999" y="14" width="34" height="212" fill="transparent"></rect><text x="632.5999999999999" y="248" text-anchor="middle" font-size="11.5" fill="#c3c2b7">관리자 검색(LIKE)</text><text x="784.1999999999999" y="220" text-anchor="middle" font-size="11" fill="#8a887f">∅</text><rect x="769.1999999999999" y="14" width="30" height="212" fill="transparent"></rect><rect x="801.1999999999999" y="216.4146876141761" width="30" height="9.585312385823896" fill="#d95926" rx="3"></rect><rect x="801.1999999999999" y="223" width="30" height="3" fill="#d95926"></rect><text x="816.1999999999999" y="211.4146876141761" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">990ms</text><rect x="799.1999999999999" y="14" width="34" height="212" fill="transparent"></rect><text x="800.1999999999999" y="248" text-anchor="middle" font-size="11.5" fill="#c3c2b7">통계 대시보드</text></svg></div>
+</div>
+
+<div class="chart-box">
+  <div class="chart-title">빠른 작업 p50 (ms)</div>
+  <div class="chart-sub">단위: ms — 위 차트와 축 스케일이 다르므로 분리. 주문 도메인은 기존 인덱스 덕에 기준에서도 준수</div>
+  <div class="legend">
+    <span class="key"><span class="sw" style="background:var(--series-1)"></span>① dev 기준</span>
+    <span class="key"><span class="sw" style="background:var(--series-2)"></span>② V4 인덱스 + 리라이트</span>
+  </div>
+  <div id="c-fast"><svg viewBox="0 0 894 230" width="100%" role="img" aria-label="빠른 작업: 주문 도메인은 기존 인덱스 덕에 기준에서도 양호"><line x1="46" x2="884" y1="196" y2="196" stroke="#3a3936" stroke-width="1.5"></line><text x="38" y="200" text-anchor="end" font-size="10.5" fill="#8a887f">0</text><line x1="46" x2="884" y1="150.5" y2="150.5" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="154.5" text-anchor="end" font-size="10.5" fill="#8a887f">158</text><line x1="46" x2="884" y1="105" y2="105" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="109" text-anchor="end" font-size="10.5" fill="#8a887f">316</text><line x1="46" x2="884" y1="59.5" y2="59.5" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="63.5" text-anchor="end" font-size="10.5" fill="#8a887f">474</text><line x1="46" x2="884" y1="14" y2="14" stroke="#3a3936" stroke-width="1" stroke-dasharray="2,4"></line><text x="38" y="18" text-anchor="end" font-size="10.5" fill="#8a887f">632</text><rect x="119.75" y="189.6027106621489" width="30" height="6.397289337851103" fill="#3987e5" rx="3"></rect><rect x="119.75" y="193" width="30" height="3" fill="#3987e5"></rect><text x="134.75" y="184.6027106621489" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">22ms</text><rect x="117.75" y="14" width="34" height="182" fill="transparent"></rect><rect x="151.75" y="191.96567339054434" width="30" height="4.0343266094556505" fill="#d95926" rx="3"></rect><rect x="151.75" y="193" width="30" height="3" fill="#d95926"></rect><text x="166.75" y="186.96567339054434" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">14ms</text><rect x="149.75" y="14" width="34" height="182" fill="transparent"></rect><text x="150.75" y="218" text-anchor="middle" font-size="11.5" fill="#c3c2b7">상세보기</text><rect x="329.25" y="190.6977421704297" width="30" height="5.302257829570284" fill="#3987e5" rx="3"></rect><rect x="329.25" y="193" width="30" height="3" fill="#3987e5"></rect><text x="344.25" y="185.6977421704297" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">18ms</text><rect x="327.25" y="14" width="34" height="182" fill="transparent"></rect><rect x="361.25" y="191.27407454320908" width="30" height="4.725925456790905" fill="#d95926" rx="3"></rect><rect x="361.25" y="193" width="30" height="3" fill="#d95926"></rect><text x="376.25" y="186.27407454320908" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">16ms</text><rect x="359.25" y="14" width="34" height="182" fill="transparent"></rect><text x="360.25" y="218" text-anchor="middle" font-size="11.5" fill="#c3c2b7">좋아요 토글</text><rect x="538.75" y="158.01969663383895" width="30" height="37.98030336616106" fill="#3987e5" rx="3"></rect><rect x="538.75" y="193" width="30" height="3" fill="#3987e5"></rect><text x="553.75" y="153.01969663383895" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">132ms</text><rect x="536.75" y="14" width="34" height="182" fill="transparent"></rect><rect x="570.75" y="184.30045283257863" width="30" height="11.699547167421386" fill="#d95926" rx="3"></rect><rect x="570.75" y="193" width="30" height="3" fill="#d95926"></rect><text x="585.75" y="179.30045283257863" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">41ms</text><rect x="568.75" y="14" width="34" height="182" fill="transparent"></rect><text x="569.75" y="218" text-anchor="middle" font-size="11.5" fill="#c3c2b7">마이페이지 주문</text><rect x="748.25" y="37.739130434782595" width="30" height="158.2608695652174" fill="#3987e5" rx="3"></rect><rect x="748.25" y="193" width="30" height="3" fill="#3987e5"></rect><text x="763.25" y="32.739130434782595" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">549ms</text><rect x="746.25" y="14" width="34" height="182" fill="transparent"></rect><rect x="780.25" y="138.91427847620255" width="30" height="57.08572152379745" fill="#d95926" rx="3"></rect><rect x="780.25" y="193" width="30" height="3" fill="#d95926"></rect><text x="795.25" y="133.91427847620255" text-anchor="middle" font-size="10.5" font-weight="600" fill="#ffffff">198ms</text><rect x="778.25" y="14" width="34" height="182" fill="transparent"></rect><text x="779.25" y="218" text-anchor="middle" font-size="11.5" fill="#c3c2b7">관리자 주문 목록</text></svg></div>
+</div>
+
+<details><summary>표로 보기 (전체 수치)</summary>
+<table>
+<tbody><tr><th>작업</th><th class="num">① p50</th><th class="num">① p95</th><th class="num">② p50</th><th class="num">② p95</th><th class="num">완료 수 ①→②</th></tr>
+<tr><td><b>메인 인기 글</b> (홈 화면)</td><td class="num"><b>11,069ms</b></td><td class="num">12,500ms</td><td class="num"><b>2.8ms</b></td><td class="num">12ms</td><td class="num">15 → 322</td></tr>
+<tr><td>커뮤니티 목록 1페이지</td><td class="num">19,036ms</td><td class="num">21,916ms</td><td class="num">170ms</td><td class="num">253ms</td><td class="num">5 → 235</td></tr>
+<tr><td>무한스크롤 (keyset)</td><td class="num">7,252ms</td><td class="num">13,866ms</td><td class="num">70ms</td><td class="num">235ms</td><td class="num">12 → 219</td></tr>
+<tr><td>상세보기 트랜잭션</td><td class="num">22ms</td><td class="num">65ms</td><td class="num">14ms</td><td class="num">39ms</td><td class="num">21 → 444</td></tr>
+<tr><td>좋아요 토글</td><td class="num">18ms</td><td class="num">41ms</td><td class="num">16ms</td><td class="num">38ms</td><td class="num">6 → 101 (데드락 각 1건)</td></tr>
+<tr><td>관리자 게시글 검색 (LIKE)</td><td class="num">완료 0건</td><td class="num">—</td><td class="num">2,681ms</td><td class="num">3,473ms</td><td class="num">0 → 49</td></tr>
+<tr><td>마이페이지 주문</td><td class="num">132ms</td><td class="num">273ms</td><td class="num">41ms</td><td class="num">107ms</td><td class="num">5 → 121</td></tr>
+<tr><td>관리자 주문 목록</td><td class="num">549ms</td><td class="num">549ms</td><td class="num">198ms</td><td class="num">314ms</td><td class="num">1 → 21</td></tr>
+<tr><td>주문번호 검색 (LIKE)</td><td class="num">39ms</td><td class="num">39ms</td><td class="num">26ms</td><td class="num">71ms</td><td class="num">1 → 29</td></tr>
+<tr><td>통계 대시보드</td><td class="num">완료 0건</td><td class="num">—</td><td class="num">994ms</td><td class="num">1,372ms</td><td class="num">0 → 32</td></tr>
+</tbody></table>
+<p class="sub">①에서 완료 0건인 작업은 느려서가 아니라, 커뮤니티 쿼리가 서버를 포화시켜 순서가 오지 않은 것이다. ②의 수치가 해당 작업의 실제 비용이다.</p>
+</details>
+
+<h3>병목의 증거 — EXPLAIN (메인 인기 글)</h3>
+<pre><code>-- ① dev 기준: findPopularPosts (ORDER BY like_count DESC, id DESC LIMIT 4)
+table: c   type: index  Extra: Using index; Using temporary; Using filesort
+table: p   type: ref    key: fk_posts_category   rows: 15,151(×4 카테고리)
+  → posts 9.8만 행 전체를 임시테이블에 모아 정렬 + 행마다 댓글수 서브쿼리 = 11초
+
+-- ② V4 이후: 파생테이블 내부
+table: posts  type: ref  key: idx_posts_status_like_count_id  Extra: Using where; Using index
+  → 인덱스 역방향 스캔으로 4건만 읽고 종료 = 2.8ms</code></pre>
+
+<h3>부하 중 검출된 데드락 — 좋아요 토글</h3>
+<pre><code>(1213) Deadlock found when trying to get lock; try restarting transaction  ← 2회 실행 모두 발생
+
+원인(CS): 토글 = SELECT EXISTS → INSERT/DELETE(post_likes) → UPDATE(posts.like_count)
+  T1: post_likes UNIQUE 인덱스에 INSERT 의향 잠금(갭락) 획득 → posts 행 잠금 대기
+  T2: 같은 인기글에서 DELETE로 post_likes 행·갭 잠금 → posts 행 잠금 획득 → T1의 갭과 충돌
+  → 대기 그래프에 사이클 → InnoDB가 한쪽을 강제 롤백 (사용자에게는 500 에러)</code></pre>
+<p>동시성이 높은 인기글에서 반복될 유형이다. 해결은 개선점 ④.</p>
+
+<h2>4. 개선점과 해결 방법</h2>
+
+<div class="card">
+  <h3><span class="badge done">적용 완료</span>① V4 커뮤니티 인덱스 4개 — <code>db/migration/V4__community_performance_indexes.sql</code></h3>
+  <p>posts(status,id) · posts(category_id,status,id) · posts(<b>status,like_count,id</b> — 인기 글 전용) · comments(post_id,status).
+  팀 규칙대로 기존 V파일을 수정하지 않고 새 V4로 추가했다. Flyway가 각 팀원 로컬 DB와 CI에 자동 적용한다.
+  <strong>실측:</strong> 인기 글 11,069ms → 2.8ms (인덱스 역방향 스캔), 통계용 카운트 2,233ms → 49ms.</p>
+</div>
+
+<div class="card">
+  <h3><span class="badge done">적용 완료</span>② 목록·인기글 쿼리 리라이트 (late row lookup) — <code>CommunityMapper.xml</code></h3>
+  <p>파생테이블에서 id만 인덱스로 LIMIT 건수까지 좁힌 뒤 확정된 소수 행에만 JOIN·댓글수 서브쿼리를 실행.
+  인덱스만으로는 부족했던 이유: 옵티마이저가 4행짜리 카테고리 조인에 BNL을 택하면 정렬이 인덱스를 못 타고,
+  댓글수 DEPENDENT SUBQUERY가 정렬 전 전 행에서 실행된다. <strong>실측: 전체 처리량 2.8 → 96.2 ops/s.</strong>
+  자바 코드 무변경 — 반환 컬럼·파라미터가 동일해 <code>PostSummaryRow</code> 매핑 그대로. 4개 분기(카테고리·커서 유무)와
+  인기 글 결과 id가 원본 쿼리와 완전 일치함을 실DB로 검증했다.</p>
+</div>
+
+<div class="card">
+  <h3><span class="badge p0">P1</span>③ 관리자 검색 — LIKE '%키워드%'</h3>
+  <p>개선 후 최대 병목(p50 2.7초). 앞 와일드카드 LIKE는 B-tree 인덱스를 탈 수 없다.
+  단기: 결과 상한 + 기간 기본 필터로 스캔 범위 축소. 중기: MariaDB 한국어 검색은 Mroonga 엔진, 규모가 커지면 검색 엔진 분리.
+  주문번호 검색은 현재 43ms지만 데이터에 선형 비례 — 주문번호는 <b>후방 일치가 대부분이므로 접두 LIKE('ORD…%')로 유도</b>하면 인덱스를 탄다.</p>
+</div>
+
+<div class="card">
+  <h3><span class="badge p0">P1</span>④ 좋아요 토글 데드락 제거</h3>
+  <p>SELECT EXISTS를 없애고 <b>INSERT IGNORE의 영향 행 수로 분기</b>하면 check-then-act 경쟁과 갭락 교차가 함께 사라진다:
+  영향 1행 → like_count +1, 0행 → DELETE 후 영향 1행이면 −1. MyBatis insert/delete는 영향 행 수를 반환하므로
+  <code>CommunityService.toggleLike</code> 몇 줄 수정으로 끝난다. 보조로 데드락(1213) 발생 시 1회 재시도를 감싸면 잔여 케이스도 흡수.</p>
+</div>
+
+<div class="card">
+  <h3><span class="badge p0">P2</span>⑤ 통계 대시보드 날짜 인덱스 — 주문 도메인(주환)과 합의 필요</h3>
+  <p><code>aggregateOrderStats</code>의 서브쿼리 4개가 created_at·picked_up_at·canceled_at 풀스캔(부하 시 p50 994ms).
+  <b>orders(created_at) / (picked_up_at) / (canceled_at) 인덱스 추가 시 179ms → 20ms 실측(9배).</b>
+  orders는 주환 담당 테이블이라 V4에 포함하지 않았다 — 별도 V파일로 제안. 조회 빈도가 낮은 관리자 화면이므로 P2.</p>
+</div>
+
+<div class="card">
+  <h3><span class="badge p0">P2</span>⑥ 조회수 핫로우 + 페이지 카운트 캐시</h3>
+  <p>상세보기 트랜잭션 안의 <code>view_count = view_count + 1</code>은 인기글 행 잠금을 직렬화한다(이전 측정: 같은 행 집중 시 처리량 −39%).
+  메모리 카운터 + <code>@Scheduled</code> 배치 UPDATE(write-behind)로 분리 권장. 목록 진입마다 도는 COUNT(*)는 Caffeine 10~30초 TTL이면 충분.</p>
+</div>
+
+<h2>5. 리팩토링 가능성 — 팀 규칙 준수 방식으로 적용 완료</h2>
+<p>①·②는 CLAUDE.md의 절대규칙을 지키는 형태로 <code>feature/community-performance</code> 브랜치에 커밋했다:
+기존 V파일 무수정(새 V4 추가), community는 담당(현규) 도메인, 커밋 메시지 한글, dev 직접 push 없이 PR 대상.
+단 <code>global/config</code>에 추가한 모니터링 설정은 규칙상 팀 합의가 필요하므로 PR에서 논의할 항목으로 표시했다.</p>
+<table>
+<tbody><tr><th>변경</th><th>파일</th><th>리스크</th><th>비고</th></tr>
+<tr><td><b>V4 인덱스</b></td><td><code>db/migration/V4__…sql</code> (신규)</td><td><b>낮음</b></td><td>추가 전용 DDL. Flyway·CI가 자동 검증. 쓰기 비용 소폭 증가뿐</td></tr>
+<tr><td><b>쿼리 리라이트</b></td><td><code>CommunityMapper.xml</code> 4개 쿼리</td><td><b>낮음</b></td><td>자바 무변경, 결과 동일성 실DB 검증 완료. CI 테스트로 재확인 권장</td></tr>
+<tr><td>모니터링 설정</td><td><code>build.gradle</code>·<code>application-monitor.yml</code>·<code>MonitoringSecurityConfig</code></td><td><b>낮음</b></td><td>monitor 프로필 한정. global 변경이라 <b>PR 합의 필요</b></td></tr>
+<tr><td>좋아요 데드락 픽스</td><td><code>CommunityService.toggleLike</code> + mapper 반환형</td><td><b>낮음~중간</b></td><td>영향 행 수 분기로 국소 수정. 단위 테스트 추가 권장</td></tr>
+<tr><td>통계 인덱스</td><td>orders 테이블 (별도 V파일)</td><td><b>낮음</b></td><td>주환과 합의 후 적용 — 효과는 9배로 실측 완료</td></tr>
+<tr><td>검색 엔진 분리</td><td>인프라 결정</td><td><b>중간~높음</b></td><td>운영 요소 추가. 게시글 수십만 건 전까지는 단기 완화로 충분</td></tr>
+</tbody></table>
+<p><strong>결론: dev 코드베이스는 리팩토링 수용력이 매우 높다.</strong> Flyway·CI·스펙 훅이 있어 이런 성능 변경을
+안전망 위에서 반복할 수 있고, 실제로 이번 개선의 핵심(34배)은 <b>자바 코드 한 줄 수정 없이</b> SQL 파일 2개로 달성됐다.</p>
+
+<div class="foot">
+측정 환경: 클라우드 샌드박스(공유 vCPU) · MariaDB 10.11 · InnoDB buffer pool 128MB(기본값) · 동시 16커넥션 × 15초 × (기준·개선) 2회.
+절대 수치는 하드웨어에 따라 다르지만 단계 간 배율은 실행 계획 차이에서 오므로 재현된다.
+스키마는 dev의 Flyway V1~V3 + R__dev_seed로 구축, 부하 데이터는 게시글 10만·댓글 30만·좋아요 10만·주문 10만·주문항목 10만·회원 202.
+</div>
+
+<script>
+(function(){
+const css = v => getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(v).trim();
+const tt = document.getElementById('tt');
+function showTT(e, html){ tt.innerHTML = html; tt.style.opacity = 1;
+  tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 280) + 'px'; tt.style.top = (e.clientY + 14) + 'px'; }
+function hideTT(){ tt.style.opacity = 0; }
+function barChart(elId, groups, seriesNames, opts){
+  const el = document.getElementById(elId);
+  const W = Math.min(el.clientWidth || 900, 900), H = opts.h || 240;
+  const m = {t:14, r:10, b:34, l:46};
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const flat = groups.flatMap(g => g.vals).filter(v => v != null);
+  const max = opts.max || Math.max(...flat) * 1.15;
+  const colors = [css('--series-1'), css('--series-2'), css('--series-3')].slice(0, seriesNames.length);
+  const gw = iw / groups.length;
+  const bw = Math.min(30, (gw - 24) / seriesNames.length);
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+  svg.setAttribute('role','img'); svg.setAttribute('aria-label', opts.aria || '');
+  const ticks = opts.ticks || 4;
+  for(let i=0;i<=ticks;i++){
+    const y = m.t + ih - (ih*i/ticks);
+    const ln = document.createElementNS(svgNS,'line');
+    ln.setAttribute('x1',m.l); ln.setAttribute('x2',W-m.r); ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+    ln.setAttribute('stroke', css('--border')); ln.setAttribute('stroke-width', i===0?1.5:1);
+    if(i>0) ln.setAttribute('stroke-dasharray','2,4');
+    svg.appendChild(ln);
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x', m.l-8); t.setAttribute('y', y+4); t.setAttribute('text-anchor','end');
+    t.setAttribute('font-size','10.5'); t.setAttribute('fill', css('--text-muted'));
+    t.textContent = opts.tickFmt ? opts.tickFmt(max*i/ticks) : Math.round(max*i/ticks);
+    svg.appendChild(t);
+  }
+  groups.forEach((g, gi) => {
+    const cx = m.l + gw*gi + gw/2;
+    const totalW = bw*seriesNames.length + 2*(seriesNames.length-1);
+    g.vals.forEach((v, si) => {
+      const x = cx - totalW/2 + si*(bw+2);
+      if(v == null){
+        const t = document.createElementNS(svgNS,'text');
+        t.setAttribute('x', x+bw/2); t.setAttribute('y', m.t+ih-6); t.setAttribute('text-anchor','middle');
+        t.setAttribute('font-size','11'); t.setAttribute('fill', css('--text-muted')); t.textContent='∅';
+        const r2 = document.createElementNS(svgNS,'rect');
+        r2.setAttribute('x',x); r2.setAttribute('y',m.t); r2.setAttribute('width',bw); r2.setAttribute('height',ih);
+        r2.setAttribute('fill','transparent');
+        r2.addEventListener('mousemove', e=>showTT(e, `<b>${g.label}</b><br>${seriesNames[si]}: 측정 기간 내 완료 0건`));
+        r2.addEventListener('mouseleave', hideTT);
+        svg.appendChild(t); svg.appendChild(r2);
+        return;
+      }
+      const bh = Math.max(2, ih * v / max);
+      const y = m.t + ih - bh;
+      const r = document.createElementNS(svgNS,'rect');
+      r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',bw); r.setAttribute('height',bh);
+      r.setAttribute('fill', colors[si]); r.setAttribute('rx','3');
+      svg.appendChild(r);
+      const cap = document.createElementNS(svgNS,'rect');
+      cap.setAttribute('x',x); cap.setAttribute('y', m.t+ih-Math.min(3,bh)); cap.setAttribute('width',bw); cap.setAttribute('height',Math.min(3,bh));
+      cap.setAttribute('fill', colors[si]);
+      svg.appendChild(cap);
+      const t = document.createElementNS(svgNS,'text');
+      t.setAttribute('x', x+bw/2); t.setAttribute('y', y-5); t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size','10.5'); t.setAttribute('font-weight','600'); t.setAttribute('fill', css('--text-primary'));
+      t.textContent = opts.fmt(v);
+      svg.appendChild(t);
+      const hit = document.createElementNS(svgNS,'rect');
+      hit.setAttribute('x',x-2); hit.setAttribute('y',m.t); hit.setAttribute('width',bw+4); hit.setAttribute('height',ih);
+      hit.setAttribute('fill','transparent');
+      hit.addEventListener('mousemove', e=>showTT(e, `<b>${g.label}</b><br>${seriesNames[si]}: ${opts.fmt(v)}${g.note?'<br>'+g.note:''}`));
+      hit.addEventListener('mouseleave', hideTT);
+      svg.appendChild(hit);
+    });
+    const lbl = document.createElementNS(svgNS,'text');
+    lbl.setAttribute('x', cx); lbl.setAttribute('y', H-12); lbl.setAttribute('text-anchor','middle');
+    lbl.setAttribute('font-size','11.5'); lbl.setAttribute('fill', css('--text-secondary'));
+    lbl.textContent = g.label;
+    svg.appendChild(lbl);
+  });
+  el.appendChild(svg);
+}
+
+barChart('c-thr',
+  [{label:'① dev 기준', vals:[2.8]},
+   {label:'② V4 인덱스 + 리라이트', vals:[96.2]}],
+  ['처리량'], {h:200, fmt:v=>v+' ops/s', ticks:3, aria:'처리량: 기준 2.8, 개선 96.2 ops/s — 34배'});
+
+barChart('c-slow',
+  [
+    {label:'메인 인기 글', vals:[11.07, 0.0028], note:'홈 화면 — 모든 방문자 경로'},
+    {label:'커뮤니티 목록', vals:[19.04, 0.17]},
+    {label:'무한스크롤', vals:[7.25, 0.07]},
+    {label:'관리자 검색(LIKE)', vals:[null, 2.68], note:'기준: 서버 포화로 완료 0건'},
+    {label:'통계 대시보드', vals:[null, 0.99], note:'기준: 서버 포화로 완료 0건'}
+  ],
+  ['① dev 기준','② V4+리라이트'],
+  {h:260, fmt:v=>v<1? (v*1000).toFixed(v<0.01?1:0)+'ms' : v.toFixed(1)+'s', tickFmt:v=>v.toFixed(0)+'s', ticks:4,
+   aria:'느린 작업: 인기글 11.1초에서 2.8ms, 목록 19초에서 170ms로 개선'});
+
+barChart('c-fast',
+  [
+    {label:'상세보기', vals:[22.2, 14.0]},
+    {label:'좋아요 토글', vals:[18.4, 16.4], note:'양쪽 모두 데드락 1건 — 개선점 ④'},
+    {label:'마이페이지 주문', vals:[131.8, 40.6]},
+    {label:'관리자 주문 목록', vals:[549.2, 198.1]}
+  ],
+  ['① dev 기준','② V4+리라이트'],
+  {h:230, fmt:v=>v.toFixed(0)+'ms', tickFmt:v=>v.toFixed(0), ticks:4,
+   aria:'빠른 작업: 주문 도메인은 기존 인덱스 덕에 기준에서도 양호'});
+})();
+</script>
+</div>
+
+
+</body></html>
