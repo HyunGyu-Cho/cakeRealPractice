@@ -17,14 +17,16 @@ management:
       #
       # [주의 1] 키에 점(.)이 있으면 Spring이 중첩 키로 해석하므로 Map 키는 대괄호로 감싼다.
       # [주의 2] 이 버전에서 percentiles-histogram 과 percentiles 는 배타적이다 (실측 확인).
-      #   - percentiles-histogram: true  → *_bucket 만 나오고 quantile 라인은 사라진다.
-      #     Prometheus 서버에서 histogram_quantile() 로 계산하며, 인스턴스 간 합산이 가능하다.
-      #   - percentiles: (현재)          → *{quantile="0.5"} 이 스크레이프에 바로 찍힌다.
-      #     Prometheus 없이 /actuator/prometheus 만 봐도 읽히지만 합산은 안 된다.
-      # 아직 Prometheus·Grafana 서버가 없으므로 "바로 읽히는" 쪽을 기본값으로 둔다.
-      # 대시보드를 붙이는 시점에 아래 두 블록을 서로 바꾼다.
+      #   - percentiles-histogram: true (현재) → *_bucket 이 나오고 quantile 라인은 사라진다.
+      #     Prometheus 가 histogram_quantile() 로 계산한다. 임의 구간 재계산과
+      #     인스턴스 간 합산이 되므로 대시보드를 붙인 지금은 이쪽이 정석이다.
+      #   - percentiles                        → *{quantile="0.5"} 이 스크레이프에 바로 찍힌다.
+      #     Prometheus 없이 /actuator/prometheus 만 봐도 읽히지만, 이미 계산된 값이라
+      #     구간을 바꿔 다시 볼 수도, 여러 인스턴스를 합칠 수도 없다.
+      # perf/monitoring 의 Prometheus·Grafana 를 함께 띄우는 것을 전제로 histogram 을 켠다.
+      # 대시보드 없이 엔드포인트만 눈으로 볼 때는 아래 true/false 를 뒤집는다.
       percentiles-histogram:
-        "[http.server.requests]": false
+        "[http.server.requests]": true
       percentiles:
         "[http.server.requests]": 0.5,0.95,0.99
   prometheus:

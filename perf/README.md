@@ -169,6 +169,74 @@ http_server_requests_seconds{...,uri="/community",quantile="0.99"} 0.317718528
 - `management.endpoints.web.exposure.include` 에서 `heapdump` 제거
 - `management.server.address: 127.0.0.1` 로 바인딩 제한 (또는 방화벽/보안그룹으로 내부망 한정)
 
+## 대시보드 (Prometheus + Grafana)
+
+`/actuator/prometheus` 는 사람이 아니라 **Prometheus 가 긁어가라고 만든 기계용 텍스트**다.
+브라우저로 열면 지표 200줄이 그대로 보이는 게 정상이고, 사람이 보는 건 Grafana 쪽이다.
+
+```powershell
+# 1) 앱 (지표를 내보내는 쪽)
+.\gradlew.bat bootRun "--args=--spring.profiles.active=local,monitor"
+
+# 2) 수집·시각화 스택
+.\perf\monitoring\start_monitoring.ps1
+
+# 상태 확인 / 종료
+.\perf\monitoring\start_monitoring.ps1 -Status
+.\perf\monitoring\start_monitoring.ps1 -Stop
+```
+
+- 대시보드: <http://localhost:3000/d/cakeshop-overview>
+- 수집 상태: <http://localhost:9091/targets>
+
+### 포트 배치
+
+| 포트 | 용도 |
+|---|---|
+| 8080 | 앱 서비스 |
+| 9090 | 앱 actuator (지표 노출) |
+| 9091 | Prometheus — **기본값 9090이 actuator와 겹쳐 옮겼다** |
+| 3000 | Grafana |
+
+### 구성 파일
+
+| 파일 | 역할 |
+|---|---|
+| `monitoring/prometheus.yml` | 수집 대상·주기(5초). 부하가 15초짜리라 기본 15초로는 표본이 부족하다 |
+| `monitoring/provisioning/datasources/` | Grafana 데이터소스 자동 등록 (UI에서 손으로 추가할 필요 없음) |
+| `monitoring/provisioning/dashboards/` | 대시보드 폴더 자동 등록. 기동 시 절대경로가 치환된다 |
+| `monitoring/dashboards/cakeshop.json` | 대시보드 정의. 수정은 이 파일을 고친다(UI 수정은 저장되지 않음) |
+| `monitoring/start_monitoring.ps1` | 기동/종료/상태 |
+
+바이너리는 저장소가 아니라 `%USERPROFILE%\tools\monitoring` 에 둔다(무설치 zip).
+지우려면 그 폴더만 삭제하면 된다.
+
+### 대시보드 패널
+
+| 패널 | 답하는 질문 |
+|---|---|
+| 처리량 · p95 응답시간 · 5xx 에러율 · DB 커넥션 대기 | 지금 건강한가 (헤드라인 4개) |
+| 화면별 p95 응답시간 | **어느 화면이 느린가** — 커뮤니티 목록·메인이 솟으면 그게 병목 |
+| 화면별 처리량 | 느린 화면이 자주 불리는가 (위 패널과 같이 본다) |
+| DB 커넥션풀 | 대기가 0보다 크면 풀(기본 10)이 병목 |
+| JVM 힙 | 톱니가 정상. 회수 후 바닥이 계속 오르면 누수 의심 |
+
+### 백분위 설정과의 관계
+
+대시보드를 붙이면서 `application-monitor.yml` 을 `percentiles-histogram: true` 로 되돌렸다.
+히스토그램(`*_bucket`)은 Prometheus 가 `histogram_quantile()` 로 임의 구간을 다시 계산할 수 있고
+인스턴스 간 합산도 되지만, 클라이언트 백분위(`quantile="0.5"`)는 이미 계산된 값이라 둘 다 안 된다.
+대신 히스토그램을 켜면 `/actuator/prometheus` 를 눈으로 볼 때 quantile 줄이 사라진다 —
+Grafana 없이 엔드포인트만 볼 일이 있으면 설정을 뒤집는다.
+
+> 클라이언트 백분위를 쓸 때 주의: 그 값은 **최근 약 2분 롤링 윈도**라 트래픽이 끊기면 0으로 떨어진다.
+> `_count`/`_sum` 은 누적이라 줄지 않는다. "조용할 때 0" 은 고장이 아니다.
+
+### 보안
+
+Grafana 는 로컬 실험용이라 **익명 접속 + Admin 권한**으로 띄운다(`GF_AUTH_ANONYMOUS_ENABLED`).
+Prometheus 도 인증이 없다. 둘 다 외부에 열지 말 것.
+
 ## 처음부터 세팅하기 (다른 PC)
 
 1. **부하용 DB 생성**
