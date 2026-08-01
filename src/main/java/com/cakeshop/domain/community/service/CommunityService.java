@@ -6,6 +6,7 @@ import com.cakeshop.domain.community.dto.form.PostReportForm;
 import com.cakeshop.domain.community.dto.view.CommentRow;
 import com.cakeshop.domain.community.dto.view.CommentView;
 import com.cakeshop.domain.community.dto.view.LikeResultView;
+import com.cakeshop.domain.community.dto.view.PostCategoryView;
 import com.cakeshop.domain.community.dto.view.PostDetailRow;
 import com.cakeshop.domain.community.dto.view.PostDetailView;
 import com.cakeshop.domain.community.dto.view.PostSliceView;
@@ -14,7 +15,6 @@ import com.cakeshop.domain.community.dto.view.PostSummaryView;
 import com.cakeshop.domain.community.entity.Comment;
 import com.cakeshop.domain.community.entity.CommentStatus;
 import com.cakeshop.domain.community.entity.Post;
-import com.cakeshop.domain.community.entity.PostCategory;
 import com.cakeshop.domain.community.entity.PostStatus;
 import com.cakeshop.domain.community.error.CommunityErrorCode;
 import com.cakeshop.domain.community.mapper.CommunityMapper;
@@ -52,32 +52,24 @@ public class CommunityService {
     }
 
     @Transactional(readOnly = true)
-    public List<PostCategory> getActiveCategories() {
+    public List<PostCategoryView> getActiveCategories() {
         return communityMapper.findActiveCategories();
     }
 
     /**
      * 필터 파라미터는 사용자 입력이므로 실제 카테고리 code가 아니면 전체(null)로 취급한다.
-     * 화면 출력용으로 이미 목록을 조회한 호출자는 그 목록을 넘겨 findActiveCategories 중복 실행을 피한다.
+     * 선택지 출력을 위해 이미 목록을 조회한 화면 호출자가 그 목록을 넘겨 쓰는 순수 함수다
+     * (DB를 다시 보지 않으므로 트랜잭션이 필요 없다).
      */
-    public String normalizeCategory(String categoryCode, List<PostCategory> activeCategories) {
+    public String normalizeCategory(String categoryCode, List<PostCategoryView> activeCategories) {
         if (categoryCode == null || categoryCode.isBlank()) {
             return null;
         }
         return activeCategories.stream()
-            .map(PostCategory::getCode)
-            .filter(code -> code.equals(categoryCode))
+            .map(PostCategoryView::code)
+            .filter(categoryCode::equals)
             .findFirst()
             .orElse(null);
-    }
-
-    /** 활성 카테고리 목록이 따로 필요 없는 호출자용(무한스크롤 API 등). */
-    @Transactional(readOnly = true)
-    public String normalizeCategory(String categoryCode) {
-        if (categoryCode == null || categoryCode.isBlank()) {
-            return null;
-        }
-        return normalizeCategory(categoryCode, getActiveCategories());
     }
 
     /** 페이지 번호 방식: 전체 건수 + LIMIT/OFFSET. 페이지 이동 UI에 totalPages가 필요해 카운트 쿼리를 함께 낸다. */
@@ -93,10 +85,14 @@ public class CommunityService {
      * 무한스크롤 방식: 마지막 글 id(cursor) 이후를 keyset으로 조회한다.
      * OFFSET과 달리 스크롤 중 새 글이 끼어들어도 같은 글이 중복 표시되지 않고, 카운트 쿼리도 없다.
      * size+1건을 조회해 다음 페이지 존재 여부(hasNext)를 추가 쿼리 없이 판별한다.
+     *
+     * 카테고리 유효성은 Slice SQL의 EXISTS(is_active 포함)가 처리하므로 여기서 따로 조회하지 않는다.
+     * 배치마다 반복되는 호출이라 카테고리 조회를 남겨두면 스크롤 횟수만큼 쿼리가 곱해진다.
+     * 없는 code·비활성 code는 빈 Slice가 된다(화면은 Controller가 이미 걸러 정상 code만 넘긴다).
      */
     @Transactional(readOnly = true)
     public PostSliceView getPostSlice(String categoryCode, Long cursor, Integer size) {
-        String category = normalizeCategory(categoryCode);
+        String category = (categoryCode == null || categoryCode.isBlank()) ? null : categoryCode;
         int sliceSize = (size == null || size < 1) ? SLICE_DEFAULT_SIZE : Math.min(size, SLICE_MAX_SIZE);
 
         List<PostSummaryRow> rows = communityMapper.findActivePostSlice(category, cursor, sliceSize + 1);
@@ -208,9 +204,8 @@ public class CommunityService {
     public void updatePost(long memberId, long postId, PostCreateForm form) {
         PostDetailRow post = findActivePost(postId);
         validateAuthor(post.getMemberId(), memberId);
-        PostCategory category = communityMapper.findCategoryByCode(form.getCategoryCode())
-            .orElseThrow(() -> new BusinessException(CommunityErrorCode.CATEGORY_NOT_FOUND));
-        communityMapper.updatePost(postId, category.getId(), form.getTitle().trim(), form.getContent().trim());
+        long categoryId = getActiveCategoryId(form.getCategoryCode());
+        communityMapper.updatePost(postId, categoryId, form.getTitle().trim(), form.getContent().trim());
     }
 
     /** 작성자 삭제는 소프트 삭제(DELETED)다. 목록·상세 노출만 끊고 행은 남긴다. */
@@ -252,15 +247,20 @@ public class CommunityService {
         }
     }
 
+    // 저장에는 category_id만 필요하다. 없는 code와 비활성 code를 같은 오류로 막는다.
+    private long getActiveCategoryId(String categoryCode) {
+        return communityMapper.findActiveCategoryIdByCode(categoryCode)
+            .orElseThrow(() -> new BusinessException(CommunityErrorCode.CATEGORY_NOT_FOUND));
+    }
+
     /** 새 글 등록. 저장값은 code로 받아 category id로 변환하고, 시작 상태는 ACTIVE다. */
     @Transactional
     public long createPost(long memberId, PostCreateForm form) {
-        PostCategory category = communityMapper.findCategoryByCode(form.getCategoryCode())
-            .orElseThrow(() -> new BusinessException(CommunityErrorCode.CATEGORY_NOT_FOUND));
+        long categoryId = getActiveCategoryId(form.getCategoryCode());
 
         Post post = new Post();
         post.setMemberId(memberId);
-        post.setCategoryId(category.getId());
+        post.setCategoryId(categoryId);
         post.setTitle(form.getTitle().trim());
         post.setContent(form.getContent().trim());
         post.setStatus(PostStatus.ACTIVE);
