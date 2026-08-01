@@ -60,6 +60,11 @@ approved-at: 2026-07-25
 - API: `/community/api/posts`, `/community/api/posts/{id}/like`
 - 관리자: `/admin/community`, `/admin/community/{id}`
 - 목록은 페이지 번호 방식과 id cursor 기반 무한스크롤을 모두 제공한다.
+- `/community/api/posts` 응답 규약 — `{ posts, hasNext, nextCursor }`.
+  - `size`는 기본 10, 상한 30이다. 범위를 벗어난 값은 기본값·상한으로 보정한다.
+  - `nextCursor`는 이번 응답 마지막 글의 id다. `hasNext`가 false면 `null`이다.
+  - 화면은 검증된 `category`만 넘긴다. 활성 `code`가 아닌 값으로 직접 호출하면 빈 목록
+    (`posts: []`, `hasNext: false`)을 반환한다 — 전체 목록으로 되돌리지 않는다.
 
 ## 6. 비즈니스 규칙
 
@@ -70,6 +75,10 @@ approved-at: 2026-07-25
 - 본인 글 신고와 중복 신고는 거부한다.
 - 좋아요 행과 `posts.like_count` 증감은 같은 트랜잭션에서 처리한다.
 - 관리자의 제재 전이는 `ACTIVE → BLOCKED`, 해제는 `BLOCKED → ACTIVE`만 허용한다.
+- 카테고리 필터 파라미터가 활성 `code`가 아니면(없는 값·비활성 카테고리) 목록 화면은
+  "잘못된 카테고리 양식입니다."를 안내하고 전체 목록을 보여준다. 페이지 번호·무한스크롤 화면 모두 같다.
+- 글 작성·수정의 `categoryCode`가 활성 `code`가 아니면 `CATEGORY_NOT_FOUND`로 거부한다.
+  없는 값과 비활성 카테고리를 구분하지 않는다.
 
 ## 7. 완료 기준
 

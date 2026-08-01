@@ -3,7 +3,7 @@ package com.cakeshop.domain.community.controller;
 import com.cakeshop.domain.community.dto.form.CommentCreateForm;
 import com.cakeshop.domain.community.dto.form.PostCreateForm;
 import com.cakeshop.domain.community.dto.form.PostReportForm;
-import com.cakeshop.domain.community.entity.PostCategory;
+import com.cakeshop.domain.community.dto.view.PostCategoryView;
 import com.cakeshop.domain.community.service.CommunityService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.error.BusinessException;
@@ -40,7 +40,7 @@ public class CommunityController {
                        @RequestParam(required = false) Integer page,
                        Model model) {
         // 활성 카테고리는 한 번만 조회해 필터 검증과 화면 출력에 함께 쓴다(같은 SQL 2회 실행 방지).
-        List<PostCategory> categories = communityService.getActiveCategories();
+        List<PostCategoryView> categories = communityService.getActiveCategories();
         String currentCategory = communityService.normalizeCategory(category, categories);
         if (category != null && !category.isBlank() && currentCategory == null) {
             model.addAttribute("errorMessage", "잘못된 카테고리 양식입니다.");
@@ -53,10 +53,17 @@ public class CommunityController {
     }
 
     // 무한스크롤 방식 목록 — 첫 화면은 빈 껍데기만 렌더하고 데이터는 /community/api/posts 로 가져온다.
+    // 카테고리 검증을 여기서 끝내야 화면이 data-category에 정상 code만 넣고,
+    // 이후 스크롤 배치는 카테고리 조회 없이 Slice SQL 한 번으로 끝난다.
     @GetMapping("/community/scroll")
     public String scrollList(@RequestParam(required = false) String category, Model model) {
-        model.addAttribute("categories", communityService.getActiveCategories());
-        model.addAttribute("currentCategory", communityService.normalizeCategory(category));
+        List<PostCategoryView> categories = communityService.getActiveCategories();
+        String currentCategory = communityService.normalizeCategory(category, categories);
+        if (category != null && !category.isBlank() && currentCategory == null) {
+            model.addAttribute("errorMessage", "잘못된 카테고리 양식입니다.");
+        }
+        model.addAttribute("categories", categories);
+        model.addAttribute("currentCategory", currentCategory);
         return "customer/community/list-scroll";
     }
 

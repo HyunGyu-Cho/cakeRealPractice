@@ -1,12 +1,14 @@
 package com.cakeshop.domain.community.controller;
 
 import com.cakeshop.domain.community.dto.form.PostBlockForm;
+import com.cakeshop.domain.community.dto.view.PostCategoryView;
 import com.cakeshop.domain.community.service.CommunityAdminService;
 import com.cakeshop.domain.community.service.CommunityService;
 import com.cakeshop.global.common.paging.PageQuery;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.security.MemberDetails;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -41,8 +43,10 @@ public class CommunityAdminController {
                        @RequestParam(required = false) Integer page,
                        Model model) {
         String currentStatus = communityAdminService.normalizeStatus(status);
-        String currentCategory = communityService.normalizeCategory(category);
-        model.addAttribute("categories", communityService.getActiveCategories());
+        // 활성 카테고리는 한 번만 조회해 필터 검증과 화면 출력에 함께 쓴다(고객 목록과 같은 방식).
+        List<PostCategoryView> categories = communityService.getActiveCategories();
+        String currentCategory = communityService.normalizeCategory(category, categories);
+        model.addAttribute("categories", categories);
         model.addAttribute("currentStatus", currentStatus);
         model.addAttribute("currentCategory", currentCategory);
         model.addAttribute("currentTitle", title);

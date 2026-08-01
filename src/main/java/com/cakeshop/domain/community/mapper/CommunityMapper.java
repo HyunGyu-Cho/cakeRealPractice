@@ -3,12 +3,12 @@ package com.cakeshop.domain.community.mapper;
 import com.cakeshop.domain.community.dto.view.AdminPostDetailRow;
 import com.cakeshop.domain.community.dto.view.AdminPostSummaryRow;
 import com.cakeshop.domain.community.dto.view.CommentRow;
+import com.cakeshop.domain.community.dto.view.PostCategoryView;
 import com.cakeshop.domain.community.dto.view.PostDetailRow;
 import com.cakeshop.domain.community.dto.view.PostSummaryRow;
 import com.cakeshop.domain.community.dto.view.ReportRow;
 import com.cakeshop.domain.community.entity.Comment;
 import com.cakeshop.domain.community.entity.Post;
-import com.cakeshop.domain.community.entity.PostCategory;
 import com.cakeshop.global.common.stats.MemberCountRow;
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +19,8 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CommunityMapper {
 
-    List<PostCategory> findActiveCategories();
+    // 화면 선택지용 — 필터·폼이 쓰는 code·name만 내려준다.
+    List<PostCategoryView> findActiveCategories();
 
     long countActivePosts(@Param("categoryCode") String categoryCode);
 
@@ -53,7 +54,8 @@ public interface CommunityMapper {
 
     int softDeleteComment(@Param("commentId") long commentId);
 
-    Optional<PostCategory> findCategoryByCode(@Param("code") String code);
+    // 글 작성·수정 저장용 — posts.category_id에 넣을 id만 필요하다. code는 UNIQUE라 최대 1건이다.
+    Optional<Long> findActiveCategoryIdByCode(@Param("code") String code);
 
     int insertPost(Post post);
 
