@@ -3,11 +3,13 @@ package com.cakeshop.domain.community.controller;
 import com.cakeshop.domain.community.dto.form.CommentCreateForm;
 import com.cakeshop.domain.community.dto.form.PostCreateForm;
 import com.cakeshop.domain.community.dto.form.PostReportForm;
+import com.cakeshop.domain.community.entity.PostCategory;
 import com.cakeshop.domain.community.service.CommunityService;
 import com.cakeshop.global.common.paging.PageRequest;
 import com.cakeshop.global.error.BusinessException;
 import com.cakeshop.global.security.MemberDetails;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -37,8 +39,13 @@ public class CommunityController {
     public String list(@RequestParam(required = false) String category,
                        @RequestParam(required = false) Integer page,
                        Model model) {
-        String currentCategory = communityService.normalizeCategory(category);
-        model.addAttribute("categories", communityService.getActiveCategories());
+        // 활성 카테고리는 한 번만 조회해 필터 검증과 화면 출력에 함께 쓴다(같은 SQL 2회 실행 방지).
+        List<PostCategory> categories = communityService.getActiveCategories();
+        String currentCategory = communityService.normalizeCategory(category, categories);
+        if (category != null && !category.isBlank() && currentCategory == null) {
+            model.addAttribute("errorMessage", "잘못된 카테고리 양식입니다.");
+        }
+        model.addAttribute("categories", categories);
         model.addAttribute("currentCategory", currentCategory);
         model.addAttribute("pageResult",
             communityService.getPostPage(currentCategory, new PageRequest(page, PAGE_SIZE)));

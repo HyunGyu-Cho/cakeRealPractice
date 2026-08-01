@@ -56,17 +56,28 @@ public class CommunityService {
         return communityMapper.findActiveCategories();
     }
 
-    /** 필터 파라미터는 사용자 입력이므로 실제 카테고리 code가 아니면 전체(null)로 취급한다. */
+    /**
+     * 필터 파라미터는 사용자 입력이므로 실제 카테고리 code가 아니면 전체(null)로 취급한다.
+     * 화면 출력용으로 이미 목록을 조회한 호출자는 그 목록을 넘겨 findActiveCategories 중복 실행을 피한다.
+     */
+    public String normalizeCategory(String categoryCode, List<PostCategory> activeCategories) {
+        if (categoryCode == null || categoryCode.isBlank()) {
+            return null;
+        }
+        return activeCategories.stream()
+            .map(PostCategory::getCode)
+            .filter(code -> code.equals(categoryCode))
+            .findFirst()
+            .orElse(null);
+    }
+
+    /** 활성 카테고리 목록이 따로 필요 없는 호출자용(무한스크롤 API 등). */
     @Transactional(readOnly = true)
     public String normalizeCategory(String categoryCode) {
         if (categoryCode == null || categoryCode.isBlank()) {
             return null;
         }
-        return getActiveCategories().stream()
-            .map(PostCategory::getCode)
-            .filter(code -> code.equals(categoryCode))
-            .findFirst()
-            .orElse(null);
+        return normalizeCategory(categoryCode, getActiveCategories());
     }
 
     /** 페이지 번호 방식: 전체 건수 + LIMIT/OFFSET. 페이지 이동 UI에 totalPages가 필요해 카운트 쿼리를 함께 낸다. */

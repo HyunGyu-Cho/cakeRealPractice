@@ -8,6 +8,8 @@ out/
 application-prod.yml
 .env
 uploads/
+# 프로젝트 압축본 등 배포·백업 산출물
+*.zip
 .claude/settings.local.json
 # 머지 검증 게이트의 로컬 상태 — 커밋되면 팀원 전체가 남의 미완료 검증에 갇힌다
 .claude/state/

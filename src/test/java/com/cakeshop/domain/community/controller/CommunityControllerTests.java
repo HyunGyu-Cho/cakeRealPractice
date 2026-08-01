@@ -3,6 +3,7 @@ package com.cakeshop.domain.community.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +36,51 @@ class CommunityControllerTests {
     }
 
     @Test
+    void listFetchesActiveCategoriesOnlyOnce() {
+        List<PostCategory> categories = List.of(category("FREE"));
+        ExtendedModelMap model = new ExtendedModelMap();
+        when(communityService.getActiveCategories()).thenReturn(categories);
+        when(communityService.normalizeCategory("FREE", categories)).thenReturn("FREE");
+
+        String view = controller.list("FREE", 3, model);
+
+        assertThat(view).isEqualTo("customer/community/list");
+        assertThat(model.get("currentCategory")).isEqualTo("FREE");
+        assertThat(model.get("categories")).isSameAs(categories);
+        assertThat(model.get("errorMessage")).isNull();
+        // 검증과 화면 출력이 같은 목록을 공유하므로 요청당 조회는 1회여야 한다.
+        verify(communityService, times(1)).getActiveCategories();
+    }
+
+    @Test
+    void listShowsErrorMessageForUnknownCategoryAndFallsBackToAllPosts() {
+        List<PostCategory> categories = List.of(category("FREE"));
+        ExtendedModelMap model = new ExtendedModelMap();
+        when(communityService.getActiveCategories()).thenReturn(categories);
+        when(communityService.normalizeCategory("WRONG", categories)).thenReturn(null);
+
+        controller.list("WRONG", null, model);
+
+        assertThat(model.get("currentCategory")).isNull();
+        assertThat(model.get("errorMessage")).isEqualTo("잘못된 카테고리 양식입니다.");
+        verify(communityService, times(1)).getActiveCategories();
+    }
+
+    @Test
+    void listWithoutCategoryShowsAllPostsWithoutError() {
+        List<PostCategory> categories = List.of(category("FREE"));
+        ExtendedModelMap model = new ExtendedModelMap();
+        when(communityService.getActiveCategories()).thenReturn(categories);
+        when(communityService.normalizeCategory(null, categories)).thenReturn(null);
+
+        controller.list(null, null, model);
+
+        assertThat(model.get("currentCategory")).isNull();
+        assertThat(model.get("errorMessage")).isNull();
+        verify(communityService, times(1)).getActiveCategories();
+    }
+
+    @Test
     void invalidCreateRendersFormWithoutCallingService() {
         PostCreateForm form = new PostCreateForm();
         BeanPropertyBindingResult errors = new BeanPropertyBindingResult(form, "form");
@@ -64,6 +110,12 @@ class CommunityControllerTests {
         assertThat(view).isEqualTo("redirect:/community/10");
         assertThat(redirect.getFlashAttributes().get("successMessage"))
             .isEqualTo("게시글이 등록되었습니다.");
+    }
+
+    private PostCategory category(String code) {
+        PostCategory category = new PostCategory();
+        category.setCode(code);
+        return category;
     }
 
     private MemberDetails member(long id) {
